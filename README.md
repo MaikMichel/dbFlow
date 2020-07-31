@@ -1,2 +1,2 @@
 # bash4xcl
-Deployment framework for Oracle APEX Applications
+Deployment framework for Oracle Database Applications
