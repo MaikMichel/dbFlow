@@ -115,11 +115,11 @@ generate() {
 
   # create directories  
   if [ ${db_scheme_type,,} == "m" ]; then
-    mkdir -p db/${project_name}_data/{sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},tests/{packages},ddl/{init,pre,post},dml/{init,pre,post}}
-    mkdir -p db/${project_name}_logic/{sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},tests/{packages},ddl/{init,pre,post},dml/{init,pre,post}}
-    mkdir -p db/${project_name}_app/{sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},tests/{packages},ddl/{init,pre,post},dml/{init,pre,post}}
+    mkdir -p db/${project_name}_data/{sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/{packages},ddl/{init,pre,post},dml/{init,pre,post}}
+    mkdir -p db/${project_name}_logic/{sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/{packages},ddl/{init,pre,post},dml/{init,pre,post}}
+    mkdir -p db/${project_name}_app/{sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/{packages},ddl/{init,pre,post},dml/{init,pre,post}}
   elif [ ${db_scheme_type,,} == "s" ]; then
-    mkdir -p db/${project_name}/{sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},tests/{packages},ddl/{init,pre,post},dml/{init,pre,post}}
+    mkdir -p db/${project_name}/{sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/{packages},ddl/{init,pre,post},dml/{init,pre,post}}
   else
     echo_error "unknown type ${db_scheme_type}"
     exit 1
