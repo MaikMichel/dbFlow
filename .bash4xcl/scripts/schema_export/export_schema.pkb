@@ -283,7 +283,7 @@ create or replace package body export_schema is
           ); 
     end loop;
 
-    for cur in (select sequence_name, 'sequence/'||lower(sequence_name)||'.sql' filename
+    for cur in (select sequence_name, 'sequences/'||lower(sequence_name)||'.sql' filename
                   from user_sequences
                  where sequence_name not like 'ISEQ%')
     loop

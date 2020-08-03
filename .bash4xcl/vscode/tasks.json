@@ -1,8 +1,31 @@
 {
     // See https://go.microsoft.com/fwlink/?LinkId=733558
     // for the documentation about the tasks.json format
-    "version": "2.0.0",    
-    "tasks": [        
+    "version": "2.0.0",
+    "inputs": [
+        {
+            "id": "applicationIDs",
+            "description": "Verfügbare Applikationen",
+            "type": "pickString",
+            "default": "",
+            "options": []
+        }
+    ],
+    "tasks": [ 
+        {
+            "label": "Export - Exportieren der ausgewählten APEX Application",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                ".vscode/export_app.sh",
+                "${input:applicationIDs}"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": []
+        },       
         {
             "label": "Build - Kompilieren/Upload der aktuellen Datei",
             "type": "shell",
@@ -32,6 +55,7 @@
                     }
                 ]
             }
-        }
+        },
+
     ]
 }
