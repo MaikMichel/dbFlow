@@ -14,8 +14,8 @@ echo
 tapi_schema="tapi"
 tapi_pass=$(shuf -zer -n20 {A..Z} {a..z} {0..9} | tr -d '\0')
 
-tag_name=$(curl --silent "https://api.github.com/repos/OraMUC/table-api-generator/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-curl -OL "https://github.com/OraMUC/table-api-generator/archive/${tag_name}.zip"
+tag_name=$(curl --silent "https://api.github.com/repos/MaikMichel/table-api-generator/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+curl -OL "https://github.com/MaikMichel/table-api-generator/archive/${tag_name}.zip"
 
 unzip ${tag_name}.zip -d "tapi-${tag_name}"
 rm ${tag_name}.zip
