@@ -253,9 +253,28 @@ generate() {
   echo "grant execute on sys.dbms_rls to public;" >> ${targetpath}/users/gen_users.sql
 
   # copy vscode files
-  mkdir .vscode
+  [ -d .vscode ] || mkdir .vscode
   cp -rf .bash4xcl/vscode/* .vscode/
 
+  # ask for application IDs
+  read -p "Enter application IDs (comma separated) you wish to use initialy [1000,2000]: " apex_ids
+  apex_ids=${apex_ids:-"1000,2000"}
+
+  # split ids gen directories  
+  apexids=(`echo $apex_ids | sed 's/,/\n/g'`)
+  apexidsquotes="\""${apex_ids/,/"\",\""}"\""
+  for apxID in "${apexids[@]}"
+  do
+      mkdir -p apex/f"$apxID"
+      
+  done
+
+  # add application IDs to vscode task
+  lineNum="`grep -Fn -m 1 DEFAULT_APP_ID .vscode/tasks.json | grep -Po '^[0-9]+'`"
+  sed -i ${lineNum}s/.*/"            \"default\": \"${apexids[0]}\", \/\/ \$DEFAULT_APP_ID"/ .vscode/tasks.json
+
+  lineNum="`grep -Fn -m 1 ARRAY_OF_AVAILABLE_APP_IDS .vscode/tasks.json | grep -Po '^[0-9]+'`"
+  sed -i ${lineNum}s/.*/"            \"options\": [${apexidsquotes}], \/\/ \$DEFAULT_APP_ID"/ .vscode/tasks.json
 
 } # generate
 
@@ -356,7 +375,7 @@ else
       ;;
     install)      
       install
-      ;;
+      ;;    
     export)
       conn=""
       target=""
@@ -399,6 +418,10 @@ else
       export_schema $conn $target
 
       ;;
-    
+    *)
+      echo -e  "${RED}Invalid Argument see help${NC}" 1>&2
+      usage
+      exit 1
+      ;;
   esac
 fi

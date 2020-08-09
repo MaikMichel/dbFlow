@@ -7,8 +7,8 @@
             "id": "applicationIDs",
             "description": "Verfügbare Applikationen",
             "type": "pickString",
-            "default": "",
-            "options": []
+            "default": "", // $DEFAULT_APP_ID
+            "options": [] // $ARRAY_OF_AVAILABLE_APP_IDS
         }
     ],
     "tasks": [ 
