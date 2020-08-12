@@ -1,5 +1,5 @@
 create or replace package body export_schema is
-  
+
   function clob_to_blob (p_clob in clob) return blob is
    v_blob      blob;
    v_varchar   raw (32767);
@@ -38,12 +38,12 @@ create or replace package body export_schema is
     -- zusätzlich holen der Kommentare
       v_comments := dbms_metadata.get_dependent_ddl( 'COMMENT', p_table_name);
 
-      -- username und doppelte Anführungsstriche brauchen wir auch nicht 
+      -- username und doppelte Anführungsstriche brauchen wir auch nicht
       v_comments := replace(v_comments, '"', '');
       v_comments := replace(v_comments, user||'.', '');
 
       dbms_lob.append(v_script, chr(10)||chr(10)||v_comments);
-    exception    
+    exception
       when others then
         null; -- ORA-31608: specified object of type COMMENT not found
     end;
@@ -55,12 +55,12 @@ create or replace package body export_schema is
                           p_constraint_type   in varchar2) return clob is
     v_script clob;
   begin
-    v_script := dbms_metadata.get_ddl(case 
-                                        when p_constraint_type = 'R' then 
+    v_script := dbms_metadata.get_ddl(case
+                                        when p_constraint_type = 'R' then
                                           'REF_CONSTRAINT'
                                         else
                                           'CONSTRAINT'
-                                      end, 
+                                      end,
                                       upper(p_constraint_name)
                                       );
 
@@ -79,8 +79,8 @@ create or replace package body export_schema is
 
   function get_index(p_index_name   in varchar) return clob is
     v_script clob;
-  begin    
-    v_script := dbms_metadata.get_ddl('INDEX',                                      
+  begin
+    v_script := dbms_metadata.get_ddl('INDEX',
                                       upper(p_index_name)
                                       );
 
@@ -102,55 +102,55 @@ create or replace package body export_schema is
                       return clob is
     v_script clob;
   begin
-    v_script := dbms_metadata.get_ddl(p_source_type,                                      
+    v_script := dbms_metadata.get_ddl(p_source_type,
                                       upper(p_source_name)
                                       );
 
     -- username und doppelte Anführungsstriche brauchen wir auch nicht
-    v_script := replace(v_script, '"'||user||'"."'||upper(p_source_name)||'"', lower(p_source_name));    
+    v_script := replace(v_script, '"'||user||'"."'||upper(p_source_name)||'"', lower(p_source_name));
 
-    return v_script;                                      
+    return v_script;
   end;
 
   function get_sequence(p_sequence_name in varchar2)
                       return clob is
     v_script clob;
   begin
-    v_script := dbms_metadata.get_ddl('SEQUENCE',                                      
+    v_script := dbms_metadata.get_ddl('SEQUENCE',
                                       upper(p_sequence_name)
                                       );
 
     -- username und doppelte Anführungsstriche brauchen wir auch nicht
-    v_script := replace(v_script, '"'||user||'"."'||upper(p_sequence_name)||'"', lower(p_sequence_name));    
+    v_script := replace(v_script, '"'||user||'"."'||upper(p_sequence_name)||'"', lower(p_sequence_name));
 
-    return v_script;                                      
+    return v_script;
   end;
 
   function get_view(p_view_name in varchar2)
                       return clob is
     v_script clob;
   begin
-    v_script := dbms_metadata.get_ddl('VIEW',                                      
+    v_script := dbms_metadata.get_ddl('VIEW',
                                       upper(p_view_name)
                                       );
 
     -- username und doppelte Anführungsstriche brauchen wir auch nicht
-    v_script := replace(v_script, '"'||user||'"."'||upper(p_view_name)||'"', lower(p_view_name));    
+    v_script := replace(v_script, '"'||user||'"."'||upper(p_view_name)||'"', lower(p_view_name));
 
-    return v_script;                                      
+    return v_script;
   end;
 
   function get_job(p_job_id in number)
                       return clob is
     pragma autonomous_transaction;
     v_script clob;
-  begin  
-    dbms_job.user_export(p_job_id, v_script);    
+  begin
+    dbms_job.user_export(p_job_id, v_script);
 
     -- username und doppelte Anführungsstriche brauchen wir auch nicht
     v_script := replace(v_script, '=>'||user||'.', '=>');
     commit;
-    return v_script;                                      
+    return v_script;
   end;
 
 
@@ -159,8 +159,8 @@ create or replace package body export_schema is
                        p_owner in varchar2)
                       return clob is
     v_script clob;
-  begin  
-    v_script := dbms_metadata.get_ddl('SYNONYM', upper(p_synonym_name), p_owner);    
+  begin
+    v_script := dbms_metadata.get_ddl('SYNONYM', upper(p_synonym_name), p_owner);
 
     -- username und doppelte Anführungsstriche brauchen wir auch nicht
     v_script := replace(v_script, '"', '');
@@ -173,7 +173,7 @@ create or replace package body export_schema is
   function get_zip return blob is
     v_zip_file  blob;
     v_file      blob;
-  begin    
+  begin
     for cur in (select table_name, 'tables/'||lower(table_name)||'.sql' filename
                   from user_tables)
     loop
@@ -182,11 +182,11 @@ create or replace package body export_schema is
       apex_zip.add_file(p_zipped_blob => v_zip_file
                         ,p_file_name   => cur.filename
                         ,p_content     => v_file
-          );     
+          );
     end loop;
 
-    for cur in (select constraint_name, 'constraints/' || 
-                        case 
+    for cur in (select constraint_name, 'constraints/' ||
+                        case
                           when constraint_type = 'P' then 'primaries'
                           when constraint_type = 'U' then 'uniques'
                           when constraint_type = 'R' then 'foreigns'
@@ -202,10 +202,10 @@ create or replace package body export_schema is
       apex_zip.add_file(p_zipped_blob => v_zip_file
                       ,p_file_name   => cur.filename
                       ,p_content     => v_file
-          );     
+          );
     end loop;
 
-    
+
     for cur in (select i.index_name index_name, 'indexes/'||
                        case
                          when c.constraint_type = 'P' then 'primaries'
@@ -220,29 +220,30 @@ create or replace package body export_schema is
       apex_zip.add_file(p_zipped_blob => v_zip_file
                         ,p_file_name   => cur.filename
                         ,p_content     => v_file
-          );     
+          );
     end loop;
 
-    for cur in (select object_name, 
-                        case 
-                          when object_type = 'PACKAGE BODY' then 'PACKAGE_BODY' 
-                          when object_type = 'PACKAGE' then 'PACKAGE_SPEC' 
+    for cur in (select object_name,
+                        case
+                          when object_type = 'PACKAGE BODY' then 'PACKAGE_BODY'
+                          when object_type = 'PACKAGE' then 'PACKAGE_SPEC'
                           else object_type
                         end source_type,
                         'sources/'||
-                        case 
-                          when object_type in ('PACKAGE', 'PACKAGE BODY') then 'packages'                       
+                        case
+                          when object_type in ('PACKAGE', 'PACKAGE BODY') then 'packages'
                           else lower(object_type)
                         end||'/'||lower(object_name)||'.'||
-                        case 
-                          when object_type = 'PACKAGE BODY' then 'pkb' 
-                          when object_type = 'PACKAGE' then 'pks' 
+                        case
+                          when object_type = 'PACKAGE BODY' then 'pkb'
+                          when object_type = 'PACKAGE' then 'pks'
                           else 'sql'
                         end filename
                   from user_objects
                  where object_type in ('TYPE', 'PACKAGE BODY', 'PACKAGE', 'FUNCTION', 'PROCEDURE', 'TRIGGER')
                    and object_name not like 'TEST\_%' escape '\'
-                   and object_name not like 'SYS\_PLSQL\_%' escape '\'  )
+                   and object_name not like 'SYS\_PLSQL\_%' escape '\'
+                   and object_name != 'EXPORT_SCHEMA' )
     loop
       v_file := clob_to_blob(get_source(p_source_name => cur.object_name,
                                         p_source_type => cur.source_type));
@@ -250,24 +251,24 @@ create or replace package body export_schema is
       apex_zip.add_file(p_zipped_blob => v_zip_file
                         ,p_file_name   => cur.filename
                         ,p_content     => v_file
-          ); 
+          );
     end loop;
-    
 
-    for cur in (select object_name, 
-                        case 
-                          when object_type = 'PACKAGE BODY' then 'PACKAGE_BODY' 
-                          when object_type = 'PACKAGE' then 'PACKAGE_SPEC' 
+
+    for cur in (select object_name,
+                        case
+                          when object_type = 'PACKAGE BODY' then 'PACKAGE_BODY'
+                          when object_type = 'PACKAGE' then 'PACKAGE_SPEC'
                           else object_type
                         end source_type,
                         'tests/'||
-                        case 
-                          when object_type in ('PACKAGE', 'PACKAGE BODY') then 'packages'                       
-                          else lower(object_type)
+                        case
+                          when object_type in ('PACKAGE', 'PACKAGE BODY') then 'packages'
+                          else lower(object_type)||'s' -- plural
                         end||'/'||lower(object_name)||'.'||
-                        case 
-                          when object_type = 'PACKAGE BODY' then 'pkb' 
-                          when object_type = 'PACKAGE' then 'pks' 
+                        case
+                          when object_type = 'PACKAGE BODY' then 'pkb'
+                          when object_type = 'PACKAGE' then 'pks'
                           else 'sql'
                         end filename
                   from user_objects
@@ -280,7 +281,7 @@ create or replace package body export_schema is
       apex_zip.add_file(p_zipped_blob => v_zip_file
                         ,p_file_name   => cur.filename
                         ,p_content     => v_file
-          ); 
+          );
     end loop;
 
     for cur in (select sequence_name, 'sequences/'||lower(sequence_name)||'.sql' filename
@@ -292,7 +293,7 @@ create or replace package body export_schema is
       apex_zip.add_file(p_zipped_blob => v_zip_file
                         ,p_file_name   => cur.filename
                         ,p_content     => v_file
-          );     
+          );
     end loop;
 
     for cur in (select view_name, 'sources/views/'||lower(view_name)||'.sql' filename
@@ -303,7 +304,7 @@ create or replace package body export_schema is
       apex_zip.add_file(p_zipped_blob => v_zip_file
                         ,p_file_name   => cur.filename
                         ,p_content     => v_file
-          );     
+          );
     end loop;
 
     for cur in (select job, 'jobs/job_'||job||'.sql' filename
@@ -314,14 +315,14 @@ create or replace package body export_schema is
       apex_zip.add_file(p_zipped_blob => v_zip_file
                         ,p_file_name   => cur.filename
                         ,p_content     => v_file
-          );     
+          );
     end loop;
 
     -- for cur in (select synonym_name,  owner, 'synonyms/public/'||synonym_name||'.sql' filename
     --               from all_synonyms
     --             where owner in 'PUBLIC'
     --               and table_owner = user
-    --             union    
+    --             union
     --             select synonym_name,  user, 'synonyms/private/'||synonym_name||'.sql' filename
     --               from user_synonyms)
     -- loop
@@ -331,20 +332,20 @@ create or replace package body export_schema is
     --   apex_zip.add_file(p_zipped_blob => v_zip_file
     --                     ,p_file_name   => cur.filename
     --                     ,p_content     => v_file
-    --       ); 
+    --       );
     -- end loop;
 
     -- finish zip
     apex_zip.finish(p_zipped_blob => v_zip_file);
 
-    return v_zip_file; 
+    return v_zip_file;
   end;
 
 begin
   dbms_metadata.set_transform_param(dbms_metadata.session_transform, 'SQLTERMINATOR',        true);
   dbms_metadata.set_transform_param(dbms_metadata.session_transform, 'PRETTY',               true);
-  dbms_metadata.set_transform_param(dbms_metadata.session_transform, 'STORAGE',              true); 
-  dbms_metadata.set_transform_param(dbms_metadata.session_transform, 'SEGMENT_ATTRIBUTES',   false); 
+  dbms_metadata.set_transform_param(dbms_metadata.session_transform, 'STORAGE',              true);
+  dbms_metadata.set_transform_param(dbms_metadata.session_transform, 'SEGMENT_ATTRIBUTES',   false);
   dbms_metadata.set_transform_param(dbms_metadata.session_transform, 'CONSTRAINTS',          true);
   dbms_metadata.set_transform_param(dbms_metadata.session_transform, 'REF_CONSTRAINTS',      true);
   dbms_metadata.set_transform_param(dbms_metadata.session_transform, 'CONSTRAINTS_AS_ALTER', true);
