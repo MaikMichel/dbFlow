@@ -5,4 +5,8 @@ apply.env
 # build artifacts are send to this folder by default
 _depot
 
+# static application temp files
+static/f*/dist
 
+# private developer settings
+.vscode/settings.json
