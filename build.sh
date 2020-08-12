@@ -63,7 +63,7 @@ fi
 
 # beim INIT gibts kein Vorbehandlung oder eine Auswertung des table_ddls
 if [ "${mode}" == "init" ]; then
-  array=( sequences tables indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies types source/packages source/functions source/procedures views source/triggers jobs tests/packages ddl/init dml/init )
+  array=( sequences tables indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies types sources/packages sources/functions sources/procedures views sources/triggers jobs tests/packages ddl/init dml/init )
 else
   # pre and post stages build arrays
   # loop through schemas
@@ -88,7 +88,7 @@ else
   done
 
   array=${pres[@]}
-  array+=( sequences tables tables_ddl indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies types source/packages source/functions source/procedures views source/triggers jobs tests/packages )
+  array+=( sequences tables tables_ddl indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies types sources/packages sources/functions sources/procedures views sources/triggers jobs tests/packages )
   array+=( ${post[@]} )
 fi
 
@@ -131,6 +131,7 @@ mkdir -p $targetpath
 # copy (and overwrite forcefully) in exact directory structure as in git repo
 echo "Copy files ..."
 if [ "${mode}" == "init" ]; then
+ cp -R .bash4xcl $targetpath
  cp -R db $targetpath
  cp -R apex $targetpath
  cp build.sh $targetpath
@@ -156,7 +157,7 @@ else
       do
         # check if there is any file like viewfile_*.sql
         myfile=${file//./"_*."}
-        for f in ${sourcepath}/db/$schema/source/triggers/${myfile}; do
+        for f in ${sourcepath}/db/$schema/sources/triggers/${myfile}; do
           if [ -e "$f" ];
           then
               # yes, so copy it...
@@ -222,22 +223,6 @@ do
     echo "set scan off" >> "$target_install_file"
     echo "" >> "$target_install_file"
 
-    if [ "${mode}" == "init" ]; then
-      echo "Prompt init -- DROPING ALL OBJECTS" >> "$target_install_file"
-      echo "WHENEVER SQLERROR CONTINUE" >> "$target_install_file"
-      echo "@@api/drop_all.sql" >> "$target_install_file"
-      echo "WHENEVER SQLERROR EXIT SQL.SQLCODE" >> "$target_install_file"
-      echo "" >> "$target_install_file"
-    fi
-
-    if [ "$table_changes" == "TRUE" ] && [ "$schema" == "$LOGIC_SCHEMA" ]
-    then
-      echo "Prompt generating-views" >> "$target_install_file"
-      echo "@@api/generate_views_for_table_api.sql" >> "$target_install_file"
-      echo "" >> "$target_install_file"
-    fi
-
-
     # check every path in given order
     for path in "${array[@]}"
     do
@@ -258,21 +243,9 @@ do
           echo "WHENEVER SQLERROR CONTINUE" >> "$target_install_file"
         fi
 
-        # table changes and data_schema and before first dml ???
-        if ( [[ "$table_changes" == "TRUE" ]] && [[ "$schema" == "$DATA_SCHEMA" ]] ) && ( [[ "$path" == "dml/init" ]] || [[ "$path" == "dml/post" ]] )
-        then
-          echo "Prompt generating table-api $path ..." >> "$target_install_file"
-          echo "@@api/generate_table_api.sql" >> "$target_install_file"
-          echo "@@api/compile_schema.sql" >> "$target_install_file"
-          echo "Prompt" >> "$target_install_file"
-          echo "Prompt" >> "$target_install_file"
-          echo "" >> "$target_install_file"
-          echo "" >> "$target_install_file"
-        fi
-
         # if packages then sort descending
         sortdirection=""
-        if [ "$path" == "source/packages" ] || [ "$path" == "tests/packages" ]
+        if [ "$path" == "sources/packages" ] || [ "$path" == "tests/packages" ]
         then
           sortdirection="-r"
         fi
@@ -332,18 +305,10 @@ do
         echo "" >> "$target_install_file"
       fi
     done #path
-
-    # table changes???
-    if [ "$table_changes" == "TRUE" ] && [ "$schema" == "$DATA_SCHEMA" ]
-    then
-      echo "@@api/generate_table_api.sql" >> "$target_install_file"
-    fi
-
-     # gen tests for most objects
-    echo "@@api/generate_test_packages.sql" >> "$target_install_file"
-
-    # always compile schema at the end
-    echo "@@api/compile_schema.sql" >> "$target_install_file"
+    
+    echo "prompt compiling schema" >> "$target_install_file"
+    echo "exec dbms_utility.compile_schema(schema => user, compile_all => false);" >> "$target_install_file"
+    echo "exec dbms_session.reset_package" >> "$target_install_file"
 
     echo "Prompt" >> "$target_install_file"
     echo "Prompt" >> "$target_install_file"
@@ -357,17 +322,14 @@ done
 target_apex_file="$targetpath"/apex_files_$version.lst
 [ -f $target_apex_file ] && rm $target_apex_file
 
-for appid in "${APPLICATIONS[@]}"
-do
-  if [ -d "$targetpath"/apex/$appid ]
-  then
-    echo "apex/$appid" >> $target_apex_file
-  fi
+for appid in apex/*/ ; do
+    echo "${appid%/}" >> $target_apex_file
 done
 
 # Packen des Verzeichnisses
 tar -C $targetpath -czvf $targetpath.tar.gz .
 rm -rf $targetpath
+
 
 function make_a_new_version() {
   # Merge pushen

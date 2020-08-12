@@ -265,8 +265,47 @@ install_db_schemas()
     # exists db install file
     if [ -e db/$schema/$db_install_file ]
     then
+      # On init mode schema content will be dropped
+      if [ "${mode}" == "init" ]; then
+        echo "DROPING ALL OBJECTS" | write_log
+        exit | $SQLCL -s "$(get_connect_string $schema)" @.bash4xcl/api/drop_all.sql
+      fi
+
       cd db/$schema
       echo "Installing schema $schema to ${DB_APP_USER} on ${DB_TNS}"  | write_log
+
+      # calling all api/pre files
+      if [[ -d api/pre ]]
+      then
+        echo "EXCEUTING API/PREs" | write_log
+        echo "Prompt executing api/pre file" > tmp_api_pre.sql
+        echo "set define '^'" >> tmp_api_pre.sql
+        echo "set concat on" >> tmp_api_pre.sql
+        echo "set concat ." >> tmp_api_pre.sql
+        echo "set verify off" >> tmp_api_pre.sql
+        echo "define SPOOLFILE = '^1'" >> tmp_api_pre.sql
+        echo "define VERSION = '^2'" >> tmp_api_pre.sql
+        echo "set timing on;" >> tmp_api_pre.sql
+        echo "spool ^SPOOLFILE append;" >> tmp_api_pre.sql
+        for file in $(ls api/pre | sort )
+        do
+          echo "Prompt executing db/$schema/api/pre/${file}" >> tmp_api_pre.sql
+          echo "@api/pre/${file} ^SPOOLFILE ^VERSION" >> tmp_api_pre.sql
+          echo "" >> tmp_api_pre.sql
+        done
+
+        exit | $SQLCL -s "$(get_connect_string $schema)" @tmp_api_pre.sql ${full_log_file} ${patch}
+
+
+        if [ $? -ne 0 ]
+        then
+          echo "ERROR when executing db/$schema/tmp_api_pre.sql" | write_log
+          cat tmp_api_pre.sql >> ${full_log_file}
+          exit 1
+        fi
+
+        rm tmp_api_pre.sql
+      fi
 
       # uncomment cleaning scripts specific to this stage/branch ex:--test or --acceptance
       sed -i -E "s:--$STAGE:Prompt uncommented cleanup for stage $STAGE\n:g" $db_install_file
@@ -278,10 +317,45 @@ install_db_schemas()
         exit 1
       fi
 
+      # calling all api/post files
+      if [[ -d api/post ]]
+      then
+        echo "EXCEUTING API/POSTs" | write_log
+        echo "Prompt executing api/post file" > tmp_api_post.sql
+        echo "set define '^'" >> tmp_api_post.sql
+        echo "set concat on" >> tmp_api_post.sql
+        echo "set concat ." >> tmp_api_post.sql
+        echo "set verify off" >> tmp_api_post.sql
+        echo "define SPOOLFILE = '^1'" >> tmp_api_post.sql
+        echo "define VERSION = '^2'" >> tmp_api_post.sql
+        echo "set timing on;" >> tmp_api_post.sql
+        echo "spool ^SPOOLFILE append;" >> tmp_api_post.sql
+        for file in $(ls api/post | sort )
+        do
+          echo "Prompt executing db/$schema/api/post/${file}" >> tmp_api_post.sql
+          echo "@api/post/${file}" >> tmp_api_post.sql
+          echo "" >> tmp_api_post.sql
+        done
+
+        exit | $SQLCL -s "$(get_connect_string $schema)" @tmp_api_post.sql ${full_log_file} ${patch}
+
+
+        if [ $? -ne 0 ]
+        then
+          echo "ERROR when executing db/$schema/tmp_api_post.sql" | write_log
+          cat tmp_api_post.sql >> ${full_log_file}
+          exit 1
+        fi
+
+        rm tmp_api_post.sql
+      fi
+
+
       cd ../..
     else
       echo "File db/$schema/$db_install_file does not exist" | write_log
     fi
+
   done
 }
 
@@ -290,7 +364,7 @@ install_db_schemas()
 
 enable_policies()
 {
-  # policies will be created disables. now we will enable them
+  # policies will be created disabled. now we will enable them
   if [ -e db/$DATA_SCHEMA/api/enable_policies.sql ]
   then
     echo "Enabling Policies " | write_log
@@ -310,7 +384,7 @@ enable_policies()
 
 disable_policies()
 {
-  # policies will be created disables. now we will disable them
+  # disable all polices
   if [ -e db/$DATA_SCHEMA/api/disable_policies.sql ]
   then
     echo "Disabling Policies " | write_log
@@ -335,6 +409,7 @@ set_apps_unavailable() {
     # loop throug content
     while IFS= read -r line; do
       $SQLCL -s "$(get_connect_string $APP_SCHEMA)" <<!
+Spool install_xyz.log append;
 set define off;
 Declare
   v_application_id  apex_application_build_options.application_id%type := ${line/apex\/f} + ${APP_OFFSET};
@@ -379,7 +454,7 @@ install_apps() {
         echo "Installing $line Num: ${line/apex\/f} Workspace: ${WORKSPACE}" | write_log
         cd $line
         $SQLCL -s "$(get_connect_string $APP_SCHEMA)" <<!
-  Spool install_xyz.log
+  Spool install_xyz.log append;
   Prompt Workspace: ${WORKSPACE}
   Prompt Application: ${line/apex\/f}
   declare
@@ -417,7 +492,7 @@ install_apps() {
             echo "Enabling buildoptions ${APP_BUILD_OPTION_LIKE}" | write_log
 
         $SQLCL -s "$(get_connect_string $APP_SCHEMA)" <<!
-Spool install_xyz.log
+Spool install_xyz.log append;
 Declare
   v_application_id  apex_application_build_options.application_id%type := ${line/apex\/f} + ${APP_OFFSET};
   v_workspace_id	apex_workspaces.workspace_id%type;
@@ -461,33 +536,6 @@ End;
 
 }
 
-## Function to write Versioninfo to DB
-######################################
-
-write_version_info()
-{
-  # writing version to table
-  if [ -e db/$DATA_SCHEMA/api/set_version.sql ]
-  then
-    echo "Writing verioninfo to table" | write_log
-    exit | $SQLCL -s "$(get_connect_string $DATA_SCHEMA)" @db/$DATA_SCHEMA/api/set_version.sql ${patch}
-    if [ $? -ne 0 ]
-    then
-      echo "ERROR when executing db/$DATA_SCHEMA/api/set_version.sql" | write_log
-      exit 1
-    else
-
-      # if file exists execute it
-      if [ -e commits_${patch}.sql ]
-      then
-        echo "Writing commits to table" | write_log
-
-        exit | $SQLCL -s "$(get_connect_string $APP_SCHEMA)" @commits_${patch}.sql ${patch}
-
-      fi
-    fi
-  fi
-}
 
 ## Function to call final unit tests
 ####################################
@@ -499,13 +547,13 @@ exec_final_unit_tests()
   for schema in "${SCHEMAS[@]}"
   do
 
-    if [ -e db/$schema/api/execute_tests.sql ]
+    if [ -e .bash4xcl/api/execute_tests.sql ]
     then
       echo "Executing unit tests for schema $schema " | write_log
-      exit | $SQLCL -s "$(get_connect_string $schema)" @db/$schema/api/execute_tests.sql
+      exit | $SQLCL -s "$(get_connect_string $schema)" @.bash4xcl/api/execute_tests.sql
       if [ $? -ne 0 ]
       then
-        echo "ERROR when executing db/$schema/api/execute_tests.sql" | write_log
+        echo "ERROR when executing .bash4xcl/api/execute_tests.sql" | write_log
         exit 1
       fi
     fi
@@ -542,7 +590,7 @@ manage_result()
   esac
 
 
-  target_finalize_path=${patch_target_path}/_build/${target_move}/${patch}
+  target_finalize_path=${patch_source_path}/${target_move}/${patch}
 
   # create path if not exists
   [ -d ${target_finalize_path} ] || mkdir -p ${target_finalize_path}
@@ -552,7 +600,7 @@ manage_result()
   echo "Done " | write_log
 
   # move all
-  mv *${patch}* ${target_finalize_path}
+  mv *${patch}* ${target_finalize_path} | write_log
 
   # loop through schemas
   for schema in "${SCHEMAS[@]}"
@@ -561,7 +609,7 @@ manage_result()
     # exists db install file
     if [ -e db/$schema/$db_install_file ]
     then
-      mv db/$schema/$db_install_file ${target_finalize_path}
+      mv db/$schema/$db_install_file ${target_finalize_path} | write_log
     fi
   done
 
@@ -587,6 +635,6 @@ disable_policies
 install_db_schemas
 enable_policies
 install_apps
-write_version_info
+
 exec_final_unit_tests
 manage_result
