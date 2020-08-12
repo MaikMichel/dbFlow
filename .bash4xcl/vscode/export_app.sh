@@ -70,7 +70,12 @@ export JAVA_TOOL_OPTIONS="-Duser.language=en -Duser.region=US -Dfile.encoding=UT
 export CUSTOM_JDBC="-XX:+TieredCompilation -XX:TieredStopAtLevel=1 -Xverify:none"
 
 TARGET_SCHEMA=${APP_SCHEMA}
-CONNECTION=$DB_APP_USER[$TARGET_SCHEMA]/$DB_APP_PWD@$DB_TNS
+if [ $USE_PROXY == "FALSE" ]
+then
+  CONNECTION=$DB_APP_USER/$DB_APP_PWD@$DB_TNS
+else
+  CONNECTION=$DB_APP_USER[$TARGET_SCHEMA]/$DB_APP_PWD@$DB_TNS
+fi
 echo -e "${BYELLOW}CONNECTION:${NC}     ${WHITE}${DB_TNS}${NC}"
 echo -e "${BYELLOW}APPLICATION_ID:${NC} ${WHITE}${APPLICATION_ID}${NC}"
 
