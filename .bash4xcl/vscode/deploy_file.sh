@@ -14,7 +14,7 @@ function print_help() {
   echo "  npm install -g uglifycss terser @babel/core @babel/cli @babel/preset-env"
   echo ""
   echo "Examples: "
-  echo "  $0 nitro/f100/src/test.js"
+  echo "  $0 static/f100/src/test.js"
   echo "  $0 db/xxx_logic/source/packages/test.pks"
   echo ""
 
@@ -91,7 +91,7 @@ SOURCE_FILE_IE_MINIFIED=${INPATH}/"$(basename "${SOURCE_FILE_IE}" $EXTENSION)min
 TARGET_SCHEMA="unknown"
 APPLICATION_ID="unknown"
 DB_TARGET_FILE=""
-nitro="false"
+static="false"
 aop="false"
 if [[ "$SOURCE_FILE" == *"db/${DATA_SCHEMA}"* ]]; then
   TARGET_SCHEMA=${DATA_SCHEMA}
@@ -99,7 +99,7 @@ elif [[ "$SOURCE_FILE" == *"db/${LOGIC_SCHEMA}"* ]]; then
   TARGET_SCHEMA=${LOGIC_SCHEMA}
 elif [[ "$SOURCE_FILE" == *"db/${APP_SCHEMA}"* ]]; then
   TARGET_SCHEMA=${APP_SCHEMA}
-elif [[ "$SOURCE_FILE" == *"nitro/f"* ]]; then
+elif [[ "$SOURCE_FILE" == *"static/f"* ]]; then
   TARGET_SCHEMA=${APP_SCHEMA}
 
   # ermitteln der ApplikationsID
@@ -107,18 +107,18 @@ elif [[ "$SOURCE_FILE" == *"nitro/f"* ]]; then
 
   for i in "${arr[@]}"
   do
-    if [[ $nitro == "true" && $i == "f"* ]]; then
+    if [[ $static == "true" && $i == "f"* ]]; then
       APPLICATION_ID=${i/"f"/}
       break
     fi
 
-    if [ $i=="nitro" ]; then
-      nitro="true"
+    if [ $i=="static" ]; then
+      static="true"
     fi
 
   done
 
-  DB_TARGET_FILE=${SOURCE_FILE/"nitro/f$APPLICATION_ID/src/"/}
+  DB_TARGET_FILE=${SOURCE_FILE/"static/f$APPLICATION_ID/src/"/}
 elif [[ "$SOURCE_FILE" == *"reports/"*".docx" ]]; then
   TARGET_SCHEMA=${LOGIC_SCHEMA}
   aop="true"
@@ -133,14 +133,19 @@ export NLS_LANG="GERMAN_GERMANY.AL32UTF8"
 export NLS_DATE_FORMAT="DD.MM.YYYY HH24:MI:SS"
 #chcp 65001
 
-CONNECTION=$DB_APP_USER[$TARGET_SCHEMA]/$DB_APP_PWD@$DB_TNS
+if [ $USE_PROXY == "FALSE" ]
+then
+  CONNECTION=$DB_APP_USER/$DB_APP_PWD@$DB_TNS
+else
+  CONNECTION=$DB_APP_USER[$TARGET_SCHEMA]/$DB_APP_PWD@$DB_TNS
+fi
 echo -e "${BYELLOW}Connection:${NC}  ${WHITE}${DB_TNS}${NC}"
 echo -e "${BYELLOW}Schema:${NC}      ${WHITE}$DB_APP_USER[$TARGET_SCHEMA]${NC}"
 echo -e "${BYELLOW}Sourcefile:${NC}  ${WHITE}${SOURCE_FILE}${NC}"
 
 
 
-if [ "$nitro" == "true" ]; then
+if [ "$static" == "true" ]; then
 echo -e "${BYELLOW}Application:${NC} ${WHITE}${APPLICATION_ID}${NC}"
 
   if [ $EXTENSION == "css" ]
