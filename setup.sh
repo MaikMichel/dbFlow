@@ -10,7 +10,7 @@ usage() {
   echo -e "setup [bash4xcl] - generate project structure and install dependencies"
   echo
   echo -e "${BWHITE}VERSION${NC}"
-  echo -e "\t0.0.1"  
+  echo -e "\t0.0.1"
   echo
   echo -e "${BWHITE}USAGE${NC}"
   echo -e "\t$0 [COMMAND]"
@@ -37,7 +37,7 @@ array=( tablespaces directories users features workspaces workspace_users acls )
 
 
 
-print2envsql() {  
+print2envsql() {
   echo define project=${PROJECT} > $targetpath/env.sql
   echo define app_schema=${APP_SCHEMA} >> $targetpath/env.sql
   echo define data_schema=${DATA_SCHEMA} >> $targetpath/env.sql
@@ -45,7 +45,7 @@ print2envsql() {
   echo define workspace=${WORKSPACE} >> $targetpath/env.sql
   echo define db_app_pwd=${DB_APP_PWD} >> $targetpath/env.sql
   echo define db_app_user=${DB_APP_USER} >> $targetpath/env.sql
-  echo define apex_user=${APEX_USER} >> $targetpath/env.sql  
+  echo define apex_user=${APEX_USER} >> $targetpath/env.sql
 }
 
 remove2envsql() {
@@ -53,7 +53,7 @@ remove2envsql() {
 }
 
 install() {
-  
+
   if [ -z "$DB_PASSWORD" ]
   then
     ask4pwd "Enter password für user sys: "
@@ -113,7 +113,7 @@ generate() {
   read -p "Would you like to have a single or multi scheme app (S/M) [M]: " db_scheme_type
   db_scheme_type=${db_scheme_type:-"M"}
 
-  # create directories  
+  # create directories
   if [ ${db_scheme_type,,} == "m" ]; then
     mkdir -p db/${project_name}_data/{sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/{packages},ddl/{init,pre,post},dml/{init,pre,post}}
     mkdir -p db/${project_name}_logic/{sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/{packages},ddl/{init,pre,post},dml/{init,pre,post}}
@@ -124,9 +124,9 @@ generate() {
     echo_error "unknown type ${db_scheme_type}"
     exit 1
   fi
-  
+
   # write .env files
-  # build.env  
+  # build.env
   echo "# project name" > build.env
   echo "PROJECT=${project_name}" >> build.env
   echo "" >> build.env
@@ -161,15 +161,15 @@ generate() {
 
   ask4pwd "Enter password for sys [leave blank and you will be asked for]: "
   db_password=${pass}
-  
+
   if [ ${db_scheme_type,,} == "m" ]; then
     ask4pwd "Enter password for deployment_user (proxyuser: ${project_name}_depl) [leave blank and you will be asked for]: "
   else
     ask4pwd "Enter password for application_user (user: ${project_name}) [leave blank and you will be asked for]: "
   fi
-  db_app_pwd=${pass}  
+  db_app_pwd=${pass}
 
-  
+
   read -p "Enter path to depot [_depot]: " depot_path
   depot_path=${depot_path:-"_depot"}
 
@@ -224,7 +224,7 @@ generate() {
   cp -rf .bash4xcl/scripts/setup/features/* ${targetpath}/features
   chmod +x ${targetpath}/features
 
-  # create gen_users..  
+  # create gen_users..
   echo "set define '^'" > ${targetpath}/users/gen_users.sql
   echo "set concat on" >> ${targetpath}/users/gen_users.sql
   echo "set concat ." >> ${targetpath}/users/gen_users.sql
@@ -260,13 +260,13 @@ generate() {
   read -p "Enter application IDs (comma separated) you wish to use initialy [1000,2000]: " apex_ids
   apex_ids=${apex_ids:-"1000,2000"}
 
-  # split ids gen directories  
+  # split ids gen directories
   apexids=(`echo $apex_ids | sed 's/,/\n/g'`)
   apexidsquotes="\""${apex_ids/,/"\",\""}"\""
   for apxID in "${apexids[@]}"
   do
       mkdir -p apex/f"$apxID"
-      
+      mkdir -p static/f"$apxID"
   done
 
   # add application IDs to vscode task
@@ -280,16 +280,16 @@ generate() {
 
 
 export_schema() {
-  local connection=$1
+  local connection=${1:-""}
   local tarpath=${2:-""}
-  
-    
+
+
   for file in $(ls db | grep 'exp.zip')
   do
     rm "db/${file}"
   done
-  
-  
+
+
   if [ -z $connection ]; then
     # ask for some vars
     read -p "Enter database connections [${DB_TNS:-"localhost:1521/xepdb1"}]: " db_tns
@@ -298,9 +298,9 @@ export_schema() {
     read -p "Enter username/schema to export: " exp_schema
     exp_schema=${exp_schema}
 
-    
+
     ask4pwd "Enter password for username/schema to export: "
-    exp_pwd=${pass}  
+    exp_pwd=${pass}
 
     connection=${exp_schema}/${exp_pwd}@$db_tns
   fi
@@ -308,7 +308,7 @@ export_schema() {
   exit | sql -s ${connection} @.bash4xcl/scripts/schema_export/export.sql
 
   for file in $(ls db | grep 'exp.zip')
-  do  
+  do
     if [ -z $tarpath ]; then
       unzip -qo "db/${file}" -d db/${file/".exp.zip"/}
     else
@@ -373,9 +373,9 @@ else
 
       generate $project
       ;;
-    install)      
+    install)
       install
-      ;;    
+      ;;
     export)
       conn=""
       target=""
@@ -407,13 +407,8 @@ else
         esac
       done
       shift $((OPTIND -1))
-      
-      if [ -z $conn ]; then
-        echo -e  "${RED}Missing Connection -c param${NC}" 1>&2
-        exit 1
-      fi
 
-      
+
 
       export_schema $conn $target
 
