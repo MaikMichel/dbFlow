@@ -8,5 +8,8 @@ _depot
 # static application temp files
 static/f*/dist
 
+# instance versioning file does not belong to source repo
+version.md
+
 # private developer settings
 .vscode/settings.json
