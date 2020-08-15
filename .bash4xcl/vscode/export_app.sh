@@ -3,8 +3,8 @@
 # params
 APPLICATION_ID=$1
 
-source build.env
-source apply.env
+source ./build.env
+source ./apply.env
 
 function print_help() {
  	echo "Please call script with following parameters"

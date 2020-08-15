@@ -1,10 +1,10 @@
 #!/bin/bash
 
-source ../../.bash4xcl/lib.sh
+source ../../../.bash4xcl/lib.sh
 
 # target environment
-source ../../build.env
-source ../../apply.env
+source ../../../build.env
+source ../../../apply.env
 
 # ------------------------------------------------------------------- #
 echo " ============================================================================="
@@ -41,22 +41,28 @@ is_utplsql_installed () {
 }
 
 UTPLSQL_INSTALLED=$(is_utplsql_installed)
-echo "UTPLSQL installed: '${UTPLSQL_INSTALLED}'"
 if [ "${UTPLSQL_INSTALLED}" == "true" ]
 then
-  sqlplus -s sys/${DB_PASSWORD}@$DB_TNS as sysdba @uninstall.sql ${utplsql_schema}
+  read -p "$(echo -e ${BWHITE}"UTPLSQL is allready installed. Would you like to reinstall? (Y/N) [Y]: "${NC})" reinstall
+  reinstall=${reinstall:-"Y"}
 
-  sqlplus -s sys/${DB_PASSWORD}@$DB_TNS as sysdba <<!
+  if [ ${reinstall,,} == "y" ]; then
+    sqlplus -s sys/${DB_PASSWORD}@$DB_TNS as sysdba @uninstall.sql ${utplsql_schema}
+
+    sqlplus -s sys/${DB_PASSWORD}@$DB_TNS as sysdba <<!
   Prompt ${utplsql_schema} droppen
   drop user ${utplsql_schema} cascade;
 !
+  else
+    cd ../../..
+    rm -rf utplsql
+    exit
+  fi
 fi
 
 sqlplus -s sys/${DB_PASSWORD}@$DB_TNS as sysdba @install_headless.sql
 
-
 cd ../../..
 rm -rf utplsql
-
 
 exit

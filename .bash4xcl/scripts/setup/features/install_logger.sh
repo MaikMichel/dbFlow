@@ -1,10 +1,10 @@
 #!/bin/bash
 
-source ../../.bash4xcl/lib.sh
+source ../../../.bash4xcl/lib.sh
 
 # target environment
-source ../../build.env
-source ../../apply.env
+source ../../../build.env
+source ../../../apply.env
 
 # ------------------------------------------------------------------- #
 echo " ============================================================================="
@@ -25,17 +25,37 @@ then
   DB_PASSWORD=${pass}
 fi
 
+is_logger_installed () {
+    sqlplus -s sys/${DB_PASSWORD}@$DB_TNS as sysdba <<!
+    set heading off
+    set feedback off
+    set pages 0
+    with checksql as (select count(1) cnt
+  from all_users
+ where username = upper('${logger_schema}'))
+ select case when cnt = 1 then 'true' else 'false' end ding
+   from checksql;
+!
+}
+
+LOGGER_INSTALLED=$(is_logger_installed)
+if [ "${LOGGER_INSTALLED}" == "true" ]
+then
+  read -p "$(echo -e ${BWHITE}"Logger is allready installed. Would you like to reinstall? (Y/N) [Y]: "${NC})" reinstall
+  reinstall=${reinstall:-"Y"}
+
+  if [ ${reinstall,,} == "y" ]; then
+    sqlplus -s sys/${DB_PASSWORD}@$DB_TNS as sysdba <<!
+  Prompt ${logger_schema} droppen
+  drop user ${logger_schema} cascade;
+!
+  else
+    rm -rf logger
+    exit
+  fi
+fi
+
 sqlplus -s sys/${DB_PASSWORD}@$DB_TNS as sysdba <<!
-Prompt ${logger_schema} droppen
-declare
-  v_check number(1) := 0;
-begin
-  select 1 into v_check from all_users where username = upper('${logger_schema}');
-  execute immediate('drop user ${logger_schema} cascade');
-exception
-  when no_data_found then null;
-end;
-/
 Prompt create user: ${logger_schema}
 create user ${logger_schema} identified by "${lg_pass}" default tablespace users temporary tablespace temp
 /
@@ -70,3 +90,4 @@ alter user ${logger_schema} account lock;
 !
 
 rm -rf logger
+exit

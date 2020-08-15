@@ -2,8 +2,8 @@
 
 # params
 SOURCE_FILE=$1
-source build.env
-source apply.env
+source ./build.env
+source ./apply.env
 
 
 function print_help() {
@@ -129,9 +129,17 @@ else
   exit 1
 fi
 
+#sqlcl needs that
 export NLS_LANG="GERMAN_GERMANY.AL32UTF8"
 export NLS_DATE_FORMAT="DD.MM.YYYY HH24:MI:SS"
-#chcp 65001
+export JAVA_TOOL_OPTIONS="-Duser.language=en -Duser.region=US -Dfile.encoding=UTF-8"
+export CUSTOM_JDBC="-XX:+TieredCompilation -XX:TieredStopAtLevel=1 -Xverify:none"
+export LANG="de_DE.utf8"
+case $(uname | tr '[:upper:]' '[:lower:]') in
+mingw64_nt-10*)
+  chcp.com 65001
+;;
+esac
 
 if [ $USE_PROXY == "FALSE" ]
 then

@@ -30,7 +30,7 @@ usage() {
 [ ! -f ./apply.env ] || source ./apply.env
 
 # name of setup directory
-targetpath="_setup"
+targetpath="db/_setup"
 
 # array of subdirectories inside $targetpath to scan for executables (sh/sql)
 array=( tablespaces directories users features workspaces workspace_users acls )
@@ -88,13 +88,13 @@ install() {
             cd $targetpath/$path
             echo "Calling $targetpath/$path/${file}"
             exit | sqlplus -s sys/${DB_PASSWORD}@$DB_TNS as sysdba @${file}
-            cd ../..
+            cd ../../..
           elif [ $EXTENSION == "sh" ]
           then
             cd $targetpath/$path
             echo "Executing $targetpath/$path/${file}"
             ./${file}
-            cd ../..
+            cd ../../..
           fi
         fi
       done #file
@@ -105,6 +105,8 @@ install() {
   #-----------------------------------------------------------#
 
   remove2envsql
+
+  echo_success "Installation done"
 } # install
 
 generate() {
@@ -254,7 +256,8 @@ generate() {
 
   # copy vscode files
   [ -d .vscode ] || mkdir .vscode
-  cp -rf .bash4xcl/vscode/* .vscode/
+  # TODO backup existing tasks.json
+  cp -rf .bash4xcl/vscode/tasks.json .vscode/
 
   # ask for application IDs
   read -p "Enter application IDs (comma separated) you wish to use initialy [1000,2000]: " apex_ids
@@ -275,6 +278,7 @@ generate() {
 
   lineNum="`grep -Fn -m 1 ARRAY_OF_AVAILABLE_APP_IDS .vscode/tasks.json | grep -Po '^[0-9]+'`"
   sed -i ${lineNum}s/.*/"            \"options\": [${apexidsquotes}], \/\/ \$DEFAULT_APP_ID"/ .vscode/tasks.json
+
 
 } # generate
 

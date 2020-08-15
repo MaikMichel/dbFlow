@@ -203,7 +203,21 @@ do
     echo "set concat ." >> "$target_install_file"
     echo "set verify off" >> "$target_install_file"
     echo "WHENEVER SQLERROR EXIT SQL.SQLCODE" >> "$target_install_file"
+
+    # define spooling
+    echo "" >> "$target_install_file"
+    echo "define LOGFILE = '^1'" >> "$target_install_file"
+    echo "define VERSION = '^2'" >> "$target_install_file"
+    echo "set timing on;" >> "$target_install_file"
+    echo "SPOOL ^LOGFILE append;" >> "$target_install_file"
+    echo "set scan off" >> "$target_install_file"
+    echo "set sqlblanklines on" >> "$target_install_file"
+
+    echo "" >> "$target_install_file"
+
+    echo "Prompt --------------------------------------" >> "$target_install_file"
     echo "Prompt Start Installation for schema: $schema" >> "$target_install_file"
+    echo "Prompt                       Version: ^VERSION" >> "$target_install_file"
     echo "Prompt --------------------------------------" >> "$target_install_file"
     echo "" >> "$target_install_file"
 
@@ -215,13 +229,6 @@ do
       echo "" >> "$target_install_file"
     fi
 
-    # define spooling
-    echo "" >> "$target_install_file"
-    echo "define LOGFILE = '^1'" >> "$target_install_file"
-    echo "set timing on;" >> "$target_install_file"
-    echo "SPOOL ^LOGFILE append;" >> "$target_install_file"
-    echo "set scan off" >> "$target_install_file"
-    echo "" >> "$target_install_file"
 
     # check every path in given order
     for path in "${array[@]}"
@@ -305,9 +312,9 @@ do
         echo "" >> "$target_install_file"
       fi
     done #path
-    
+
     echo "prompt compiling schema" >> "$target_install_file"
-    echo "exec dbms_utility.compile_schema(schema => user, compile_all => false);" >> "$target_install_file"
+    echo "exec dbms_utility.compile_schema(schema => USER);" >> "$target_install_file"
     echo "exec dbms_session.reset_package" >> "$target_install_file"
 
     echo "Prompt" >> "$target_install_file"
@@ -323,7 +330,7 @@ target_apex_file="$targetpath"/apex_files_$version.lst
 [ -f $target_apex_file ] && rm $target_apex_file
 
 for appid in apex/*/ ; do
-    echo "${appid%/}" >> $target_apex_file
+  echo "${appid%/}" >> $target_apex_file
 done
 
 # Packen des Verzeichnisses
@@ -401,8 +408,7 @@ if [ $version == "install" ]
 then
   echo "calling apply"
 
-  export SQLCL=sql
-  ./apply.sh ${mode} ${version}
+  SQLCL=sqlplus && ./apply.sh ${mode} ${version}
 fi
 
 echo "Done"

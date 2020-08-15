@@ -11,13 +11,27 @@
             "options": [] // $ARRAY_OF_AVAILABLE_APP_IDS
         }
     ],
-    "tasks": [ 
+    "tasks": [
+        {
+            "label": "Start SQLcl",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                ".bash4xcl/vscode/start_sqlcl.sh",
+                "\"${relativeFile}\""
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": []
+        },
         {
             "label": "Export - Exportieren der ausgewählten APEX Application",
             "type": "shell",
             "command": "bash",
             "args": [
-                ".vscode/export_app.sh",
+                ".bash4xcl/vscode/export_app.sh",
                 "${input:applicationIDs}"
             ],
             "group": {
@@ -25,13 +39,13 @@
                 "isDefault": true
             },
             "problemMatcher": []
-        },       
+        },
         {
             "label": "Build - Kompilieren/Upload der aktuellen Datei",
             "type": "shell",
             "command": "bash",
             "args": [
-                ".vscode/deploy_file.sh",
+                ".bash4xcl/vscode/deploy_file.sh",
                 "\"${relativeFile}\""
             ],
             "group": {

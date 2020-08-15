@@ -30,13 +30,22 @@ patch=$2
 must_extract=$3
 
 #sqlcl needs that
-export JAVA_TOOL_OPTIONS='-Duser.language=en -Duser.region=US -Dfile.encoding=UTF-8'
+export NLS_LANG="GERMAN_GERMANY.AL32UTF8"
+export NLS_DATE_FORMAT="DD.MM.YYYY HH24:MI:SS"
+export JAVA_TOOL_OPTIONS="-Duser.language=en -Duser.region=US -Dfile.encoding=UTF-8"
+export CUSTOM_JDBC="-XX:+TieredCompilation -XX:TieredStopAtLevel=1 -Xverify:none"
+export LANG="de_DE.utf8"
+case $(uname | tr '[:upper:]' '[:lower:]') in
+mingw64_nt-10*)
+  chcp.com 65001
+;;
+esac
 
 # set project-settings from build
 source ./build.env
 
 # set target-env settings from file if exists
-if [ -e apply.env ]
+if [ -e ./apply.env ]
 then
   source ./apply.env
 fi
@@ -268,7 +277,7 @@ install_db_schemas()
       # On init mode schema content will be dropped
       if [ "${mode}" == "init" ]; then
         echo "DROPING ALL OBJECTS" | write_log
-        exit | $SQLCL -s "$(get_connect_string $schema)" @.bash4xcl/api/drop_all.sql
+        exit | $SQLCL -s "$(get_connect_string $schema)" @.bash4xcl/api/drop_all.sql ${full_log_file} ${patch}
       fi
 
       cd db/$schema
@@ -310,7 +319,7 @@ install_db_schemas()
       # uncomment cleaning scripts specific to this stage/branch ex:--test or --acceptance
       sed -i -E "s:--$STAGE:Prompt uncommented cleanup for stage $STAGE\n:g" $db_install_file
 
-      $SQLCL -s "$(get_connect_string $schema)" @$db_install_file ${full_log_file}
+      $SQLCL -s "$(get_connect_string $schema)" @$db_install_file ${full_log_file} ${patch}
       if [ $? -ne 0 ]
       then
         echo "ERROR when executing db/$schema/$db_install_file" | write_log
@@ -359,44 +368,6 @@ install_db_schemas()
   done
 }
 
-# Function to enable policies
-################################
-
-enable_policies()
-{
-  # policies will be created disabled. now we will enable them
-  if [ -e db/$DATA_SCHEMA/api/enable_policies.sql ]
-  then
-    echo "Enabling Policies " | write_log
-    exit | $SQLCL -s "$(get_connect_string $DATA_SCHEMA)" @db/$DATA_SCHEMA/api/enable_policies.sql
-
-    if [ $? -ne 0 ]
-    then
-      echo "ERROR when executing db/$DATA_SCHEMA/api/enable_policies.sql" | write_log
-      exit 1
-    fi
-  fi
-}
-
-
-# Function to disable policies
-################################
-
-disable_policies()
-{
-  # disable all polices
-  if [ -e db/$DATA_SCHEMA/api/disable_policies.sql ]
-  then
-    echo "Disabling Policies " | write_log
-    exit | $SQLCL -s "$(get_connect_string $DATA_SCHEMA)" @db/$DATA_SCHEMA/api/disable_policies.sql
-
-    if [ $? -ne 0 ]
-    then
-      echo "ERROR when executing db/$DATA_SCHEMA/api/disable_policies.sql" | write_log
-      exit 1
-    fi
-  fi
-}
 
 # Function to make APP unavailable
 #######################################
@@ -409,24 +380,26 @@ set_apps_unavailable() {
     # loop throug content
     while IFS= read -r line; do
       $SQLCL -s "$(get_connect_string $APP_SCHEMA)" <<!
-Spool install_xyz.log append;
-set define off;
-Declare
-  v_application_id  apex_application_build_options.application_id%type := ${line/apex\/f} + ${APP_OFFSET};
-  v_workspace_id	apex_workspaces.workspace_id%type;
-Begin
-  select workspace_id
-      into v_workspace_id
-      from apex_workspaces
-    where workspace = upper('${WORKSPACE}');
+        set serveroutput on;
+        prompt logging to ${log_file}
+        set define off;
+        spool ${log_file} append;
+        Declare
+          v_application_id  apex_application_build_options.application_id%type := ${line/apex\/f} + ${APP_OFFSET};
+          v_workspace_id	apex_workspaces.workspace_id%type;
+        Begin
+          select workspace_id
+              into v_workspace_id
+              from apex_workspaces
+            where workspace = upper('${WORKSPACE}');
 
-    apex_application_install.set_workspace_id(v_workspace_id);
-    apex_util.set_security_group_id(p_security_group_id => apex_application_install.get_workspace_id);
+            apex_application_install.set_workspace_id(v_workspace_id);
+            apex_util.set_security_group_id(p_security_group_id => apex_application_install.get_workspace_id);
 
-    apex_util.set_application_status(p_application_id => v_application_id,
-                                     p_application_status => 'UNAVAILABLE',
-                                     p_unavailable_value => '<h1><center>Wegen Wartungsarbeiten ist die Applikation vor&uuml;bergehend nicht erreichbar</center></h1>' );
-End;
+            apex_util.set_application_status(p_application_id => v_application_id,
+                                            p_application_status => 'UNAVAILABLE',
+                                            p_unavailable_value => '<h1><center>Wegen Wartungsarbeiten ist die Applikation vor&uuml;bergehend nicht erreichbar</center></h1>' );
+        End;
 /
 !
 
@@ -454,29 +427,29 @@ install_apps() {
         echo "Installing $line Num: ${line/apex\/f} Workspace: ${WORKSPACE}" | write_log
         cd $line
         $SQLCL -s "$(get_connect_string $APP_SCHEMA)" <<!
-  Spool install_xyz.log append;
-  Prompt Workspace: ${WORKSPACE}
-  Prompt Application: ${line/apex\/f}
-  declare
-    v_workspace_id	apex_workspaces.workspace_id%type;
-  begin
-    select workspace_id
-      into v_workspace_id
-      from apex_workspaces
-    where workspace = upper('${WORKSPACE}');
+          spool ../../${log_file} append;
+          Prompt Workspace: ${WORKSPACE}
+          Prompt Application: ${line/apex\/f}
+          declare
+            v_workspace_id	apex_workspaces.workspace_id%type;
+          begin
+            select workspace_id
+              into v_workspace_id
+              from apex_workspaces
+            where workspace = upper('${WORKSPACE}');
 
-    apex_application_install.set_workspace_id(v_workspace_id);
+            apex_application_install.set_workspace_id(v_workspace_id);
 
-    if nvl(${APP_OFFSET}, 0) > 0 then
-      apex_application_install.generate_offset;
-    end if;
+            if nvl(${APP_OFFSET}, 0) > 0 then
+              apex_application_install.generate_offset;
+            end if;
 
-    apex_application_install.set_application_id(${line/apex\/f} + ${APP_OFFSET});
-    apex_application_install.set_schema(upper('${APP_SCHEMA}'));
-  end;
-  /
+            apex_application_install.set_application_id(${line/apex\/f} + ${APP_OFFSET});
+            apex_application_install.set_schema(upper('${APP_SCHEMA}'));
+          end;
+          /
 
-  @@install.sql
+          @@install.sql
 !
 
 
@@ -484,50 +457,9 @@ install_apps() {
         then
           echo "ERROR when executing $line" | write_log
           exit 1
-        else
-          if [ -z ${APP_BUILD_OPTION_LIKE} ]
-          then
-            echo "No buildoptions found" | write_log
-          else
-            echo "Enabling buildoptions ${APP_BUILD_OPTION_LIKE}" | write_log
-
-        $SQLCL -s "$(get_connect_string $APP_SCHEMA)" <<!
-Spool install_xyz.log append;
-Declare
-  v_application_id  apex_application_build_options.application_id%type := ${line/apex\/f} + ${APP_OFFSET};
-  v_workspace_id	apex_workspaces.workspace_id%type;
-Begin
-  select workspace_id
-      into v_workspace_id
-      from apex_workspaces
-    where workspace = upper('${WORKSPACE}');
-
-    apex_application_install.set_workspace_id(v_workspace_id);
-    apex_util.set_security_group_id(p_security_group_id => apex_application_install.get_workspace_id);
-
-
-    -- get IDs of build option
-    for cur in (select build_option_id
-                  from apex_application_build_options
-                where build_option_name like '${APP_BUILD_OPTION_LIKE}%'
-                  and application_id = v_application_id)
-    loop
-      -- set buildoption to be included
-      apex_util.set_build_option_status(p_application_id        => v_application_id,
-                                        p_id                    => cur.build_option_id,
-                                        p_build_status          => 'INCLUDE');
-    end loop;
-End;
-/
-!
-
-          fi
         fi
 
         cd ../..
-
-        cat $line/install_xyz.log >> ${full_log_file}
-        rm $line/install_xyz.log
       fi
     done < "$app_install_file"
   else
@@ -541,24 +473,22 @@ End;
 ####################################
 exec_final_unit_tests()
 {
+  if [ -e .bash4xcl/api/execute_tests.sql ]
+  then
   echo "Start testing with utplsql" | write_log
 
-  # loop through schemas
-  for schema in "${SCHEMAS[@]}"
-  do
-
-    if [ -e .bash4xcl/api/execute_tests.sql ]
-    then
+    # loop through schemas
+    for schema in "${SCHEMAS[@]}"
+    do
       echo "Executing unit tests for schema $schema " | write_log
-      exit | $SQLCL -s "$(get_connect_string $schema)" @.bash4xcl/api/execute_tests.sql
+      exit | $SQLCL -s "$(get_connect_string $schema)" @.bash4xcl/api/execute_tests.sql ${full_log_file} ${patch}
       if [ $? -ne 0 ]
       then
         echo "ERROR when executing .bash4xcl/api/execute_tests.sql" | write_log
         exit 1
       fi
-    fi
-
-  done
+    done
+  fi
 }
 
 ## Function to manage results of install process
@@ -631,9 +561,8 @@ extract_patchfile
 read_db_pass
 set_apps_unavailable
 remove_dropped_files
-disable_policies
+
 install_db_schemas
-enable_policies
 install_apps
 
 exec_final_unit_tests

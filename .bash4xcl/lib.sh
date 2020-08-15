@@ -21,15 +21,15 @@ YELLOW="\033[0;33m"       # Yellow
 BLUE="\033[0;34m"         # Blue
 PURPLE="\033[0;35m"       # Purple
 CYAN="\033[0;36m"         # Cyan
-BWHITE="\033[1;37m"        # White
-BYELLOW="\033[1;33m"       # Yellow
+BWHITE="\033[1;37m"       # White
+BYELLOW="\033[1;33m"      # Yellow
 
 
 
 pass=""
-function ask4pwd() {  
+function ask4pwd() {
   local prompt_text=$1
-  
+
   unset CHARCOUNT
   PROMPT=""
   pass=""
@@ -61,7 +61,7 @@ function ask4pwd() {
       fi
   done
 
-  stty echo  
+  stty echo
   echo
 }
 
@@ -69,4 +69,16 @@ function echo_error() {
   local prompt_text=$1
 
   echo -e "${RED}$prompt_text${NC}"
+}
+
+function echo_success() {
+  local prompt_text=$1
+
+  echo -e "${GREEN}$prompt_text${NC}"
+}
+
+function echo_warning() {
+  local prompt_text=$1
+
+  echo -e "${YELLOW}$prompt_text${NC}"
 }

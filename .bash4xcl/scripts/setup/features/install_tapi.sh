@@ -1,10 +1,10 @@
 #!/bin/bash
 
-source ../../.bash4xcl/lib.sh
+source ../../../.bash4xcl/lib.sh
 
 # target environment
-source ../../build.env
-source ../../apply.env
+source ../../../build.env
+source ../../../apply.env
 
 # ------------------------------------------------------------------- #
 echo " ============================================================================="
@@ -43,13 +43,22 @@ is_tapi_installed () {
 }
 
 TAPI_INSTALLED=$(is_tapi_installed)
-echo "TAPI installed: '${TAPI_INSTALLED}'"
+
 if [ "${TAPI_INSTALLED}" == "true" ]
 then
-  sqlplus -s sys/${DB_PASSWORD}@$DB_TNS as sysdba <<!
+  read -p "$(echo -e ${BWHITE}"TableAPI is allready installed. Would you like to reinstall? (Y/N) [Y]: "${NC})" reinstall
+  reinstall=${reinstall:-"Y"}
+
+  if [ ${reinstall,,} == "y" ]; then
+    sqlplus -s sys/${DB_PASSWORD}@$DB_TNS as sysdba <<!
   Prompt ${tapi_schema} droppen
   drop user ${tapi_schema} cascade;
 !
+  else
+    cd ../..
+    rm -rf tapi-${tag_name}
+    exit
+  fi
 fi
 
 sqlplus -s sys/${DB_PASSWORD}@$DB_TNS as sysdba <<!
@@ -84,7 +93,6 @@ Promp table-api installen
 !
 
 cd ../..
-
 rm -rf tapi-${tag_name}
 
 exit
