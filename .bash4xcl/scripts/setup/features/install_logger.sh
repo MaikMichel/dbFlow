@@ -8,9 +8,10 @@ source ../../../apply.env
 
 # ------------------------------------------------------------------- #
 echo " ============================================================================="
-echo " ==   Installing Logger"
+echo " ==   Installing Logger $1"
 echo " ============================================================================="
 echo
+yes=${1:-"NO"}
 logger_schema="logger"
 lg_pass=$(shuf -zer -n20 {A..Z} {a..z} {0..9} | tr -d '\0')
 tag_name=$(curl --silent "https://api.github.com/repos/OraOpenSource/Logger/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
@@ -41,8 +42,12 @@ is_logger_installed () {
 LOGGER_INSTALLED=$(is_logger_installed)
 if [ "${LOGGER_INSTALLED}" == "true" ]
 then
-  read -p "$(echo -e ${BWHITE}"Logger is allready installed. Would you like to reinstall? (Y/N) [Y]: "${NC})" reinstall
-  reinstall=${reinstall:-"Y"}
+  if [ $yes == "YES" ]; then
+    reinstall="Y"
+  else
+    read -p "$(echo -e ${BWHITE}"Logger is allready installed. Would you like to reinstall? (Y/N) [Y]: "${NC})" reinstall
+    reinstall=${reinstall:-"Y"}
+  fi
 
   if [ ${reinstall,,} == "y" ]; then
     sqlplus -s sys/${DB_PASSWORD}@$DB_TNS as sysdba <<!

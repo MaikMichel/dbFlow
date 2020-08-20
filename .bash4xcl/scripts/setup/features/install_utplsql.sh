@@ -11,6 +11,7 @@ echo " =========================================================================
 echo " ==   Installing utPLSQL"
 echo " ============================================================================="
 echo
+yes=${1:-"NO"}
 utplsql_schema="ut3"
 
 tag_name=$(curl --silent "https://api.github.com/repos/utPLSQL/utPLSQL/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
@@ -43,8 +44,12 @@ is_utplsql_installed () {
 UTPLSQL_INSTALLED=$(is_utplsql_installed)
 if [ "${UTPLSQL_INSTALLED}" == "true" ]
 then
-  read -p "$(echo -e ${BWHITE}"UTPLSQL is allready installed. Would you like to reinstall? (Y/N) [Y]: "${NC})" reinstall
-  reinstall=${reinstall:-"Y"}
+  if [ $yes == "YES" ]; then
+    reinstall="Y"
+  else
+    read -p "$(echo -e ${BWHITE}"UTPLSQL is allready installed. Would you like to reinstall? (Y/N) [Y]: "${NC})" reinstall
+    reinstall=${reinstall:-"Y"}
+  fi
 
   if [ ${reinstall,,} == "y" ]; then
     sqlplus -s sys/${DB_PASSWORD}@$DB_TNS as sysdba @uninstall.sql ${utplsql_schema}

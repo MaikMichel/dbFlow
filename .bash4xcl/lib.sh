@@ -82,3 +82,16 @@ function echo_warning() {
 
   echo -e "${YELLOW}$prompt_text${NC}"
 }
+
+# Function return connect string
+#########################################
+get_connect_string() {
+  local arg1=$1
+
+  if [ $USE_PROXY == "FALSE" ]
+  then
+    echo "$DB_APP_USER/$DB_APP_PWD@$DB_TNS"
+  else
+    echo "$DB_APP_USER[$arg1]/$DB_APP_PWD@$DB_TNS"
+  fi
+}

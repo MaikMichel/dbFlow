@@ -1,29 +1,35 @@
 #!/bin/bash
-
-source ./.bash4xcl/lib.sh
-
-# TODO: Löschen des Applications array. Das brauchen wir nicht. Hier loopen wir einfach durch die Verzeichnisse
-
-
+# echo "Your script args ($#) are: $@"
 
 usage() {
-  echo -e "setup [bash4xcl] - generate project structure and install dependencies"
-  echo
-  echo -e "${BWHITE}VERSION${NC}"
-  echo -e "\t0.0.1"
+  echo -e "${BYELLOW}setup [bash4xcl]${NC} - generate project structure and install dependencies. "
+
   echo
   echo -e "${BWHITE}USAGE${NC}"
-  echo -e "\t$0 [COMMAND]"
+  echo -e "\t$0 <COMMAND>"
   echo
   echo -e "${BWHITE}COMMANDS${NC}"
   echo -e "\tgenerate <project-name>  generates project structure"
-  echo -e "\tinstall                  installs project dependencies to db"
-  echo -e "\texport                   exports schema to filesystem"
+  echo -e "\tinstall [-flag]          installs project dependencies to db"
+  echo -e "\t    -y                   overwrite all feature when allready installed"
+  echo -e "\texport [-option]         exports schema to filesystem"
   echo -e "\t    -c                   connection (localhost:1521/xepdb1) *required"
   echo -e "\t    -t                   targetpath (db/prj_data)            optional"
+  echo -e "\t    -o                   object (emp)                        optional"
   echo
   echo
+
+  echo -e "${BWHITE}EXAMPLE${NC}"
+  echo -e "  $0 generate example"
+  echo -e "  $0 install"
+  echo -e "  $0 export"
+  echo -e "  $0 export -o dept"
+  echo
+  echo
+  exit 1
 }
+# get required functions and vars
+source ./.bash4xcl/lib.sh
 
 # target environment
 [ ! -f ./build.env ] || source ./build.env
@@ -31,11 +37,22 @@ usage() {
 
 # name of setup directory
 targetpath="db/_setup"
+basepath=$(pwd)
+
 
 # array of subdirectories inside $targetpath to scan for executables (sh/sql)
 array=( tablespaces directories users features workspaces workspace_users acls )
 
+notify() {
+    [[ $1 = 0 ]] || echo ❌ EXIT $1
+    # you can notify some external services here,
+    # ie. Slack webhook, Github commit/PR etc.
+    remove2envsql
+}
 
+trap '(exit 130)' INT
+trap '(exit 143)' TERM
+trap 'rc=$?; notify $rc; exit $rc' EXIT
 
 print2envsql() {
   echo define project=${PROJECT} > $targetpath/env.sql
@@ -46,13 +63,18 @@ print2envsql() {
   echo define db_app_pwd=${DB_APP_PWD} >> $targetpath/env.sql
   echo define db_app_user=${DB_APP_USER} >> $targetpath/env.sql
   echo define apex_user=${APEX_USER} >> $targetpath/env.sql
+
+
 }
 
 remove2envsql() {
-  rm -f $targetpath/env.sql
+  rm -f ${basepath}/${targetpath}/env.sql
 }
 
 install() {
+  local yes=${1:-"NO"}
+
+  echo "install and overwrite features ${yes}"
 
   if [ -z "$DB_PASSWORD" ]
   then
@@ -66,8 +88,15 @@ install() {
     DB_APP_PWD=${pass}
   fi
 
-  print2envsql
+  PROJECT_INSTALLED=$(is_any_schema_installed)
+  echo "PROJECT_INSTALLED = $PROJECT_INSTALLED"
+  if [ "${PROJECT_INSTALLED}" == "true" ] && [ ${yes} == "NO" ]
+  then
+    echo_error "Project allready installed and overwrite param not set to YES. \nTry option -y to force overwrite (drop/create)"
+    usage
+  fi
 
+  print2envsql
   #-----------------------------------------------------------#
 
   # check every path in given order
@@ -93,7 +122,7 @@ install() {
           then
             cd $targetpath/$path
             echo "Executing $targetpath/$path/${file}"
-            ./${file}
+            ./${file} ${yes}
             cd ../../..
           fi
         fi
@@ -107,6 +136,7 @@ install() {
   remove2envsql
 
   echo_success "Installation done"
+
 } # install
 
 generate() {
@@ -117,11 +147,11 @@ generate() {
 
   # create directories
   if [ ${db_scheme_type,,} == "m" ]; then
-    mkdir -p db/${project_name}_data/{sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/{packages},ddl/{init,pre,post},dml/{init,pre,post}}
-    mkdir -p db/${project_name}_logic/{sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/{packages},ddl/{init,pre,post},dml/{init,pre,post}}
-    mkdir -p db/${project_name}_app/{sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/{packages},ddl/{init,pre,post},dml/{init,pre,post}}
+    mkdir -p db/${project_name}_data/{api/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/{packages},ddl/{init,pre,post},dml/{init,pre,post}}
+    mkdir -p db/${project_name}_logic/{api/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/{packages},ddl/{init,pre,post},dml/{init,pre,post}}
+    mkdir -p db/${project_name}_app/{api/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/{packages},ddl/{init,pre,post},dml/{init,pre,post}}
   elif [ ${db_scheme_type,,} == "s" ]; then
-    mkdir -p db/${project_name}/{sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/{packages},ddl/{init,pre,post},dml/{init,pre,post}}
+    mkdir -p db/${project_name}/{api/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/{packages},ddl/{init,pre,post},dml/{init,pre,post}}
   else
     echo_error "unknown type ${db_scheme_type}"
     exit 1
@@ -282,6 +312,18 @@ generate() {
 
 } # generate
 
+is_any_schema_installed () {
+    sqlplus -s sys/${DB_PASSWORD}@$DB_TNS as sysdba <<!
+    set heading off
+    set feedback off
+    set pages 0
+    with checksql as (select count(1) cnt
+  from all_users
+ where username in (upper('$DATA_SCHEMA'), upper('$LOGIC_SCHEMA'), upper('$APP_SCHEMA') ))
+ select case when cnt > 1 then 'true' else 'false' end ding
+   from checksql;
+!
+}
 
 export_schema() {
   local connection=${1:-""}
@@ -364,12 +406,12 @@ else
             target=$OPTARG
             ;;
           \? )
-            echo -e  "${RED}Invalid Option: -$OPTARG${NC}" 1>&2
-            exit 1
+            echo_error  "Invalid Option: -$OPTARG"
+            usage
             ;;
           : )
-            echo -e  "${RED}Invalid Option: -$OPTARG requires an argument${NC}" 1>&2
-            exit 1
+            echo_error "Invalid Option: -$OPTARG requires an argument" 1>&2
+            usage
             ;;
         esac
       done
@@ -378,8 +420,26 @@ else
       generate $project
       ;;
     install)
-      install
+      yes="NO"
+
+       # Process install options
+      while getopts ":y" opt; do
+        case ${opt} in
+          y )
+            yes="YES"
+            ;;
+          \? )
+            echo_error "Invalid Option: -$OPTARG"
+            usage
+            ;;
+        esac
+      done
+      shift $((OPTIND -1))
+
+      install $yes
+
       ;;
+
     export)
       conn=""
       target=""

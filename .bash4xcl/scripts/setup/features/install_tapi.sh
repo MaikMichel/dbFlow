@@ -11,6 +11,7 @@ echo " =========================================================================
 echo " ==   Installing OraMUC/table-api-generator"
 echo " ============================================================================="
 echo
+yes=${1:-"NO"}
 tapi_schema="tapi"
 tapi_pass=$(shuf -zer -n20 {A..Z} {a..z} {0..9} | tr -d '\0')
 
@@ -46,8 +47,12 @@ TAPI_INSTALLED=$(is_tapi_installed)
 
 if [ "${TAPI_INSTALLED}" == "true" ]
 then
-  read -p "$(echo -e ${BWHITE}"TableAPI is allready installed. Would you like to reinstall? (Y/N) [Y]: "${NC})" reinstall
-  reinstall=${reinstall:-"Y"}
+  if [ $yes == "YES" ]; then
+    reinstall="Y"
+  else
+    read -p "$(echo -e ${BWHITE}"TableAPI is allready installed. Would you like to reinstall? (Y/N) [Y]: "${NC})" reinstall
+    reinstall=${reinstall:-"Y"}
+  fi
 
   if [ ${reinstall,,} == "y" ]; then
     sqlplus -s sys/${DB_PASSWORD}@$DB_TNS as sysdba <<!

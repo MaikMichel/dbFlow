@@ -1,35 +1,50 @@
 #!/bin/bash
+# echo "Your script args ($#) are: $@"
 
-echo "Your script args ($#) are: $@"
-
-# TODO: Hier fehlt noch eine anständige Beschreibung / Kommentarblock
-
-function print_help() {
- 	echo "Please call script with following parameters"
-	echo "  1 - mode [init | patch]"
-  echo "  2 - version"
-  echo "  3 - notar (optional) when no extraction should be done"
+usage() {
+  echo -e "${BYELLOW}apply [bash4xcl]${NC} - applies the given build to target database"
+  echo -e "------------------------------------------------------------------------------"
+  echo -e " Looks in defined depot directory for a build-artifact and applies it to "
+  echo -e " specified database connection. All build propterties ard define in build.env."
+  echo -e " All deployment properties are define in apply.env"
+  echo -e " Please do ${PURPLE}NOT${NC} commit any password specific properties to your scm."
   echo
-  echo "Example: "
+  echo -e "${BWHITE}USAGE${NC}"
+  echo -e "\t$0 <MODE>"
+  echo
+  echo -e "${BWHITE}MODE${NC}"
+  echo -e "\tinit <version> [notar]  deploys an initial build with given version label to target database"
+  echo -e "\t                        ${PURPLE}all objects in target-schemas will be dropped before install${NC}"
+  echo -e "\t                        if [notar] option is passed, no build file is unzipped from depot directory"
+  echo
+  echo -e "\tpatch <version> [notar] deploys an update/patch build with given version label to target database"
+  echo -e "\t                        if [notar] option is passed, no build file is unzipped from depot directory"
+  echo
+  echo
+
+ 	echo -e "${BWHITE}EXAMPLE${NC}"
   echo "  $0 init 1.0.0"
-  echo "  $0 patch 1.0.1"
-  echo
   echo "  $0 init 1.0.0 notar"
+  echo "  $0 patch 1.0.1"
   echo "  $0 patch 1.0.1 notar"
-	echo ""
+  echo
+  echo
   exit 1
 }
+# get required functions and vars
+source ./.bash4xcl/lib.sh
 
-# Validating parameters, at least 2 params are required
-if [ $# -lt 2 ]; then
-  print_help
+# set project-settings from build
+source ./build.env
+
+# set target-env settings from file if exists
+if [ -e ./apply.env ]
+then
+  source ./apply.env
 fi
 
-mode=$1
-patch=$2
-must_extract=$3
 
-#sqlcl needs that
+#some env settings sqlcl needs
 export NLS_LANG="GERMAN_GERMANY.AL32UTF8"
 export NLS_DATE_FORMAT="DD.MM.YYYY HH24:MI:SS"
 export JAVA_TOOL_OPTIONS="-Duser.language=en -Duser.region=US -Dfile.encoding=UTF-8"
@@ -41,37 +56,49 @@ mingw64_nt-10*)
 ;;
 esac
 
-# set project-settings from build
-source ./build.env
 
-# set target-env settings from file if exists
-if [ -e ./apply.env ]
-then
-  source ./apply.env
+# validate parameters
+
+# at least 2 params are required
+if [ $# -lt 2 ]; then
+  echo_error "not enough parameters"
+  usage
 fi
+
+mode=${1:-""}
+patch=${2:-""}
+must_extract=${3:-""}
+basepath=$(pwd)
+
+
+if [[ ! "$mode" =~ ^(init|patch)$ ]]; then
+    echo "unknown mode: $mode"
+    usage
+fi
+
 
 if [ -z $DEPOT_PATH ]
 then
-  echo "Depotpath not defined"
-  exit 1
+  echo_error "Depotpath not defined"
+  usage
 fi
 
 if [ -z $STAGE ]
 then
-  echo "Stage not defined"
-  exit 1
+  echo_error  "Stage not defined"
+  usage
 fi
 
 if [ -z $DB_APP_USER ]
 then
   echo "App-User not defined"
-  exit 1
+  usage
 fi
 
 if [ -z $DB_TNS ]
 then
   echo "TNS not defined"
-  exit 1
+  usage
 fi
 
 
@@ -80,7 +107,7 @@ patch_target_path=.
 if [ -d $DEPOT_PATH/$STAGE ]
 then
   echo "Targetstage used: $STAGE"
-  patch_source_path=$DEPOT_PATH/$STAGE
+  patch_source_path=${basepath}/$DEPOT_PATH/$STAGE
 else
   echo "Targetstage $STAGE inside $DEPOT_PATH is unknown"
   exit 1
@@ -93,75 +120,77 @@ remove_old_files=remove_files_${patch}.lst
 patch_source_file=$patch_source_path/${mode}_${patch}.tar.gz
 patch_target_file=$patch_target_path/${mode}_${patch}.tar.gz
 
-
 MDATE=`date "+%Y%m%d%H%M%S"`
 log_file="${MDATE}_${mode}_${patch}.log"
-
-echo "Mode:         $mode"
-echo "Patch:        $patch"
-echo "log_file:     $log_file"
-echo "----------------------------------------------------------"
-echo "project:      ${PROJECT}"
-echo "app_schema:   ${APP_SCHEMA}"
-echo "data_schema:  ${DATA_SCHEMA}"
-echo "logic_schema: ${LOGIC_SCHEMA}"
-echo "workspace:    ${WORKSPACE}"
-echo "schemas:      ${SCHEMAS}"
-echo "----------------------------------------------------------"
-echo "Stage:        ${STAGE}"
-echo "Depot:        ${DEPOT_PATH}"
-echo "USE_PROXY:    ${USE_PROXY}"
-echo "APP_OFFSET:   ${APP_OFFSET}"
-echo "DB_APP_USER:  ${DB_APP_USER}"
-echo "DB_APP_PWD:   ${DB_APP_PWD}"
-echo "DB_TNS:       ${DB_TNS}"
-echo "----------------------------------------------------------"
-echo
 
 touch $log_file
 full_log_file="$( cd "$( dirname "${log_file}" )" >/dev/null 2>&1 && pwd )/${log_file}"
 
-# Function to write to the Log file
-###################################
 
-write_log()
-{
+failure="failure"
+success="success"
+warning="warning"
+
+write_log() {
+  local type=${1:-""}
+  case "$type" in
+    ${failure})
+      color=${RED}
+      reset=${NC}
+      ;;
+    ${success})
+      color=${GREEN}
+      reset=${NC}
+      ;;
+    ${warning})
+      color=${YELLOW}
+      reset=${NC}
+      ;;
+    *)
+      color=""
+      reset=""
+  esac
+
+
   while read text
   do
     LOGTIME=`date "+%Y-%m-%d %H:%M:%S"`
     # If log file is not defined, just echo the output
     if [ "$full_log_file" == "" ]; then
-      echo $full_log_file": $text";
+      echo -e $LOGTIME": ${color}${text}${reset}";
     else
-      #if [ ! -f $full_log_file ]; then echo "ERROR!! Cannot create log file $full_log_file. Exiting."; exit 1; fi
-      echo $LOGTIME": $text" | tee -a $full_log_file;
+      echo -e $LOGTIME": ${color}${text}${reset}" | tee -a $full_log_file;
     fi
   done
 }
 
-# Function to print head informations
-#########################################
+
 print_info()
 {
-  echo "Installing ${mode} ${patch}" | write_log
-  echo "---------------------------" | write_log
+  echo -e "Installing    ${BWHITE}${mode} ${patch}${NC}" | write_log
+  echo -e "----------------------------------------------------------" | write_log
+  echo -e "mode:         ${BWHITE}$mode${NC}" | write_log
+  echo -e "version:      ${BWHITE}$patch${NC}" | write_log
+  echo -e "log_file:     ${BWHITE}$log_file${NC}" | write_log
+  echo -e "----------------------------------------------------------" | write_log
+  echo -e "project:      ${BWHITE}${PROJECT}${NC}" | write_log
+  echo -e "app_schema:   ${BWHITE}${APP_SCHEMA}${NC}" | write_log
+  echo -e "data_schema:  ${BWHITE}${DATA_SCHEMA}${NC}" | write_log
+  echo -e "logic_schema: ${BWHITE}${LOGIC_SCHEMA}${NC}" | write_log
+  echo -e "workspace:    ${BWHITE}${WORKSPACE}${NC}" | write_log
+  echo -e "schemas:      ${BWHITE}${SCHEMAS}${NC}" | write_log
+  echo -e "----------------------------------------------------------" | write_log
+  echo -e "stage:        ${BWHITE}${STAGE}${NC}" | write_log
+  echo -e "depot:        ${BWHITE}${DEPOT_PATH}${NC}" | write_log
+  echo -e "use_proxy:    ${BWHITE}${USE_PROXY}${NC}" | write_log
+  echo -e "app_offset:   ${BWHITE}${APP_OFFSET}${NC}" | write_log
+  echo -e "db_app_user:  ${BWHITE}${DB_APP_USER}${NC}" | write_log
+  echo -e "db_tns:       ${BWHITE}${DB_TNS}${NC}" | write_log
+  echo -e "----------------------------------------------------------" | write_log
+  echo -e | write_log
 }
 
-# Function return connect string
-#########################################
-get_connect_string() {
-  local arg1=$1
 
-  if [ $USE_PROXY == "FALSE" ]
-  then
-    echo "$DB_APP_USER/$DB_APP_PWD@$DB_TNS"
-  else
-    echo "$DB_APP_USER[$arg1]/$DB_APP_PWD@$DB_TNS"
-  fi
-}
-
-# Function to copy and extract Patch-file
-#########################################
 extract_patchfile()
 {
   if [ -z "$must_extract" ]
@@ -178,8 +207,8 @@ extract_patchfile()
       then
         echo "$patch_target_file allready copied" | write_log
       else
-        echo "$patch_target_file not found, nothing to install" | write_log
-        exit 1
+        echo_error "$patch_target_file not found, nothing to install" | write_log $failure
+        manage_result "failure"
       fi
     fi
 
@@ -191,60 +220,25 @@ extract_patchfile()
     then
       echo "notar option choosen" | write_log
     else
-      echo "unknown option notar" | write_log
-      exit 1
+      echo_error "unknown option notar" | write_log
+      manage_result "failure"
     fi
   fi
 }
 
-# Function to read password
-#########################################
 
 read_db_pass()
 {
   if [ -z "$DB_APP_PWD" ]
   then
-
-    unset DB_APP_PWD
-    unset CHARCOUNT
-
-    echo -n "Enter Password for deployment user ${DB_APP_USER} on ${DB_TNS}: "
-
-    stty -echo
-
-    CHARCOUNT=0
-    while IFS= read -p "$PROMPT" -r -s -n 1 CHAR
-    do
-        # Enter - accept password
-        if [[ $CHAR == $'\0' ]] ; then
-            break
-        fi
-        # Backspace
-        if [[ $CHAR == $'\177' ]] ; then
-            if [ $CHARCOUNT -gt 0 ] ; then
-                CHARCOUNT=$((CHARCOUNT-1))
-                PROMPT=$'\b \b'
-                DB_APP_PWD="${DB_APP_PWD%?}"
-            else
-                PROMPT=''
-            fi
-        else
-            CHARCOUNT=$((CHARCOUNT+1))
-            PROMPT='*'
-            DB_APP_PWD+="$CHAR"
-        fi
-    done
-
-    stty echo
-    echo
-    echo
+    ask4pwd "Enter Password for deployment user ${DB_APP_USER} on ${DB_TNS}: "
+    exp_pwd=${pass}
   else
     echo "Password has allrady been set" | write_log
   fi
 }
 
-# Function to remove dropped files
-#########################################
+
 
 remove_dropped_files()
 {
@@ -261,8 +255,6 @@ remove_dropped_files()
   fi
 }
 
-# Function to install schemas
-##############################
 
 install_db_schemas()
 {
@@ -277,7 +269,7 @@ install_db_schemas()
       # On init mode schema content will be dropped
       if [ "${mode}" == "init" ]; then
         echo "DROPING ALL OBJECTS" | write_log
-        exit | $SQLCL -s "$(get_connect_string $schema)" @.bash4xcl/api/drop_all.sql ${full_log_file} ${patch}
+        exit | $SQLCL -S "$(get_connect_string $schema)" @.bash4xcl/api/drop_all.sql ${full_log_file} ${patch}
       fi
 
       cd db/$schema
@@ -303,14 +295,14 @@ install_db_schemas()
           echo "" >> tmp_api_pre.sql
         done
 
-        exit | $SQLCL -s "$(get_connect_string $schema)" @tmp_api_pre.sql ${full_log_file} ${patch}
+        exit | $SQLCL -S "$(get_connect_string $schema)" @tmp_api_pre.sql ${full_log_file} ${patch}
 
 
         if [ $? -ne 0 ]
         then
-          echo "ERROR when executing db/$schema/tmp_api_pre.sql" | write_log
+          echo "ERROR when executing db/$schema/tmp_api_pre.sql" | write_log $failure
           cat tmp_api_pre.sql >> ${full_log_file}
-          exit 1
+          manage_result "failure"
         fi
 
         rm tmp_api_pre.sql
@@ -319,11 +311,11 @@ install_db_schemas()
       # uncomment cleaning scripts specific to this stage/branch ex:--test or --acceptance
       sed -i -E "s:--$STAGE:Prompt uncommented cleanup for stage $STAGE\n:g" $db_install_file
 
-      $SQLCL -s "$(get_connect_string $schema)" @$db_install_file ${full_log_file} ${patch}
+      $SQLCL -S "$(get_connect_string $schema)" @$db_install_file ${full_log_file} ${patch}
       if [ $? -ne 0 ]
       then
-        echo "ERROR when executing db/$schema/$db_install_file" | write_log
-        exit 1
+        echo "ERROR when executing db/$schema/$db_install_file" | write_log $failure
+        manage_result "failure"
       fi
 
       # calling all api/post files
@@ -346,14 +338,14 @@ install_db_schemas()
           echo "" >> tmp_api_post.sql
         done
 
-        exit | $SQLCL -s "$(get_connect_string $schema)" @tmp_api_post.sql ${full_log_file} ${patch}
+        exit | $SQLCL -S "$(get_connect_string $schema)" @tmp_api_post.sql ${full_log_file} ${patch}
 
 
         if [ $? -ne 0 ]
         then
-          echo "ERROR when executing db/$schema/tmp_api_post.sql" | write_log
+          echo "ERROR when executing db/$schema/tmp_api_post.sql" | write_log $failure
           cat tmp_api_post.sql >> ${full_log_file}
-          exit 1
+          manage_result "failure"
         fi
 
         rm tmp_api_post.sql
@@ -369,9 +361,6 @@ install_db_schemas()
 }
 
 
-# Function to make APP unavailable
-#######################################
-
 set_apps_unavailable() {
   # exists app_install_file
   if [ -e $app_install_file ]
@@ -379,7 +368,7 @@ set_apps_unavailable() {
     echo "disabling APEX-Apps ..." | write_log
     # loop throug content
     while IFS= read -r line; do
-      $SQLCL -s "$(get_connect_string $APP_SCHEMA)" <<!
+      $SQLCL -S "$(get_connect_string $APP_SCHEMA)" <<!
         set serveroutput on;
         prompt logging to ${log_file}
         set define off;
@@ -405,14 +394,11 @@ set_apps_unavailable() {
 
     done < "$app_install_file"
   else
-    echo "File $app_install_file does not exist" | write_log
+    echo "File $app_install_file does not exist" | write_log $warning
   fi
 
 }
 
-
-# Function to install APEX-Applications
-#######################################
 
 install_apps() {
   # app install
@@ -426,7 +412,7 @@ install_apps() {
       then
         echo "Installing $line Num: ${line/apex\/f} Workspace: ${WORKSPACE}" | write_log
         cd $line
-        $SQLCL -s "$(get_connect_string $APP_SCHEMA)" <<!
+        $SQLCL -S "$(get_connect_string $APP_SCHEMA)" <<!
           spool ../../${log_file} append;
           Prompt Workspace: ${WORKSPACE}
           Prompt Application: ${line/apex\/f}
@@ -456,21 +442,19 @@ install_apps() {
         if [ $? -ne 0 ]
         then
           echo "ERROR when executing $line" | write_log
-          exit 1
+          manage_result "failure"
         fi
 
         cd ../..
       fi
     done < "$app_install_file"
   else
-    echo "File $app_install_file does not exist" | write_log
+    echo "File $app_install_file does not exist" | write_log $warning
   fi
 
 }
 
 
-## Function to call final unit tests
-####################################
 exec_final_unit_tests()
 {
   if [ -e .bash4xcl/api/execute_tests.sql ]
@@ -481,56 +465,35 @@ exec_final_unit_tests()
     for schema in "${SCHEMAS[@]}"
     do
       echo "Executing unit tests for schema $schema " | write_log
-      exit | $SQLCL -s "$(get_connect_string $schema)" @.bash4xcl/api/execute_tests.sql ${full_log_file} ${patch}
+      exit | $SQLCL -S "$(get_connect_string $schema)" @.bash4xcl/api/execute_tests.sql ${full_log_file} ${patch}
       if [ $? -ne 0 ]
       then
-        echo "ERROR when executing .bash4xcl/api/execute_tests.sql" | write_log
-        exit 1
+        echo "ERROR when executing .bash4xcl/api/execute_tests.sql" | write_log $failure
+        manage_result "failure"
       fi
     done
   fi
 }
 
-## Function to manage results of install process
-################################################
+
 manage_result()
 {
-
-  # ask for success
-  echo
-  echo "Move Patch?"
-  echo "  N - No, keep it >  (patch-files and log are inside your folders, you have to move it manually)"
-  echo "  F - Fail!       > Move logs and patchfiles to _installed/failure"
-  echo "  S - Success     > Move logs and patchfiles to _installed/success"
-
-  read modus
-
-  shopt -s nocasematch
-  case "$modus" in
-    "F" )
-      target_move="failure"
-      ;;
-    "S" )
-      target_move="success"
-      ;;
-    *)
-      echo "Files will not touched - exit" | write_log
-      exit
-      ;;
-  esac
-
+  local target_move=$1
 
   target_finalize_path=${patch_source_path}/${target_move}/${patch}
 
   # create path if not exists
   [ -d ${target_finalize_path} ] || mkdir -p ${target_finalize_path}
 
+  echo "${mode} ${patch} moved to ${target_finalize_path}" | write_log ${target_move}
+  echo "Done with ${target_move}" | write_log ${target_move}
 
-  echo "${mode} ${patch} moved to ${target_finalize_path}" | write_log
-  echo "Done " | write_log
+  cat ${full_log_file} | sed -r "s/\x1B\[([0-9]{1,3}((;[0-9]{1,3})*)?)?[m|K]//g" > ${full_log_file}.colorless
+  rm ${full_log_file}
+  mv ${full_log_file}.colorless ${full_log_file}
 
   # move all
-  mv *${patch}* ${target_finalize_path} | write_log
+  mv *${patch}* ${target_finalize_path} | write_log ${target_move}
 
   # loop through schemas
   for schema in "${SCHEMAS[@]}"
@@ -539,9 +502,10 @@ manage_result()
     # exists db install file
     if [ -e db/$schema/$db_install_file ]
     then
-      mv db/$schema/$db_install_file ${target_finalize_path} | write_log
+      mv db/$schema/$db_install_file ${target_finalize_path} | write_log ${target_move}
     fi
   done
+
 
   # write Info to markdown-table
   deployed_at=`date +"%Y-%m-%d %T"`
@@ -550,8 +514,15 @@ manage_result()
   version=`printf '%-10s' "V$patch"`
   deployed_at=`printf '%-19s' "$deployed_at"`
   deployed_by=`printf '%-11s' "$deployed_by"`
+  result=`printf '%-11s' "$target_move"`
 
-  echo "| $version | $deployed_at | $deployed_by |" >> version.md
+  echo "| $version | $deployed_at | $deployed_by |  $result " >> ${basepath}/version.md
+
+  if [ $target_move == "success" ]; then
+    exit
+  else
+    exit 1
+  fi
 }
 
 #################################################################################################
@@ -566,4 +537,4 @@ install_db_schemas
 install_apps
 
 exec_final_unit_tests
-manage_result
+manage_result "success"

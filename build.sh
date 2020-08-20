@@ -1,72 +1,94 @@
 #!/bin/bash
+# echo "Your script args ($#) are: $@"
 
-mode=$1
+usage() {
+  echo -e "${BYELLOW}build [bash4xcl]${NC} - build a patch with eiter all or only with changed files"
+  echo -e "-----------------------------------------------------------------------------"
+  echo -e "  If mode is init a build file from the current directory is build and placed "
+  echo -e "  inside the depot directory. If mode is patch then only the files which differ"
+  echo -e "  to the HEAD are taken into the build"
+  echo
+  echo -e "${BWHITE}USAGE${NC}"
+  echo -e "\t$0 <MODE>"
+  echo
+  echo -e "${BWHITE}MODE${NC}"
+  echo -e "\tinit <version>           creates an inital build from current project "
+  echo -e "\t                         ${PURPLE}all objects in target-schemas will be dropped before install${NC}"
+  echo -e "\t     <version>           label of new version the build is named"
+  echo -e "\t                         if version is \"install\" apply script will be called directy after build is finished"
+  echo
+  echo -e "\tpatch <from> <version>   creates an patch build from git diff by tag/commit with current index"
+  echo -e "\t      <from>             tag or commit hash or any other Git hash ex. ORIG_HEAD"
+  echo -e "\t      <version>          label of new version the build is named"
+  echo -e "\t                         if current branch is \"master\" you a tag is created"
+  echo
+  echo
 
-function print_help() {
-  echo "Please call script with following parameters"
-  echo "  1 - mode: patch or init"
-  echo "    init "
-  echo "      2 - new version like >0.0.6<"
-  echo "      2 - direkt full install with >install<"
-  echo ""
-  echo "    patch "
-  echo "      2 - patch from version-num(tag or commit) e.g. 0.0.5 or ORIG_HEAD"
-  echo "      3 - new version-num e.g. 0.0.6"
-
-  echo ""
-  echo "Example"
-  echo "  init:  ./build.sh init 1.0.0"
-  echo "  init:  ./build.sh init install"
-  echo "  patch: ./build.sh patch 1.0.0 1.0.1"
-  echo "  patch: ./build.sh patch ORIG_HEAD 1.0.1"
-  echo ""
-  echo ""
+  echo -e "${BWHITE}EXAMPLE${NC}"
+  echo -e "  $0 init 1.0.0"
+  echo -e "  $0 init install"
+  echo -e "  $0 patch 1.0.0 1.0.1"
+  echo -e "  $0 patch ORIG_HEAD 1.0.1"
+  echo
+  echo
   exit 1
 }
+# get required functions and vars
+source ./.bash4xcl/lib.sh
+
+# set project-settings from build
+source ./build.env
+
+# set target-env settings from file if exists
+if [ -e ./apply.env ]
+then
+  source ./apply.env
+fi
+
+
+# validate parameters
+mode=${1:-""}
 
 if [ "${mode}" == "patch" ]; then
   # all params are required
   if [ $# -ne 3 ]; then
-    print_help
+    echo_error "missing parameter <from> and <version>"
+    usage
   fi
   from=$2
   version=$3
 else
   if [ "${mode}" == "init" ]; then
     if [ $# -ne 2 ]; then
-      print_help
+      echo_error "missing parameter <version>"
+      usage
     fi
     version=$2
   else
-    print_help
+    echo_error "unkown mode ${mode}"
+    usage
   fi
 fi
 
-# read configuration
-source build.env
-
-# set target-env settings from file if exists
-if [ -e apply.env ]
+if [ -z $DEPOT_PATH ]
 then
-  source ./apply.env
+  echo_error "Depotpath not defined"
+  usage
 fi
 
 # get branch name
 branch=$(git rev-parse --symbolic-full-name --abbrev-ref HEAD)
 
-if [[ "$branch" =~ ^(develop|test|acceptance|master)$ ]]; then
-    echo "$branch is known"
-else
-    echo "$branch is not in the list using develop"
+if [[ ! "$branch" =~ ^(develop|test|acceptance|master)$ ]]; then
+    echo_warning "$branch is not in the list using develop"
     branch=develop
 fi
 
-# beim INIT gibts kein Vorbehandlung oder eine Auswertung des table_ddls
+# at INIT there is no pretreatment or an evaluation of the table_ddl
 if [ "${mode}" == "init" ]; then
   array=( sequences tables indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies types sources/packages sources/functions sources/procedures views sources/triggers jobs tests/packages ddl/init dml/init )
 else
-  # pre and post stages build arrays
-  # loop through schemas
+  # building pre and post based on branches
   pres=()
   for i in ${!BRANCHES[@]}; do
     if [ $i -gt 0 ]
@@ -92,36 +114,32 @@ else
   array+=( ${post[@]} )
 fi
 
-# if policies are inside release, we have to enable them
-policies="FALSE"
-
 # if table changes are inside release, we have to call api-functionalities
 table_changes="FALSE"
 
-# from_commit
-from_commit=${from} #ORIG_HEAD #61485daabff5f71fb0334b64dc54e65dd0cae9c9
+# define diff indexes
+from_commit=${from:-""} #ORIG_HEAD #61485daabff5f71fb0334b64dc54e65dd0cae9c9
 until_commit=HEAD #ba68fb4481f863b1096413c4489acbc2baa68e0a
 
 # create a folder outside the git repo
-# you can skip this step, if you want a static location
 depotpath="$(pwd)/$DEPOT_PATH/$branch"
 targetpath=$depotpath/${mode}_${version}
 sourcepath="."
 
-echo "building patch with listed configuration"
-echo "----------------------------------------"
-echo "project:       ${PROJECT}"
-echo "branch:        ${branch}"
+echo -e "Building ${BWHITE}${mode}${NC} deployment version: ${BWHITE}${version}${NC}"
+echo -e "----------------------------------------"
+echo -e "project:       ${BWHITE}${PROJECT}${NC}"
+echo -e "branch:        ${BWHITE}${branch}${NC}"
 echo
-echo "app_schema:    ${APP_SCHEMA}"
-echo "data_schema:   ${DATA_SCHEMA}"
-echo "logic_schema:  ${LOGIC_SCHEMA}"
-echo "schemas:      (${SCHEMAS[@]})"
+echo -e "app_schema:    ${BWHITE}${APP_SCHEMA}${NC}"
+echo -e "data_schema:   ${BWHITE}${DATA_SCHEMA}${NC}"
+echo -e "logic_schema:  ${BWHITE}${LOGIC_SCHEMA}${NC}"
+echo -e "schemas:      (${BWHITE}${SCHEMAS[@]}${NC})"
 echo
-echo "depotpath:     ${depotpath}"
-echo "targetpath:    ${targetpath}"
-echo "sourcepath:    ${sourcepath}"
-echo "----------------------------------------"
+echo -e "depotpath:     ${BWHITE}${depotpath}${NC}"
+echo -e "targetpath:    ${BWHITE}${targetpath}${NC}"
+echo -e "sourcepath:    ${BWHITE}${sourcepath}${NC}"
+echo -e "----------------------------------------"
 
 
 echo "Creating directory $targetpath"
@@ -204,21 +222,26 @@ do
     echo "set verify off" >> "$target_install_file"
     echo "WHENEVER SQLERROR EXIT SQL.SQLCODE" >> "$target_install_file"
 
-    # define spooling
+     # define spooling
     echo "" >> "$target_install_file"
     echo "define LOGFILE = '^1'" >> "$target_install_file"
     echo "define VERSION = '^2'" >> "$target_install_file"
-    echo "set timing on;" >> "$target_install_file"
-    echo "SPOOL ^LOGFILE append;" >> "$target_install_file"
-    echo "set scan off" >> "$target_install_file"
+    echo "set timing on" >> "$target_install_file"
+    echo "set trim off" >> "$target_install_file"
+    echo "set linesize 2000" >> "$target_install_file"
     echo "set sqlblanklines on" >> "$target_install_file"
-
+    echo "set tab off" >> "$target_install_file"
+    echo "set pagesize 9999" >> "$target_install_file"
+    echo "SPOOL ^LOGFILE append;" >> "$target_install_file"
     echo "" >> "$target_install_file"
 
     echo "Prompt --------------------------------------" >> "$target_install_file"
     echo "Prompt Start Installation for schema: $schema" >> "$target_install_file"
     echo "Prompt                       Version: ^VERSION" >> "$target_install_file"
     echo "Prompt --------------------------------------" >> "$target_install_file"
+    echo "set scan off" >> "$target_install_file"
+    echo "set define off" >> "$target_install_file"
+    echo "set serveroutput on" >> "$target_install_file"
     echo "" >> "$target_install_file"
 
     if [ "${mode}" == "patch" ]; then
@@ -235,12 +258,6 @@ do
     do
       if [[ -d "$targetpath"/db/$schema/$path ]]
       then
-
-        # policies are created as disabled. we will enable them at the end
-        if [ "$path" == "policies" ]
-        then
-          policies="TRUE"
-        fi
 
         echo "Writing calls for $path"
         echo "Prompt Installing $path ..." >> "$target_install_file"
@@ -259,8 +276,8 @@ do
 
         for file in $(ls "$targetpath"/db/$schema/$path | sort $sortdirection )
         do
-          # wenn tables_ddl, wird das nur in install geschrieben, wenn es keine
-          # passende Tabelle im Branch gibt
+          # if tables_ddl, this is only written in install if there is no
+          # matching table in the branch
           if [ "$path" == "tables" ]
           then
             skipfile="FALSE"
@@ -333,7 +350,7 @@ for appid in apex/*/ ; do
   echo "${appid%/}" >> $target_apex_file
 done
 
-# Packen des Verzeichnisses
+# pack directoy
 tar -C $targetpath -czvf $targetpath.tar.gz .
 rm -rf $targetpath
 
@@ -408,7 +425,8 @@ if [ $version == "install" ]
 then
   echo "calling apply"
 
-  SQLCL=sqlplus && ./apply.sh ${mode} ${version}
+  export SQLCL=sqlplus
+  ./apply.sh ${mode} ${version}
 fi
 
 echo "Done"

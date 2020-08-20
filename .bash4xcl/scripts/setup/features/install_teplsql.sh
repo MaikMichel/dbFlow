@@ -11,6 +11,7 @@ echo " =========================================================================
 echo " ==   Installing osalvador/tePLSQL: MaikMichel/tePLSQL"
 echo " ============================================================================="
 echo
+yes=${1:-"NO"}
 teplsql_schema="teplsql"
 teplsql_pass=$(shuf -zer -n20 {A..Z} {a..z} {0..9} | tr -d '\0')
 
@@ -45,8 +46,12 @@ is_teplsql_installed () {
 TEPLSQL_INSTALLED=$(is_teplsql_installed)
 if [ "${TEPLSQL_INSTALLED}" == "true" ]
 then
-  read -p "$(echo -e ${BWHITE}"TEPLSQL is allready installed. Would you like to reinstall? (Y/N) [Y]: "${NC})" reinstall
-  reinstall=${reinstall:-"Y"}
+  if [ $yes == "YES" ]; then
+    reinstall="Y"
+  else
+    read -p "$(echo -e ${BWHITE}"TEPLSQL is allready installed. Would you like to reinstall? (Y/N) [Y]: "${NC})" reinstall
+    reinstall=${reinstall:-"Y"}
+  fi
 
   if [ ${reinstall,,} == "y" ]; then
     sqlplus -s sys/${DB_PASSWORD}@$DB_TNS as sysdba <<!
