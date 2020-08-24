@@ -55,6 +55,7 @@ mingw64_nt-10*)
   chcp.com 65001
 ;;
 esac
+SQLCL=${SQLCL:-sqlplus}
 
 
 # validate parameters
@@ -69,7 +70,7 @@ mode=${1:-""}
 patch=${2:-""}
 must_extract=${3:-""}
 basepath=$(pwd)
-
+runfile=""
 
 if [[ ! "$mode" =~ ^(init|patch)$ ]]; then
     echo "unknown mode: $mode"
@@ -255,109 +256,145 @@ remove_dropped_files()
   fi
 }
 
+execute_schema_api_scripts() {
+  local entrypath=$1
+  local currentpath=${2:-"/"}
+  local sqlfile="tmp_api_${entrypath}.sql"
+
+  if [[ -d "api/${entrypath}" ]]
+  then
+    echo "executing schema api entrypoint ${entrypath} in ${currentpath}" | write_log
+    echo "set define '^'" > ${sqlfile}
+    echo "set concat on" >> ${sqlfile}
+    echo "set concat ." >> ${sqlfile}
+    echo "set verify off" >> ${sqlfile}
+    echo "define SPOOLFILE = '^1'" >> ${sqlfile}
+    echo "define VERSION = '^2'" >> ${sqlfile}
+    echo "set timing on;" >> ${sqlfile}
+    echo "spool ^SPOOLFILE append;" >> ${sqlfile}
+    for file in $(ls api/${entrypath} | sort )
+    do
+      echo "Prompt executing db/${currentpath}api/${entrypath}/${file}" >> ${sqlfile}
+      echo "@api/${entrypath}/${file} ^SPOOLFILE ^VERSION" >> ${sqlfile}
+      echo "" >> ${sqlfile}
+    done
+
+    runfile=${sqlfile}
+    exit | $SQLCL -S "$(get_connect_string $schema)" @${runfile} ${full_log_file} ${patch}
+    runfile=""
+
+    if [ $? -ne 0 ]
+    then
+      echo "ERROR when executing db/${currentpath}api/${sqlfile}" | write_log $failure
+      cat ${sqlfile} >> ${full_log_file}
+      manage_result "failure"
+    fi
+
+    rm ${sqlfile}
+  fi
+}
+
+
+execute_global_api_scripts() {
+  local entrypath=$1    # pre or post
+  local targetschema=""
+
+  if [[ -d "api/${entrypath}" ]]
+  then
+    for file in $(ls api/${entrypath} | sort )
+    do
+      echo "executing global api entrypoint ${entrypath}" | write_log
+      case ${file} in
+        *"${DATA_SCHEMA}"*)
+          targetschema=${DATA_SCHEMA}
+          ;;
+        *"${LOGIC_SCHEMA}"*)
+          targetschema=${LOGIC_SCHEMA}
+          ;;
+        *"${APP_SCHEMA}"*)
+          targetschema=${APP_SCHEMA}
+          ;;
+      esac
+      runfile="api/${entrypath}/${file}"
+      echo "executing file ${runfile}" | write_log
+      exit | $SQLCL -S "$(get_connect_string $targetschema)" @${runfile} ${full_log_file} ${patch}
+      runfile=""
+    done
+
+
+    if [ $? -ne 0 ]
+    then
+      echo "ERROR when executing db/api/${entrypath}/${file}" | write_log $failure
+      manage_result "failure"
+    fi
+  fi
+}
+
 
 install_db_schemas()
 {
+  if [ "${mode}" == "init" ]; then
+    echo "INIT - Mode, Schemas will be cleared" | write_log
+    # loop through schemas
+    for schema in "${SCHEMAS[@]}"
+    do
+      # On init mode schema content will be dropped
+        echo "DROPING ALL OBJECTS on schema $schema" | write_log
+        exit | $SQLCL -S "$(get_connect_string $schema)" @.bash4xcl/api/drop_all.sql ${full_log_file} ${patch}
+    done
+  fi
+
+  cd db
+  # execute all files in global pre path
+  execute_global_api_scripts "pre"
+
   echo "Start installing schemas" | write_log
   # loop through schemas
   for schema in "${SCHEMAS[@]}"
   do
-    db_install_file=${mode}_${schema}_${patch}.sql
-    # exists db install file
-    if [ -e db/$schema/$db_install_file ]
+    if [ -d $schema ]
     then
-      # On init mode schema content will be dropped
-      if [ "${mode}" == "init" ]; then
-        echo "DROPING ALL OBJECTS" | write_log
-        exit | $SQLCL -S "$(get_connect_string $schema)" @.bash4xcl/api/drop_all.sql ${full_log_file} ${patch}
-      fi
+      cd $schema
 
-      cd db/$schema
-      echo "Installing schema $schema to ${DB_APP_USER} on ${DB_TNS}"  | write_log
+      # execute all files in schema pre path
+      execute_schema_api_scripts "pre" "$schema/"
 
-      # calling all api/pre files
-      if [[ -d api/pre ]]
+
+      # now executing main installation file if exists
+      db_install_file=${mode}_${schema}_${patch}.sql
+      # exists db install file
+      if [ -e $db_install_file ]
       then
-        echo "EXCEUTING API/PREs" | write_log
-        echo "Prompt executing api/pre file" > tmp_api_pre.sql
-        echo "set define '^'" >> tmp_api_pre.sql
-        echo "set concat on" >> tmp_api_pre.sql
-        echo "set concat ." >> tmp_api_pre.sql
-        echo "set verify off" >> tmp_api_pre.sql
-        echo "define SPOOLFILE = '^1'" >> tmp_api_pre.sql
-        echo "define VERSION = '^2'" >> tmp_api_pre.sql
-        echo "set timing on;" >> tmp_api_pre.sql
-        echo "spool ^SPOOLFILE append;" >> tmp_api_pre.sql
-        for file in $(ls api/pre | sort )
-        do
-          echo "Prompt executing db/$schema/api/pre/${file}" >> tmp_api_pre.sql
-          echo "@api/pre/${file} ^SPOOLFILE ^VERSION" >> tmp_api_pre.sql
-          echo "" >> tmp_api_pre.sql
-        done
+        echo "Installing schema $schema to ${DB_APP_USER} on ${DB_TNS}"  | write_log
 
-        exit | $SQLCL -S "$(get_connect_string $schema)" @tmp_api_pre.sql ${full_log_file} ${patch}
+        # uncomment cleaning scripts specific to this stage/branch ex:--test or --acceptance
+        sed -i -E "s:--$STAGE:Prompt uncommented cleanup for stage $STAGE\n:g" $db_install_file
 
+        runfile=$db_install_file
+        $SQLCL -S "$(get_connect_string $schema)" @$db_install_file ${full_log_file} ${patch}
+        runfile=""
 
         if [ $? -ne 0 ]
         then
-          echo "ERROR when executing db/$schema/tmp_api_pre.sql" | write_log $failure
-          cat tmp_api_pre.sql >> ${full_log_file}
+          echo "ERROR when executing db/$schema/$db_install_file" | write_log $failure
           manage_result "failure"
         fi
 
-        rm tmp_api_pre.sql
+      else
+        echo "File db/$schema/$db_install_file does not exist" | write_log
       fi
 
-      # uncomment cleaning scripts specific to this stage/branch ex:--test or --acceptance
-      sed -i -E "s:--$STAGE:Prompt uncommented cleanup for stage $STAGE\n:g" $db_install_file
+      # execute all files in schema post path
+      execute_schema_api_scripts "post" "$schema/"
 
-      $SQLCL -S "$(get_connect_string $schema)" @$db_install_file ${full_log_file} ${patch}
-      if [ $? -ne 0 ]
-      then
-        echo "ERROR when executing db/$schema/$db_install_file" | write_log $failure
-        manage_result "failure"
-      fi
-
-      # calling all api/post files
-      if [[ -d api/post ]]
-      then
-        echo "EXCEUTING API/POSTs" | write_log
-        echo "Prompt executing api/post file" > tmp_api_post.sql
-        echo "set define '^'" >> tmp_api_post.sql
-        echo "set concat on" >> tmp_api_post.sql
-        echo "set concat ." >> tmp_api_post.sql
-        echo "set verify off" >> tmp_api_post.sql
-        echo "define SPOOLFILE = '^1'" >> tmp_api_post.sql
-        echo "define VERSION = '^2'" >> tmp_api_post.sql
-        echo "set timing on;" >> tmp_api_post.sql
-        echo "spool ^SPOOLFILE append;" >> tmp_api_post.sql
-        for file in $(ls api/post | sort )
-        do
-          echo "Prompt executing db/$schema/api/post/${file}" >> tmp_api_post.sql
-          echo "@api/post/${file}" >> tmp_api_post.sql
-          echo "" >> tmp_api_post.sql
-        done
-
-        exit | $SQLCL -S "$(get_connect_string $schema)" @tmp_api_post.sql ${full_log_file} ${patch}
-
-
-        if [ $? -ne 0 ]
-        then
-          echo "ERROR when executing db/$schema/tmp_api_post.sql" | write_log $failure
-          cat tmp_api_post.sql >> ${full_log_file}
-          manage_result "failure"
-        fi
-
-        rm tmp_api_post.sql
-      fi
-
-
-      cd ../..
-    else
-      echo "File db/$schema/$db_install_file does not exist" | write_log
+      cd ..
     fi
-
   done
+
+  # execute all files in global post path
+  execute_global_api_scripts "post" "/"
+
+  cd ..
 }
 
 
@@ -479,8 +516,9 @@ exec_final_unit_tests()
 manage_result()
 {
   local target_move=$1
-
   target_finalize_path=${patch_source_path}/${target_move}/${patch}
+
+  cd ${basepath}
 
   # create path if not exists
   [ -d ${target_finalize_path} ] || mkdir -p ${target_finalize_path}
@@ -493,11 +531,12 @@ manage_result()
   mv ${full_log_file}.colorless ${full_log_file}
 
   # move all
-  mv *${patch}* ${target_finalize_path} | write_log ${target_move}
+  mv *${patch}* ${target_finalize_path}
 
   # loop through schemas
   for schema in "${SCHEMAS[@]}"
   do
+
     db_install_file=${mode}_${schema}_${patch}.sql
     # exists db install file
     if [ -e db/$schema/$db_install_file ]
@@ -505,7 +544,6 @@ manage_result()
       mv db/$schema/$db_install_file ${target_finalize_path} | write_log ${target_move}
     fi
   done
-
 
   # write Info to markdown-table
   deployed_at=`date +"%Y-%m-%d %T"`
@@ -518,14 +556,34 @@ manage_result()
 
   echo "| $version | $deployed_at | $deployed_by |  $result " >> ${basepath}/version.md
 
-  if [ $target_move == "success" ]; then
-    exit
+  if [[ $target_move == "success" ]]; then
+    exit 0
   else
     exit 1
   fi
 }
 
 #################################################################################################
+notify() {
+    [[ $1 = 0 ]] || echo ❌ EXIT $1
+    # you can notify some external services here,
+    # ie. Slack webhook, Github commit/PR etc.
+    if [[ $1 -gt 2 ]]; then
+      if [[ "${runfile}" != "" ]]; then
+        echo "ERROR when executing ${runfile}" | write_log $failure
+      else
+        echo "ERROR in last statement" | write_log $failure
+      fi
+
+      manage_result "failure"
+    fi
+
+}
+
+trap '(exit 130)' INT
+trap '(exit 143)' TERM
+trap 'rc=$?; notify $rc; exit $rc' EXIT
+
 
 print_info
 extract_patchfile

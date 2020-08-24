@@ -119,7 +119,7 @@ table_changes="FALSE"
 
 # define diff indexes
 from_commit=${from:-""} #ORIG_HEAD #61485daabff5f71fb0334b64dc54e65dd0cae9c9
-until_commit=HEAD #ba68fb4481f863b1096413c4489acbc2baa68e0a
+until_commit=HEAD
 
 # create a folder outside the git repo
 depotpath="$(pwd)/$DEPOT_PATH/$branch"
@@ -157,10 +157,11 @@ if [ "${mode}" == "init" ]; then
  cp apply.sh $targetpath
  cp .gitignore $targetpath
 else
+
   if [ $(uname) == "Darwin" ]; then
-    rsync -R $(git diff-tree -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB) $targetpath
+    rsync -R $(git diff-tree -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB) ${targetpath}
   else
-    yes | cp --parents -rf $(git diff-tree -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB) $targetpath
+    cp --parents -rf $(git diff-tree -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB) ${targetpath}
   fi
 
   # additionaly we need all triggers belonging to views
@@ -192,7 +193,6 @@ else
     fi
   done
 fi
-
 
 # if patch mode we remove unnecessary files
 if [ "${mode}" == "patch" ]; then
@@ -229,27 +229,33 @@ do
     echo "set timing on" >> "$target_install_file"
     echo "set trim off" >> "$target_install_file"
     echo "set linesize 2000" >> "$target_install_file"
-    echo "set sqlblanklines on" >> "$target_install_file"
+    #echo "set sqlblanklines on" >> "$target_install_file"
     echo "set tab off" >> "$target_install_file"
     echo "set pagesize 9999" >> "$target_install_file"
+    echo "set trimspool off" >> "$target_install_file"
     echo "SPOOL ^LOGFILE append;" >> "$target_install_file"
     echo "" >> "$target_install_file"
 
-    echo "Prompt --------------------------------------" >> "$target_install_file"
-    echo "Prompt Start Installation for schema: $schema" >> "$target_install_file"
-    echo "Prompt                       Version: ^VERSION" >> "$target_install_file"
-    echo "Prompt --------------------------------------" >> "$target_install_file"
+    echo "Prompt .............................................................................. " >> "$target_install_file"
+    echo "Prompt .............................................................................. " >> "$target_install_file"
+    echo "Prompt .. Start Installation for schema: $schema " >> "$target_install_file"
+    echo "Prompt ..                       Version: ^VERSION " >> "$target_install_file"
+    echo "Prompt .............................................................................. " >> "$target_install_file"
     echo "set scan off" >> "$target_install_file"
     echo "set define off" >> "$target_install_file"
     echo "set serveroutput on" >> "$target_install_file"
     echo "" >> "$target_install_file"
 
     if [ "${mode}" == "patch" ]; then
-      echo "Prompt Commit-History to install" >> "$target_install_file"
-      echo "Prompt --------------------------------------" >> "$target_install_file"
-      git log --pretty=format:'Prompt %h %s <%an>' ${from_commit}...${until_commit} -- db/$schema >> "$target_install_file"
-      echo "" >> "$target_install_file"
-      echo "" >> "$target_install_file"
+      echo "Prompt .. Commit-History to install: " >> "$target_install_file"
+      git log --pretty=format:'Prompt ..   %h %s <%an>' ${from_commit}...${until_commit} -- db/$schema >> "$target_install_file"
+      echo " " >> "$target_install_file"
+      echo "Prompt .. " >> "$target_install_file"
+     # echo "Prompt " >> "$target_install_file"
+      echo "Prompt .............................................................................. " >> "$target_install_file"
+
+      echo "Prompt " >> "$target_install_file"
+      echo "Prompt " >> "$target_install_file"
     fi
 
 
@@ -287,7 +293,7 @@ do
               if [ -d "${targetpath}/db/$schema/tables_ddl" ]
               then
 
-                for f in ${targetpath}/db/$schema/tables_ddl/${file}*; do
+                for f in ${targetpath}/db/$schema/tables_ddl/${file%%.*}.*; do
                   if [ -e "$f" ];
                   then
                       skipfile="TRUE"
@@ -366,7 +372,7 @@ function make_a_new_version() {
 }
 
 function push_to_depot() {
-  local current_path=${pwd}
+  local current_path=$(pwd)
 
   cd $depotpath
   git pull
