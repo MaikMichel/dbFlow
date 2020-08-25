@@ -1,4 +1,5 @@
 create or replace package body export_schema is
+  c_crlf constant varchar2(10) :=  chr(13)||chr(10);
 
   function clob_to_blob (p_clob in clob) return blob is
    v_blob      blob;
@@ -24,6 +25,9 @@ create or replace package body export_schema is
   begin
     v_script := dbms_metadata.get_ddl('TABLE', upper(p_table_name));
 
+    -- die erste Zeile ist immer leer
+    v_script := substr(v_script, instr(v_script, c_crlf, 1, 1) + length(c_crlf));
+
     -- uns interessiert hier nur der erst Teil, bis zum ersten ";"
     v_script := substr(v_script, 1, instr(v_script, ';', 1, 1));
 
@@ -48,6 +52,7 @@ create or replace package body export_schema is
         null; -- ORA-31608: specified object of type COMMENT not found
     end;
 
+
     return v_script;
   end;
 
@@ -63,6 +68,9 @@ create or replace package body export_schema is
                                       end,
                                       upper(p_constraint_name)
                                       );
+
+    -- die erste Zeile ist immer leer
+    v_script := substr(v_script, instr(v_script, c_crlf, 1, 1) + length(c_crlf));
 
     -- uns interessiert hier nur der erst Teil, bis zum ersten ";"
     v_script := substr(v_script, 1, instr(v_script, ';', 1, 1));
@@ -83,6 +91,8 @@ create or replace package body export_schema is
     v_script := dbms_metadata.get_ddl('INDEX',
                                       upper(p_index_name)
                                       );
+    -- die erste Zeile ist immer leer
+    v_script := substr(v_script, instr(v_script, c_crlf, 1, 1) + length(c_crlf));
 
     -- uns interessiert hier nur der erst Teil, bis zum ersten ";"
     v_script := substr(v_script, 1, instr(v_script, ';', 1, 1));
@@ -106,6 +116,9 @@ create or replace package body export_schema is
                                       upper(p_source_name)
                                       );
 
+    -- die erste Zeile ist immer leer
+    v_script := substr(v_script, instr(v_script, c_crlf, 1, 1) + length(c_crlf));
+
     -- username und doppelte Anführungsstriche brauchen wir auch nicht
     v_script := replace(v_script, '"'||user||'"."'||upper(p_source_name)||'"', lower(p_source_name));
 
@@ -119,6 +132,8 @@ create or replace package body export_schema is
     v_script := dbms_metadata.get_ddl('SEQUENCE',
                                       upper(p_sequence_name)
                                       );
+    -- die erste Zeile ist immer leer
+    v_script := substr(v_script, instr(v_script, c_crlf, 1, 1) + length(c_crlf));
 
     -- username und doppelte Anführungsstriche brauchen wir auch nicht
     v_script := replace(v_script, '"'||user||'"."'||upper(p_sequence_name)||'"', lower(p_sequence_name));
@@ -134,6 +149,9 @@ create or replace package body export_schema is
                                       upper(p_view_name)
                                       );
 
+    -- die erste Zeile ist immer leer
+    v_script := substr(v_script, instr(v_script, c_crlf, 1, 1) + length(c_crlf));
+
     -- username und doppelte Anführungsstriche brauchen wir auch nicht
     v_script := replace(v_script, '"'||user||'"."'||upper(p_view_name)||'"', lower(p_view_name));
 
@@ -146,6 +164,9 @@ create or replace package body export_schema is
     v_script clob;
   begin
     dbms_job.user_export(p_job_id, v_script);
+
+    -- die erste Zeile ist immer leer
+    v_script := substr(v_script, instr(v_script, c_crlf, 1, 1) + length(c_crlf));
 
     -- username und doppelte Anführungsstriche brauchen wir auch nicht
     v_script := replace(v_script, '=>'||user||'.', '=>');
@@ -162,6 +183,9 @@ create or replace package body export_schema is
   begin
     v_script := dbms_metadata.get_ddl('SYNONYM', upper(p_synonym_name), p_owner);
 
+    -- die erste Zeile ist immer leer
+    v_script := substr(v_script, instr(v_script, c_crlf, 1, 1) + length(c_crlf));
+
     -- username und doppelte Anführungsstriche brauchen wir auch nicht
     v_script := replace(v_script, '"', '');
     v_script := replace(v_script, user||'.', '');
@@ -170,12 +194,15 @@ create or replace package body export_schema is
   end;
 
 
-  function get_zip return blob is
+  function get_zip(p_object in varchar2 default 'ALL')return blob is
     v_zip_file  blob;
     v_file      blob;
   begin
+    dbms_output.put_line('Scanning for object: '||p_object);
+
     for cur in (select table_name, 'tables/'||lower(table_name)||'.sql' filename
-                  from user_tables)
+                  from user_tables
+                 where p_object = 'ALL' or upper(table_name) = upper(p_object))
     loop
       v_file := clob_to_blob(get_table(p_table_name   => cur.table_name));
 
@@ -195,7 +222,8 @@ create or replace package body export_schema is
                         constraint_type
                   from user_constraints
                  where generated != 'GENERATED NAME'
-                   and constraint_name not like 'BIN$%')
+                   and constraint_name not like 'BIN$%'
+                   and (p_object = 'ALL' or upper(constraint_name) = upper(p_object) or upper(table_name) = upper(p_object)) )
     loop
       v_file := clob_to_blob(get_constraint(cur.constraint_name, cur.constraint_type));
 
@@ -213,7 +241,8 @@ create or replace package body export_schema is
                          else 'defaults'
                        end ||'/' ||lower(i.index_name)||'.sql' filename
                   from user_indexes i left join user_constraints c on i.index_name = c.index_name
-                 where index_type != 'LOB')
+                 where index_type != 'LOB'
+                   and (p_object = 'ALL' or upper(i.index_name) = upper(p_object) or upper(i.table_name) = upper(p_object)) )
     loop
       v_file := clob_to_blob(get_index(p_index_name   => cur.index_name));
 
@@ -243,7 +272,8 @@ create or replace package body export_schema is
                  where object_type in ('TYPE', 'PACKAGE BODY', 'PACKAGE', 'FUNCTION', 'PROCEDURE', 'TRIGGER')
                    and object_name not like 'TEST\_%' escape '\'
                    and object_name not like 'SYS\_PLSQL\_%' escape '\'
-                   and object_name != 'EXPORT_SCHEMA' )
+                   and object_name != 'EXPORT_SCHEMA'
+                   and (p_object = 'ALL' or upper(object_name) = upper(p_object)) )
     loop
       v_file := clob_to_blob(get_source(p_source_name => cur.object_name,
                                         p_source_type => cur.source_type));
@@ -273,7 +303,8 @@ create or replace package body export_schema is
                         end filename
                   from user_objects
                  where object_type in ('TYPE', 'PACKAGE BODY', 'PACKAGE', 'FUNCTION', 'PROCEDURE', 'TRIGGER')
-                   and object_name like 'TEST\_%' escape '\'  )
+                   and object_name like 'TEST\_%' escape '\'
+                   and (p_object = 'ALL' or upper(object_name) = upper(p_object))  )
     loop
       v_file := clob_to_blob(get_source(p_source_name => cur.object_name,
                                         p_source_type => cur.source_type));
@@ -286,7 +317,8 @@ create or replace package body export_schema is
 
     for cur in (select sequence_name, 'sequences/'||lower(sequence_name)||'.sql' filename
                   from user_sequences
-                 where sequence_name not like 'ISEQ%')
+                 where sequence_name not like 'ISEQ%'
+                   and (p_object = 'ALL' or upper(sequence_name) = upper(p_object)) )
     loop
       v_file := clob_to_blob(get_sequence(p_sequence_name   => cur.sequence_name));
 
@@ -297,7 +329,8 @@ create or replace package body export_schema is
     end loop;
 
     for cur in (select view_name, 'sources/views/'||lower(view_name)||'.sql' filename
-                  from user_views)
+                  from user_views
+                 where (p_object = 'ALL' or upper(view_name) = upper(p_object)) )
     loop
       v_file := clob_to_blob(get_view(p_view_name   => cur.view_name));
 

@@ -9,13 +9,13 @@ usage() {
   echo -e "\t$0 <COMMAND>"
   echo
   echo -e "${BWHITE}COMMANDS${NC}"
-  echo -e "\tgenerate <project-name>  generates project structure"
-  echo -e "\tinstall [-flag]          installs project dependencies to db"
+  echo -e "\tgenerate <project-name>  generates project structure                     *required"
+  echo
+  echo -e "\tinstall                  installs project dependencies to db"
   echo -e "\t    -y                   overwrite all feature when allready installed"
-  echo -e "\texport [-option]         exports schema to filesystem"
-  echo -e "\t    -c                   connection (localhost:1521/xepdb1) *required"
-  echo -e "\t    -t                   targetpath (db/prj_data)            optional"
-  echo -e "\t    -o                   object (emp)                        optional"
+  echo
+  echo -e "\texport <source-schema>   exports sourceschema to filesystem              *required"
+  echo -e "\t    -o                   object (emp)"
   echo
   echo
 
@@ -326,40 +326,26 @@ is_any_schema_installed () {
 }
 
 export_schema() {
-  local connection=${1:-""}
-  local tarpath=${2:-""}
-
-
+  local targetschema=${1:-""}
+  local object_name=${2:-"ALL"}
+  echo "object_name: $object_name"
   for file in $(ls db | grep 'exp.zip')
   do
     rm "db/${file}"
   done
 
-
-  if [ -z $connection ]; then
-    # ask for some vars
-    read -p "Enter database connections [${DB_TNS:-"localhost:1521/xepdb1"}]: " db_tns
-    db_tns=${db_tns:-${DB_TNS:-"localhost:1521/xepdb1"}}
-
-    read -p "Enter username/schema to export: " exp_schema
-    exp_schema=${exp_schema}
-
-
-    ask4pwd "Enter password for username/schema to export: "
-    exp_pwd=${pass}
-
-    connection=${exp_schema}/${exp_pwd}@$db_tns
+  if [ -z "$DB_APP_PWD" ]
+  then
+    ask4pwd "Enter password für user ${DB_APP_USER}: "
+    DB_APP_PWD=${pass}
   fi
 
-  exit | sql -s ${connection} @.bash4xcl/scripts/schema_export/export.sql
+  exit | sql -s "$(get_connect_string $targetschema)" @.bash4xcl/scripts/schema_export/export.sql ${object_name}
 
   for file in $(ls db | grep 'exp.zip')
   do
-    if [ -z $tarpath ]; then
-      unzip -qo "db/${file}" -d db/${file/".exp.zip"/}
-    else
-      unzip -qo "db/${file}" -d $tarpath
-    fi
+    unzip -qo "db/${file}" -d "db/${targetschema}"
+
     rm "db/${file}"
   done
 
@@ -441,46 +427,36 @@ else
       ;;
 
     export)
-      conn=""
-      target=""
+      [[ -z ${1-} ]] \
+        && echo_error "ERROR: You have to specify a source_schema"
+
+      targetschema=$1; shift  # Remove 'export' from the argument list
+
+      object=""
       # Process package options
-      while getopts ":c:t:" opt; do
+      while getopts ":o:" opt; do
         case ${opt} in
-          c )
-            conn=$OPTARG
+          o )
+            object=$OPTARG
             ;;
           \? )
-            echo -e  "${RED}Invalid Option: -$OPTARG${NC}" 1>&2
-            exit 1
+            echo_error  "Invalid Option: -$OPTARG"
+            usage
             ;;
           : )
-            echo -e  "${RED}Invalid Option: -$OPTARG requires an argument${NC}" 1>&2
-            exit 1
-            ;;
-          t )
-            target=$OPTARG
-            ;;
-          \? )
-            echo -e  "${RED}Invalid Option: -$OPTARG${NC}" 1>&2
-            exit 1
-            ;;
-          : )
-            echo -e  "${RED}Invalid Option: -$OPTARG requires an argument${NC}" 1>&2
-            exit 1
+            echo_error  "Invalid Option: -$OPTARG requires an argument"
+            usage
             ;;
         esac
       done
       shift $((OPTIND -1))
 
-
-
-      export_schema $conn $target
+      export_schema $targetschema $object
 
       ;;
     *)
-      echo -e  "${RED}Invalid Argument see help${NC}" 1>&2
+      echo_error "Invalid Argument see help"
       usage
-      exit 1
       ;;
   esac
 fi
