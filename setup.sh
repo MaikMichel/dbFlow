@@ -76,9 +76,19 @@ install() {
 
   echo "install and overwrite features ${yes}"
 
+  if [ -z "$DB_ADMINUSER" ]
+  then
+    read -p "Enter username of admin user (admin, sys, ...) [sys]: " DB_ADMINUSER
+    DB_ADMINUSER=${DB_ADMINUSER:-"sys"}
+  fi
+
+  if [[ ${DB_ADMINUSER,,} != "sys" ]]; then
+   DBA_OPTION=""
+  fi
+
   if [ -z "$DB_PASSWORD" ]
   then
-    ask4pwd "Enter password für user sys: "
+    ask4pwd "Enter password für user ${DB_ADMINUSER}: "
     DB_PASSWORD=${pass}
   fi
 
@@ -116,7 +126,7 @@ install() {
           then
             cd $targetpath/$path
             echo "Calling $targetpath/$path/${file}"
-            exit | sqlplus -s sys/${DB_PASSWORD}@$DB_TNS as sysdba @${file}
+            exit | sqlplus -s sys/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} @${file}
             cd ../../..
           elif [ $EXTENSION == "sh" ]
           then
@@ -191,7 +201,10 @@ generate() {
   read -p "Enter database connections [localhost:1521/xepdb1]: " db_tns
   db_tns=${db_tns:-"localhost:1521/xepdb1"}
 
-  ask4pwd "Enter password for sys [leave blank and you will be asked for]: "
+  read -p "Enter username of admin user (admin, sys, ...) [sys]: " db_adminuser
+  db_adminuser=${db_adminuser:-"sys"}
+
+  ask4pwd "Enter password for ${db_adminuser} [leave blank and you will be asked for]: "
   db_password=${pass}
 
   if [ ${db_scheme_type,,} == "m" ]; then
@@ -220,7 +233,8 @@ generate() {
   fi
   echo "DB_APP_PWD=${db_app_pwd}" >> apply.env
   echo "" >> apply.env
-  echo "# SYS Pass" >> apply.env
+  echo "# SYS/ADMIN Pass" >> apply.env
+  echo "DB_ADMINUSER=${db_adminuser}" >> apply.env
   echo "DB_PASSWORD=${db_password}" >> apply.env
   echo "" >> apply.env
   echo "# Path to Depot" >> apply.env
@@ -284,14 +298,14 @@ generate() {
   echo "Prompt" >> ${targetpath}/users/gen_users.sql
   echo "grant execute on sys.dbms_rls to public;" >> ${targetpath}/users/gen_users.sql
 
+  # ask for application IDs
+  read -p "Enter application IDs (comma separated) you wish to use initialy [1000,2000]: " apex_ids
+  apex_ids=${apex_ids:-"1000,2000"}
+
   # copy vscode files
   [ -d .vscode ] || mkdir .vscode
   # TODO backup existing tasks.json
   cp -rf .bash4xcl/vscode/tasks.json .vscode/
-
-  # ask for application IDs
-  read -p "Enter application IDs (comma separated) you wish to use initialy [1000,2000]: " apex_ids
-  apex_ids=${apex_ids:-"1000,2000"}
 
   # split ids gen directories
   apexids=(`echo $apex_ids | sed 's/,/\n/g'`)
@@ -313,7 +327,7 @@ generate() {
 } # generate
 
 is_any_schema_installed () {
-    sqlplus -s sys/${DB_PASSWORD}@$DB_TNS as sysdba <<!
+    sqlplus -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
     set heading off
     set feedback off
     set pages 0

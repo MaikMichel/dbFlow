@@ -83,6 +83,9 @@ function echo_warning() {
   echo -e "${YELLOW}$prompt_text${NC}"
 }
 
+# used when admin user is sys
+DBA_OPTION=" as sysdba"
+
 # Function return connect string
 #########################################
 get_connect_string() {
