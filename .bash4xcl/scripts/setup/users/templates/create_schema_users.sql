@@ -8,19 +8,19 @@ begin
   select 1
     into v_check
     from all_users
-   where username = upper('^1');   
+   where username = upper('^1');
   dbms_output.put_line('drop user ^1 cascade');
   execute immediate 'drop user ^1 cascade';
 exception
-  when no_data_found then 
-    null; -- ok, nothing to drop  ´  
+  when no_data_found then
+    null; -- ok, nothing to drop  ´
 end;
 /
 
-prompt create user ^1 identified by ^2
+prompt create user ^1 identified by ^2 default tablespace ^3
 create user ^1
   identified by ^2
-  default tablespace users
+  default tablespace ^3
   temporary tablespace temp
   profile default
   account unlock;
@@ -28,7 +28,7 @@ create user ^1
 
 -- 2 tablespace quotas for ^1
 alter user ^1 quota unlimited on indx;
-alter user ^1 quota unlimited on users;
+alter user ^1 quota unlimited on ^3;
 
 -- 2 roles for ^1
 grant imp_full_database to ^1;
@@ -47,6 +47,9 @@ grant create table to ^1;
 grant create trigger to ^1;
 grant create type to ^1;
 grant create view to ^1;
+
+
+grant create session to^1;
 
 
 -- 5 object privileges for ^1

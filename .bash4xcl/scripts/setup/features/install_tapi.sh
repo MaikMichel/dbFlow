@@ -14,6 +14,7 @@ echo
 yes=${1:-"NO"}
 tapi_schema="tapi"
 tapi_pass=$(shuf -zer -n20 {A..Z} {a..z} {0..9} | tr -d '\0')
+tapi_tspace="users"
 
 tag_name=$(curl --silent "https://api.github.com/repos/MaikMichel/table-api-generator/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
 curl -OL "https://github.com/MaikMichel/table-api-generator/archive/${tag_name}.zip"
@@ -23,15 +24,26 @@ rm ${tag_name}.zip
 
 cd tapi-${tag_name}/table-api-generator-${tag_name/v/} # remove v from tag-name
 
+if [ -z "$DB_ADMINUSER" ]
+then
+  read -p "Enter username of admin user (admin, sys, ...) [sys]: " DB_ADMINUSER
+  DB_ADMINUSER=${DB_ADMINUSER:-"sys"}
+fi
+
+if [[ ${DB_ADMINUSER,,} != "sys" ]]; then
+  DBA_OPTION=""
+  tapi_tspace="data" # no users tablespace when using autonomous db
+fi
+
 if [ -z "$DB_PASSWORD" ]
 then
-  ask4pwd "Enter password für user sys: "
+  ask4pwd "Enter password für user ${DB_ADMINUSER}: "
   DB_PASSWORD=${pass}
 fi
 
 
 is_tapi_installed () {
-    sqlplus -s sys/${DB_PASSWORD}@$DB_TNS as sysdba <<!
+    sqlplus -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
     set heading off
     set feedback off
     set pages 0
@@ -55,7 +67,7 @@ then
   fi
 
   if [ ${reinstall,,} == "y" ]; then
-    sqlplus -s sys/${DB_PASSWORD}@$DB_TNS as sysdba <<!
+    sqlplus -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
   Prompt ${tapi_schema} droppen
   drop user ${tapi_schema} cascade;
 !
@@ -66,11 +78,11 @@ then
   fi
 fi
 
-sqlplus -s sys/${DB_PASSWORD}@$DB_TNS as sysdba <<!
+sqlplus -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
 Prompt create user: ${tapi_schema}
-create user ${tapi_schema} identified by "${tapi_pass}" default tablespace users temporary tablespace temp
+create user ${tapi_schema} identified by "${tapi_pass}" default tablespace ${tapi_tspace} temporary tablespace temp
 /
-alter user ${tapi_schema} quota unlimited on users
+alter user ${tapi_schema} quota unlimited on ${tapi_tspace}
 /
 grant connect, create view, create job, create table, create sequence, create trigger, create procedure, create public synonym to ${tapi_schema}
 /
@@ -90,7 +102,7 @@ grant execute on om_tapigen to public;
 grant execute on om_tapigen_oddgen_wrapper to public;
 
 Promp lock user: ${tapi_schema}
-conn sys/${DB_PASSWORD}@$DB_TNS as sysdba
+conn ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION}
 alter user ${tapi_schema} account lock;
 
 Promp table-api installen

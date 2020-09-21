@@ -12,22 +12,36 @@ echo " ==   Installing Logger $1"
 echo " ============================================================================="
 echo
 yes=${1:-"NO"}
+
 logger_schema="logger"
-lg_pass=$(shuf -zer -n20 {A..Z} {a..z} {0..9} | tr -d '\0')
+logger_pass=$(shuf -zer -n20 {A..Z} {a..z} {0..9} | tr -d '\0')
+logger_tspace="users"
+
 tag_name=$(curl --silent "https://api.github.com/repos/OraOpenSource/Logger/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
 curl -OL "https://github.com/OraOpenSource/Logger/raw/master/releases/logger_${tag_name}.zip"
 
 unzip logger_${tag_name}.zip -d logger
 rm logger_${tag_name}.zip
 
+if [ -z "$DB_ADMINUSER" ]
+then
+  read -p "Enter username of admin user (admin, sys, ...) [sys]: " DB_ADMINUSER
+  DB_ADMINUSER=${DB_ADMINUSER:-"sys"}
+fi
+
+if [[ ${DB_ADMINUSER,,} != "sys" ]]; then
+  DBA_OPTION=""
+  logger_tspace="data" # no users tablespace when using autonomous db
+fi
+
 if [ -z "$DB_PASSWORD" ]
 then
-  ask4pwd "Enter password für user sys: "
+  ask4pwd "Enter password für user ${DB_ADMINUSER}: "
   DB_PASSWORD=${pass}
 fi
 
 is_logger_installed () {
-    sqlplus -s sys/${DB_PASSWORD}@$DB_TNS as sysdba <<!
+    sqlplus -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
     set heading off
     set feedback off
     set pages 0
@@ -50,7 +64,7 @@ then
   fi
 
   if [ ${reinstall,,} == "y" ]; then
-    sqlplus -s sys/${DB_PASSWORD}@$DB_TNS as sysdba <<!
+    sqlplus -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
   Prompt ${logger_schema} droppen
   drop user ${logger_schema} cascade;
 !
@@ -60,15 +74,15 @@ then
   fi
 fi
 
-sqlplus -s sys/${DB_PASSWORD}@$DB_TNS as sysdba <<!
+sqlplus -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
 Prompt create user: ${logger_schema}
-create user ${logger_schema} identified by "${lg_pass}" default tablespace users temporary tablespace temp
+create user ${logger_schema} identified by "${logger_pass}" default tablespace ${logger_tspace} temporary tablespace temp
 /
-alter user ${logger_schema} quota unlimited on users
+alter user ${logger_schema} quota unlimited on ${logger_tspace}
 /
 grant connect,create view, create job, create table, create sequence, create trigger, create procedure, create any context, create public synonym to ${logger_schema}
 /
-conn logger/${lg_pass}@$DB_TNS
+conn logger/${logger_pass}@$DB_TNS
 Prompt install logger
 @@logger/logger_install.sql
 Prompt create public synonyms
@@ -90,7 +104,7 @@ grant select on logger_logs_5_min to public;
 grant select on logger_logs_60_min to public;
 grant select on logger_logs_terse to public;
 Promp lock user: ${logger_schema}
-conn sys/${DB_PASSWORD}@$DB_TNS as sysdba
+conn ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION}
 alter user ${logger_schema} account lock;
 !
 

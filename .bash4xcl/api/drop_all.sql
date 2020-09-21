@@ -20,3 +20,9 @@ begin
   end loop;
 end;
 /
+
+purge recyclebin;
+
+prompt
+prompt objects left in schema
+select lower(object_type) as object_type, lower(object_name) as object_name from user_objects order by object_type, object_name;

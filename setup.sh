@@ -126,7 +126,7 @@ install() {
           then
             cd $targetpath/$path
             echo "Calling $targetpath/$path/${file}"
-            exit | sqlplus -s sys/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} @${file}
+            exit | sqlplus -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} @${file}
             cd ../../..
           elif [ $EXTENSION == "sh" ]
           then
@@ -285,12 +285,16 @@ generate() {
   echo "PROMPT" >> ${targetpath}/users/gen_users.sql
   echo "" >> ${targetpath}/users/gen_users.sql
   echo "" >> ${targetpath}/users/gen_users.sql
+  deftablespace="users"
+  if [[ ${db_adminuser} != "sys" ]]; then
+    deftablespace="data"
+  fi
   echo "Prompt creating users" >> ${targetpath}/users/gen_users.sql
   if [ ${db_scheme_type,,} == "m" ]; then
-    echo "@@templates/create_schema_users.sql ^data_schema ^db_app_pwd" >> ${targetpath}/users/gen_users.sql
-    echo "@@templates/create_schema_users.sql ^logic_schema ^db_app_pwd" >> ${targetpath}/users/gen_users.sql
-    echo "@@templates/create_schema_users.sql ^app_schema ^db_app_pwd" >> ${targetpath}/users/gen_users.sql
-    echo "@@templates/create_deployment_user.sql ^db_app_user ^db_app_pwd ^data_schema ^logic_schema ^app_schema" >> ${targetpath}/users/gen_users.sql
+    echo "@@templates/create_schema_users.sql ^data_schema ^db_app_pwd ${deftablespace}" >> ${targetpath}/users/gen_users.sql
+    echo "@@templates/create_schema_users.sql ^logic_schema ^db_app_pwd ${deftablespace}" >> ${targetpath}/users/gen_users.sql
+    echo "@@templates/create_schema_users.sql ^app_schema ^db_app_pwd ${deftablespace}" >> ${targetpath}/users/gen_users.sql
+    echo "@@templates/create_deployment_user.sql ^db_app_user ^db_app_pwd ^data_schema ^logic_schema ^app_schema ${deftablespace}" >> ${targetpath}/users/gen_users.sql
   else
     echo "@@templates/create_schema_users.sql ^app_schema ^db_app_pwd" >> ${targetpath}/users/gen_users.sql
   fi

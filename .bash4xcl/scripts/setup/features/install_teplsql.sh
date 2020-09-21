@@ -14,6 +14,7 @@ echo
 yes=${1:-"NO"}
 teplsql_schema="teplsql"
 teplsql_pass=$(shuf -zer -n20 {A..Z} {a..z} {0..9} | tr -d '\0')
+teplsql_tspace="users"
 
 tag_name=$(curl --silent "https://api.github.com/repos/MaikMichel/tePLSQL/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
 curl -OL "https://github.com/MaikMichel/tePLSQL/archive/${tag_name}.zip"
@@ -23,15 +24,26 @@ rm ${tag_name}.zip
 
 cd "tePLSQL-"${tag_name}/tePLSQL-${tag_name/v/} # remove v from tag-name
 
+if [ -z "$DB_ADMINUSER" ]
+then
+  read -p "Enter username of admin user (admin, sys, ...) [sys]: " DB_ADMINUSER
+  DB_ADMINUSER=${DB_ADMINUSER:-"sys"}
+fi
+
+if [[ ${DB_ADMINUSER,,} != "sys" ]]; then
+  DBA_OPTION=""
+  teplsql_tspace="data" # no users tablespace when using autonomous db
+fi
+
 if [ -z "$DB_PASSWORD" ]
 then
-  ask4pwd "Enter password für user sys: "
+  ask4pwd "Enter password für user ${DB_ADMINUSER}: "
   DB_PASSWORD=${pass}
 fi
 
 
 is_teplsql_installed () {
-    sqlplus -s sys/${DB_PASSWORD}@$DB_TNS as sysdba <<!
+    sqlplus -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
     set heading off
     set feedback off
     set pages 0
@@ -54,7 +66,7 @@ then
   fi
 
   if [ ${reinstall,,} == "y" ]; then
-    sqlplus -s sys/${DB_PASSWORD}@$DB_TNS as sysdba <<!
+    sqlplus -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
   Prompt ${teplsql_schema} droppen
   drop user ${teplsql_schema} cascade;
 !
@@ -65,11 +77,11 @@ then
   fi
 fi
 
-sqlplus -s sys/${DB_PASSWORD}@$DB_TNS as sysdba <<!
+sqlplus -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
 Prompt create user: ${teplsql_schema}
-create user ${teplsql_schema} identified by "${teplsql_pass}" default tablespace users temporary tablespace temp
+create user ${teplsql_schema} identified by "${teplsql_pass}" default tablespace ${teplsql_tspace} temporary tablespace temp
 /
-alter user ${teplsql_schema} quota unlimited on users
+alter user ${teplsql_schema} quota unlimited on ${teplsql_tspace}
 /
 grant connect, create view, create job, create table, create sequence, create trigger, create procedure, create public synonym to ${teplsql_schema}
 /
@@ -91,7 +103,7 @@ grant execute on teplsql to public;
 grant execute on te_templates_api to public;
 
 Promp lock user: ${teplsql_schema}
-conn sys/${DB_PASSWORD}@$DB_TNS as sysdba
+conn ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION}
 alter user ${teplsql_schema} account lock;
 
 Promp tePLSQL installed

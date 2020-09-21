@@ -8,7 +8,7 @@ drop user ^1 cascade;
 
 create user ^1
   identified by ^2
-  default tablespace users
+  default tablespace ^6
   temporary tablespace temp
   profile default
   account unlock;
@@ -19,6 +19,7 @@ create user ^1
 grant connect to ^1;
 alter user ^1 default role all;
 grant create any context to ^1;
+
 
 
 alter user ^3

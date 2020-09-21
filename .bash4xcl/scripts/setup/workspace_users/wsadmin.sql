@@ -8,7 +8,7 @@ set verify off
 -------------------------------------------------------------------------------------
 
 PROMPT  =============================================================================
-PROMPT  ==   CREATE APEX User admin
+PROMPT  ==   CREATE APEX User wsadmin
 PROMPT  =============================================================================
 PROMPT
 
@@ -26,20 +26,20 @@ Begin
    where workspace = upper('^workspace');
 
   apex_util.set_security_group_id (p_security_group_id => v_workspace_id);
-  if apex_util.is_username_unique(p_username => 'admin') then
-    apex_util.create_user(p_user_name                     => 'admin',
+  if apex_util.is_username_unique(p_username => 'wsadmin') then
+    apex_util.create_user(p_user_name                     => 'wsadmin',
                           p_first_name                    => '',
                           p_last_name                     => '',
                           p_description                   => '',
                           p_email_address                 => '',
-                          p_web_password                  => 'admin',
+                          p_web_password                  => 'wsadmin',
                           p_developer_privs               => 'ADMIN:CREATE:DATA_LOADER:EDIT:HELP:MONITOR:SQL',
                           p_default_schema                => upper('^app_schema'),
                           p_allow_access_to_schemas       => NULL,
                           p_change_password_on_first_use  => 'Y');
     commit;
   else
-    dbms_output.put_line('User admin allready exists in workspace');
+    dbms_output.put_line('User wsadmin allready exists in workspace');
   end if;
 
 End;
