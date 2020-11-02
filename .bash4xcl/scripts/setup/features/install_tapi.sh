@@ -12,6 +12,8 @@ echo " ==   Installing OraMUC/table-api-generator"
 echo " ============================================================================="
 echo
 yes=${1:-"NO"}
+DB_PASSWORD=${2:-$DB_PASSWORD}
+
 tapi_schema="tapi"
 tapi_pass=$(shuf -zer -n20 {A..Z} {a..z} {0..9} | tr -d '\0')
 tapi_tspace="users"

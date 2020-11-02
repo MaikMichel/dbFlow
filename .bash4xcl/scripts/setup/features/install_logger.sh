@@ -12,6 +12,7 @@ echo " ==   Installing Logger $1"
 echo " ============================================================================="
 echo
 yes=${1:-"NO"}
+DB_PASSWORD=${2:-$DB_PASSWORD}
 
 logger_schema="logger"
 logger_pass=$(shuf -zer -n20 {A..Z} {a..z} {0..9} | tr -d '\0')

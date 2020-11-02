@@ -12,6 +12,8 @@ echo " ==   Installing osalvador/tePLSQL: MaikMichel/tePLSQL"
 echo " ============================================================================="
 echo
 yes=${1:-"NO"}
+DB_PASSWORD=${2:-$DB_PASSWORD}
+
 teplsql_schema="teplsql"
 teplsql_pass=$(shuf -zer -n20 {A..Z} {a..z} {0..9} | tr -d '\0')
 teplsql_tspace="users"
