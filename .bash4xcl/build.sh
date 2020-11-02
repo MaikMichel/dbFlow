@@ -114,7 +114,7 @@ else
   array+=( ${post[@]} )
 fi
 
-# if table changes are inside release, we have to call api-functionalities
+# if table changes are inside release, we have to call special-functionalities
 table_changes="FALSE"
 
 # define diff indexes

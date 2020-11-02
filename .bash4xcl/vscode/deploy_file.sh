@@ -75,6 +75,7 @@ export NLS_LANG="GERMAN_GERMANY.AL32UTF8"
 export NLS_DATE_FORMAT="DD.MM.YYYY HH24:MI:SS"
 export JAVA_TOOL_OPTIONS="-Duser.language=en -Duser.region=US -Dfile.encoding=UTF-8"
 export CUSTOM_JDBC="-XX:+TieredCompilation -XX:TieredStopAtLevel=1 -Xverify:none"
+export LANG="de_DE.utf8"
 
 SOURCE_FILE=$(echo "${SOURCE_FILE}" | sed 's/\\/\//g' | sed 's/://')
 INPATH=$(dirname -- "${SOURCE_FILE}")
@@ -457,7 +458,6 @@ set serveroutput on
 set scan off
 set define off
 set pagesize 9999
-set linesize 9999
 set trim on
 
 COLUMN MY_USER FORMAT A20

@@ -13,3 +13,6 @@ version.md
 
 # private developer settings
 .vscode/settings.json
+
+# Log when building by vscode
+last_build.log

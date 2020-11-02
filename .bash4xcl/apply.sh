@@ -256,14 +256,14 @@ remove_dropped_files()
   fi
 }
 
-execute_schema_api_scripts() {
+execute_schema_hook_scripts() {
   local entrypath=$1
   local currentpath=${2:-"/"}
-  local sqlfile="tmp_api_${entrypath}.sql"
+  local sqlfile="tmp_hook_${entrypath}.sql"
 
-  if [[ -d "api/${entrypath}" ]]
+  if [[ -d "_hook/${entrypath}" ]]
   then
-    echo "executing schema api entrypoint ${entrypath} in ${currentpath}" | write_log
+    echo "executing schema hook entrypoint ${entrypath} in ${currentpath}" | write_log
     echo "set define '^'" > ${sqlfile}
     echo "set concat on" >> ${sqlfile}
     echo "set concat ." >> ${sqlfile}
@@ -272,10 +272,10 @@ execute_schema_api_scripts() {
     echo "define VERSION = '^2'" >> ${sqlfile}
     echo "set timing on;" >> ${sqlfile}
     echo "spool ^SPOOLFILE append;" >> ${sqlfile}
-    for file in $(ls api/${entrypath} | sort )
+    for file in $(ls _hook/${entrypath} | sort )
     do
-      echo "Prompt executing db/${currentpath}api/${entrypath}/${file}" >> ${sqlfile}
-      echo "@api/${entrypath}/${file} ^SPOOLFILE ^VERSION" >> ${sqlfile}
+      echo "Prompt executing db/${currentpath}_hook/${entrypath}/${file}" >> ${sqlfile}
+      echo "@_hook/${entrypath}/${file} ^SPOOLFILE ^VERSION" >> ${sqlfile}
       echo "" >> ${sqlfile}
     done
 
@@ -285,7 +285,7 @@ execute_schema_api_scripts() {
 
     if [ $? -ne 0 ]
     then
-      echo "ERROR when executing db/${currentpath}api/${sqlfile}" | write_log $failure
+      echo "ERROR when executing db/${currentpath}_hook/${sqlfile}" | write_log $failure
       cat ${sqlfile} >> ${full_log_file}
       manage_result "failure"
     fi
@@ -295,15 +295,15 @@ execute_schema_api_scripts() {
 }
 
 
-execute_global_api_scripts() {
+execute_global_hook_scripts() {
   local entrypath=$1    # pre or post
   local targetschema=""
 
-  if [[ -d "api/${entrypath}" ]]
+  if [[ -d "_hook/${entrypath}" ]]
   then
-    for file in $(ls api/${entrypath} | sort )
+    for file in $(ls _hook/${entrypath} | sort )
     do
-      echo "executing global api entrypoint ${entrypath}" | write_log
+      echo "executing global hook entrypoint ${entrypath}" | write_log
       case ${file} in
         *"${DATA_SCHEMA}"*)
           targetschema=${DATA_SCHEMA}
@@ -315,7 +315,7 @@ execute_global_api_scripts() {
           targetschema=${APP_SCHEMA}
           ;;
       esac
-      runfile="api/${entrypath}/${file}"
+      runfile="_hook/${entrypath}/${file}"
       echo "executing file ${runfile}" | write_log
       exit | $SQLCL -S "$(get_connect_string $targetschema)" @${runfile} ${full_log_file} ${patch}
       runfile=""
@@ -324,7 +324,7 @@ execute_global_api_scripts() {
 
     if [ $? -ne 0 ]
     then
-      echo "ERROR when executing db/api/${entrypath}/${file}" | write_log $failure
+      echo "ERROR when executing db/_hook/${entrypath}/${file}" | write_log $failure
       manage_result "failure"
     fi
   fi
@@ -340,13 +340,13 @@ install_db_schemas()
     do
       # On init mode schema content will be dropped
         echo "DROPING ALL OBJECTS on schema $schema" | write_log
-        exit | $SQLCL -S "$(get_connect_string $schema)" @.bash4xcl/api/drop_all.sql ${full_log_file} ${patch}
+        exit | $SQLCL -S "$(get_connect_string $schema)" @.bash4xcl/lib/drop_all.sql ${full_log_file} ${patch}
     done
   fi
 
   cd db
   # execute all files in global pre path
-  execute_global_api_scripts "pre"
+  execute_global_hook_scripts "pre"
 
   echo "Start installing schemas" | write_log
   # loop through schemas
@@ -357,7 +357,7 @@ install_db_schemas()
       cd $schema
 
       # execute all files in schema pre path
-      execute_schema_api_scripts "pre" "$schema/"
+      execute_schema_hook_scripts "pre" "$schema/"
 
 
       # now executing main installation file if exists
@@ -385,14 +385,14 @@ install_db_schemas()
       fi
 
       # execute all files in schema post path
-      execute_schema_api_scripts "post" "$schema/"
+      execute_schema_hook_scripts "post" "$schema/"
 
       cd ..
     fi
   done
 
   # execute all files in global post path
-  execute_global_api_scripts "post" "/"
+  execute_global_hook_scripts "post" "/"
 
   cd ..
 }
@@ -494,7 +494,7 @@ install_apps() {
 
 exec_final_unit_tests()
 {
-  if [ -e .bash4xcl/api/execute_tests.sql ]
+  if [ -e .bash4xcl/lib/execute_tests.sql ]
   then
   echo "Start testing with utplsql" | write_log
 
@@ -502,10 +502,10 @@ exec_final_unit_tests()
     for schema in "${SCHEMAS[@]}"
     do
       echo "Executing unit tests for schema $schema " | write_log
-      exit | $SQLCL -S "$(get_connect_string $schema)" @.bash4xcl/api/execute_tests.sql ${full_log_file} ${patch}
+      exit | $SQLCL -S "$(get_connect_string $schema)" @.bash4xcl/lib/execute_tests.sql ${full_log_file} ${patch}
       if [ $? -ne 0 ]
       then
-        echo "ERROR when executing .bash4xcl/api/execute_tests.sql" | write_log $failure
+        echo "ERROR when executing .bash4xcl/lib/execute_tests.sql" | write_log $failure
         manage_result "failure"
       fi
     done

@@ -132,7 +132,7 @@ install() {
           then
             cd $targetpath/$path
             echo "Executing $targetpath/$path/${file}"
-            ./${file} ${yes}
+            ./${file} ${yes} ${DB_PASSWORD}
             cd ../../..
           fi
         fi
@@ -157,11 +157,11 @@ generate() {
 
   # create directories
   if [ ${db_scheme_type,,} == "m" ]; then
-    mkdir -p db/{api/{pre,post},${project_name}_data/{api/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/{packages},ddl/{init,pre,post},dml/{init,pre,post}}}
-    mkdir -p db/{api/{pre,post},${project_name}_logic/{api/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/{packages},ddl/{init,pre,post},dml/{init,pre,post}}}
-    mkdir -p db/{api/{pre,post},${project_name}_app/{api/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/{packages},ddl/{init,pre,post},dml/{init,pre,post}}}
+    mkdir -p db/{_hook/{pre,post},${project_name}_data/{_hook/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/{packages},ddl/{init,pre,post},dml/{init,pre,post}}}
+    mkdir -p db/{_hook/{pre,post},${project_name}_logic/{_hook/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/{packages},ddl/{init,pre,post},dml/{init,pre,post}}}
+    mkdir -p db/{_hook/{pre,post},${project_name}_app/{_hook/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/{packages},ddl/{init,pre,post},dml/{init,pre,post}}}
   elif [ ${db_scheme_type,,} == "s" ]; then
-    mkdir -p db/{api/{pre,post},${project_name}/{api/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/{packages},ddl/{init,pre,post},dml/{init,pre,post}}}
+    mkdir -p db/{_hook/{pre,post},${project_name}/{_hook/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/{packages},ddl/{init,pre,post},dml/{init,pre,post}}}
   else
     echo_error "unknown type ${db_scheme_type}"
     exit 1
@@ -218,8 +218,8 @@ generate() {
   read -p "Enter path to depot [_depot]: " depot_path
   depot_path=${depot_path:-"_depot"}
 
-  read -p "Enter apex schema [APEX_200100]: " apex_user
-  apex_user=${apex_user:-"APEX_200100"}
+  read -p "Enter apex schema [APEX_200200]: " apex_user
+  apex_user=${apex_user:-"APEX_200200"}
 
   # apply.env
   echo "# DB Connection" > apply.env
@@ -306,10 +306,15 @@ generate() {
   read -p "Enter application IDs (comma separated) you wish to use initialy [1000,2000]: " apex_ids
   apex_ids=${apex_ids:-"1000,2000"}
 
+  # ask for restful Modulsa
+  read -p "Enter restful Moduls (comma separated) you wish to use initialy [com.${PROJECT}.api.version,com.${PROJECT}.api.test]: " rest_modules
+  rest_modules=${rest_modules:-"com.${PROJECT}.api.version,com.${PROJECT}.api.test"}
+
+
   # copy vscode files
   [ -d .vscode ] || mkdir .vscode
   # TODO backup existing tasks.json
-  cp -rf .bash4xcl/vscode/tasks.json .vscode/
+  cp -rf .bash4xcl/vscode/tasks-template.json .vscode/tasks.json
 
   # split ids gen directories
   apexids=(`echo $apex_ids | sed 's/,/\n/g'`)
@@ -325,9 +330,21 @@ generate() {
   sed -i ${lineNum}s/.*/"            \"default\": \"${apexids[0]}\", \/\/ \$DEFAULT_APP_ID"/ .vscode/tasks.json
 
   lineNum="`grep -Fn -m 1 ARRAY_OF_AVAILABLE_APP_IDS .vscode/tasks.json | grep -Po '^[0-9]+'`"
-  sed -i ${lineNum}s/.*/"            \"options\": [${apexidsquotes}], \/\/ \$DEFAULT_APP_ID"/ .vscode/tasks.json
+  sed -i ${lineNum}s/.*/"            \"options\": [${apexidsquotes}], \/\/ \$ARRAY_OF_AVAILABLE_APP_IDS"/ .vscode/tasks.json
 
+  # split modules
+  restmodules=(`echo $rest_modules | sed 's/,/\n/g'`)
+  restmodulesquotes="\""${rest_modules/,/"\",\""}"\""
+  for restMOD in "${restmodules[@]}"
+  do
+      mkdir -p rest/modules/"$restMOD"
+  done
+  mkdir -p rest/privileges
+  mkdir -p rest/roles
 
+  # add rest Modules to vscode task
+  lineNum="`grep -Fn -m 1 ARRAY_OF_AVAILABLE_REST_MODULES .vscode/tasks.json | grep -Po '^[0-9]+'`"
+  sed -i ${lineNum}s/.*/"            \"options\": [\"SCHEMA\",${restmodulesquotes}], \/\/ \$ARRAY_OF_AVAILABLE_REST_MODULES"/ .vscode/tasks.json
 } # generate
 
 is_any_schema_installed () {

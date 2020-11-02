@@ -9,6 +9,13 @@
             "type": "pickString",
             "default": "", // $DEFAULT_APP_ID
             "options": [] // $ARRAY_OF_AVAILABLE_APP_IDS
+        },
+        {
+            "id": "RestModules",
+            "description": "Verfügbare RestModule",
+            "type": "pickString",
+            "default": "SCHEMA",
+            "options": [] // $ARRAY_OF_AVAILABLE_REST_MODULES
         }
     ],
     "tasks": [
