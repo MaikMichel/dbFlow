@@ -14,6 +14,7 @@ begin
                 from user_objects
                where object_type in ( 'TABLE', 'VIEW', 'PACKAGE', 'TYPE', 'PROCEDURE', 'FUNCTION', 'TRIGGER', 'SEQUENCE' )
                  and object_name not like 'SYS_PLSQL_%'
+                 and object_name not like 'ISEQ$$_%'
                order by decode ( object_type, 'TRIGGER', 'AAA', object_type ), object_name)
   loop
     execute immediate cur.v_sql;
