@@ -27,7 +27,6 @@ create user ^1
 
 
 -- 2 tablespace quotas for ^1
-alter user ^1 quota unlimited on indx;
 alter user ^1 quota unlimited on ^3;
 
 -- 2 roles for ^1
