@@ -3,8 +3,8 @@
 # params
 REST_MODULE=$1
 
-source build.env
-source apply.env
+source ./build.env
+source ./apply.env
 
 
 # Reset
