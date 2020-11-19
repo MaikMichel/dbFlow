@@ -100,6 +100,8 @@ elif [[ "$SOURCE_FILE" == *"db/${LOGIC_SCHEMA}"* ]]; then
   TARGET_SCHEMA=${LOGIC_SCHEMA}
 elif [[ "$SOURCE_FILE" == *"db/${APP_SCHEMA}"* ]]; then
   TARGET_SCHEMA=${APP_SCHEMA}
+elif [[ "$SOURCE_FILE" == *"rest/"* ]]; then
+  TARGET_SCHEMA=${APP_SCHEMA}
 elif [[ "$SOURCE_FILE" == *"static/f"* ]]; then
   TARGET_SCHEMA=${APP_SCHEMA}
 
