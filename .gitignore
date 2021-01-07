@@ -1,0 +1,18 @@
+# this file must be set on every stage manually
+# because this information don't belong to a git repository
+apply.env
+
+# build artifacts are send to this folder by default
+_depot
+
+# static application temp files
+static/f*/dist
+
+# instance versioning file does not belong to source repo
+version.md
+
+# private developer settings
+.vscode/settings.json
+
+# Log when building by vscode
+last_build.log
