@@ -6,24 +6,26 @@ usage() {
 
   echo
   echo -e "${BWHITE}USAGE${NC}"
-  echo -e "\t$0 <COMMAND>"
+  echo -e "  $0 <COMMAND>"
   echo
   echo -e "${BWHITE}COMMANDS${NC}"
-  echo -e "\tgenerate <project-name>  generates project structure                     *required"
+  echo -e "  generate <project-name>                    generates project structure                         ${BWHITE}*required${NC}"
+  echo -e ""
+  echo -e "  install                                    installs project dependencies to db"
+  echo -e "    -f (force overwrite)                     features will be reinstalled if exists"
+  echo -e "                                             schemas/users will be dropped if exists"
+  echo -e "                                             and recreated"
   echo
-  echo -e "\tinstall                  installs project dependencies to db"
-  echo -e "\t    -y                   overwrite all feature when allready installed"
-  echo
-  echo -e "\texport <source-schema>   exports sourceschema to filesystem              *required"
-  echo -e "\t    -o                   object (emp)"
+  echo -e "  export <target-schema>|ALL                 exports targetschema or ${BWHITE}ALL${NC} to filesystem  ${BWHITE}*required${NC}"
+  echo -e "    -o                                       specific object (emp)"
   echo
   echo
 
   echo -e "${BWHITE}EXAMPLE${NC}"
   echo -e "  $0 generate example"
   echo -e "  $0 install"
-  echo -e "  $0 export"
-  echo -e "  $0 export -o dept"
+  echo -e "  $0 export ALL"
+  echo -e "  $0 export hr_data -o dept"
   echo
   echo
   exit 1
@@ -64,6 +66,27 @@ print2envsql() {
   echo define db_app_user=${DB_APP_USER} >> $targetpath/env.sql
   echo define apex_user=${APEX_USER} >> $targetpath/env.sql
 
+  if [[ ${DB_ADMINUSER} != "sys" ]]; then
+    echo define deftablespace=data >> $targetpath/env.sql
+  else
+    echo define deftablespace=users >> $targetpath/env.sql
+  fi
+}
+
+show_generate_summary() {
+  echo -e
+  echo -e
+  echo -e "Your project ${YELLOW}$1${NC} has just been created ${GREEN}successfully${NC}."
+  echo -e "APEX applications are stored in the ${CYAN}apex${NC} directory. "
+  echo -e "If you use REST servies, you can store them in the ${CYAN}rest${NC} directory. "
+  echo -e "Both can be exported to VSCode with Ctrl+Shift+B. "
+  echo -e
+  echo -e "The ${CYAN}db${NC} directory contains all your database objects, whereas the ${CYAN}_setup${NC} folder contains "
+  echo -e "objects / dependencies whose installation requires ${PURPLE}sys${NC} permissions."
+  echo -e "So before you start installing the components, you can edit or add them in the respective directories. "
+  echo -e "Features are stored in the directory with the same name. "
+  echo -e "At the beginning these are logger, utPlsql, teplsql and tapi."
+  echo -e "You can also find more information in the readme: ${BYELLOW}.bash4xcl/readme.md${NC}"
 
 }
 
@@ -74,7 +97,9 @@ remove2envsql() {
 install() {
   local yes=${1:-"NO"}
 
-  echo "install and overwrite features ${yes}"
+  if [ $yes == "YES" ]; then
+    echo_warning "Force option detected!"
+  fi
 
   if [ -z "$DB_ADMINUSER" ]
   then
@@ -102,7 +127,7 @@ install() {
   echo "PROJECT_INSTALLED = $PROJECT_INSTALLED"
   if [ "${PROJECT_INSTALLED}" == "true" ] && [ ${yes} == "NO" ]
   then
-    echo_error "Project allready installed and overwrite param not set to YES. \nTry option -y to force overwrite (drop/create)"
+    echo_error "Project allready installed and option force not recoginized. \nTry option -f to force overwrite (drop + create)"
     usage
   fi
 
@@ -157,11 +182,11 @@ generate() {
 
   # create directories
   if [ ${db_scheme_type,,} == "m" ]; then
-    mkdir -p db/{_hook/{pre,post},${project_name}_data/{_hook/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/{packages},ddl/{init,pre,post},dml/{init,pre,post}}}
-    mkdir -p db/{_hook/{pre,post},${project_name}_logic/{_hook/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/{packages},ddl/{init,pre,post},dml/{init,pre,post}}}
-    mkdir -p db/{_hook/{pre,post},${project_name}_app/{_hook/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/{packages},ddl/{init,pre,post},dml/{init,pre,post}}}
+    mkdir -p db/{.hooks/{pre,post},${project_name}_data/{.hooks/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/{packages},ddl/{init,pre,post},dml/{init,pre,post}}}
+    mkdir -p db/{.hooks/{pre,post},${project_name}_logic/{.hooks/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/{packages},ddl/{init,pre,post},dml/{init,pre,post}}}
+    mkdir -p db/{.hooks/{pre,post},${project_name}_app/{.hooks/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/{packages},ddl/{init,pre,post},dml/{init,pre,post}}}
   elif [ ${db_scheme_type,,} == "s" ]; then
-    mkdir -p db/{_hook/{pre,post},${project_name}/{_hook/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/{packages},ddl/{init,pre,post},dml/{init,pre,post}}}
+    mkdir -p db/{.hooks/{pre,post},${project_name}/{.hooks/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/{packages},ddl/{init,pre,post},dml/{init,pre,post}}}
   else
     echo_error "unknown type ${db_scheme_type}"
     exit 1
@@ -221,6 +246,9 @@ generate() {
   read -p "Enter apex schema [APEX_200200]: " apex_user
   apex_user=${apex_user:-"APEX_200200"}
 
+  read -p "Do you wish to generate and install default tooling? (Logger, utPLSQL, teplsql, tapi) [Y]: " with_tools
+  with_tools=${with_tools:-"Y"}
+
   # apply.env
   echo "# DB Connection" > apply.env
   echo "DB_TNS=${db_tns}" >> apply.env
@@ -263,52 +291,36 @@ generate() {
   mkdir -p ${depot_path}
 
   # copy some examples into it
-  cp -rf .bash4xcl/scripts/setup/users/* ${targetpath}/users
   cp -rf .bash4xcl/scripts/setup/workspaces/* ${targetpath}/workspaces
   cp -rf .bash4xcl/scripts/setup/workspace_users/* ${targetpath}/workspace_users
   cp -rf .bash4xcl/scripts/setup/acls/* ${targetpath}/acls
-  cp -rf .bash4xcl/scripts/setup/features/* ${targetpath}/features
-  chmod +x ${targetpath}/features
+
+  if [ ${with_tools,,} == "y" ]; then
+    cp -rf .bash4xcl/scripts/setup/features/* ${targetpath}/features
+    chmod +x ${targetpath}/features/*.sh
+  else
+    mkdir -p ${targetpath}/features
+  fi
+
 
   # create gen_users..
-  echo "set define '^'" > ${targetpath}/users/gen_users.sql
-  echo "set concat on" >> ${targetpath}/users/gen_users.sql
-  echo "set concat ." >> ${targetpath}/users/gen_users.sql
-  echo "set verify off" >> ${targetpath}/users/gen_users.sql
-  echo "" >> ${targetpath}/users/gen_users.sql
-  echo "@../env.sql" >> ${targetpath}/users/gen_users.sql
-  echo "" >> ${targetpath}/users/gen_users.sql
-  echo "-------------------------------------------------------------------------------------" >> ${targetpath}/users/gen_users.sql
-  echo "PROMPT  =============================================================================" >> ${targetpath}/users/gen_users.sql
-  echo "PROMPT  ==   CREATE USERS / SCHEMAS" >> ${targetpath}/users/gen_users.sql
-  echo "PROMPT  =============================================================================" >> ${targetpath}/users/gen_users.sql
-  echo "PROMPT" >> ${targetpath}/users/gen_users.sql
-  echo "" >> ${targetpath}/users/gen_users.sql
-  echo "" >> ${targetpath}/users/gen_users.sql
-  deftablespace="users"
-  if [[ ${db_adminuser} != "sys" ]]; then
-    deftablespace="data"
-  fi
-  echo "Prompt creating users" >> ${targetpath}/users/gen_users.sql
   if [ ${db_scheme_type,,} == "m" ]; then
-    echo "@@templates/create_schema_users.sql ^data_schema ^db_app_pwd ${deftablespace}" >> ${targetpath}/users/gen_users.sql
-    echo "@@templates/create_schema_users.sql ^logic_schema ^db_app_pwd ${deftablespace}" >> ${targetpath}/users/gen_users.sql
-    echo "@@templates/create_schema_users.sql ^app_schema ^db_app_pwd ${deftablespace}" >> ${targetpath}/users/gen_users.sql
-    echo "@@templates/create_deployment_user.sql ^db_app_user ^db_app_pwd ^data_schema ^logic_schema ^app_schema ${deftablespace}" >> ${targetpath}/users/gen_users.sql
+    cp -rf .bash4xcl/scripts/setup/users/01_data.sql ${targetpath}/users/01_${project_name}_data.sql
+    cp -rf .bash4xcl/scripts/setup/users/02_logic.sql ${targetpath}/users/02_${project_name}_logic.sql
+    cp -rf .bash4xcl/scripts/setup/users/03_app.sql ${targetpath}/users/03_${project_name}_app.sql
+    cp -rf .bash4xcl/scripts/setup/users/04_depl.sql ${targetpath}/users/04_${project_name}_depl.sql
   else
-    echo "@@templates/create_schema_users.sql ^app_schema ^db_app_pwd" >> ${targetpath}/users/gen_users.sql
+    cp -rf .bash4xcl/scripts/setup/users/template/03_app.sql ${targetpath}/users/03_${project_name}_app.sql
   fi
-  echo "" >> ${targetpath}/users/gen_users.sql
-  echo "Prompt" >> ${targetpath}/users/gen_users.sql
-  echo "grant execute on sys.dbms_rls to public;" >> ${targetpath}/users/gen_users.sql
+
 
   # ask for application IDs
   read -p "Enter application IDs (comma separated) you wish to use initialy [1000,2000]: " apex_ids
   apex_ids=${apex_ids:-"1000,2000"}
 
   # ask for restful Modulsa
-  read -p "Enter restful Moduls (comma separated) you wish to use initialy [com.${PROJECT}.api.version,com.${PROJECT}.api.test]: " rest_modules
-  rest_modules=${rest_modules:-"com.${PROJECT}.api.version,com.${PROJECT}.api.test"}
+  read -p "Enter restful Moduls (comma separated) you wish to use initialy [com.${project_name}.api.version,com.${project_name}.api.test]: " rest_modules
+  rest_modules=${rest_modules:-"com.${project_name}.api.version,com.${project_name}.api.test"}
 
 
   # copy vscode files
@@ -345,6 +357,8 @@ generate() {
   # add rest Modules to vscode task
   lineNum="`grep -Fn -m 1 ARRAY_OF_AVAILABLE_REST_MODULES .vscode/tasks.json | grep -Po '^[0-9]+'`"
   sed -i ${lineNum}s/.*/"            \"options\": [\"SCHEMA\",${restmodulesquotes}], \/\/ \$ARRAY_OF_AVAILABLE_REST_MODULES"/ .vscode/tasks.json
+
+  show_generate_summary ${project_name}
 } # generate
 
 is_any_schema_installed () {
@@ -361,13 +375,18 @@ is_any_schema_installed () {
 }
 
 export_schema() {
-  local targetschema=${1:-""}
+  local targetschema=${1:-"ALL"}
   local object_name=${2:-"ALL"}
-  echo "object_name: $object_name"
+
+  echo "targetschema: $targetschema"
+  echo "object_name:  $object_name"
+
+  # export file wegräumen
   for file in $(ls db | grep 'exp.zip')
   do
     rm "db/${file}"
   done
+
 
   if [ -z "$DB_APP_PWD" ]
   then
@@ -375,14 +394,31 @@ export_schema() {
     DB_APP_PWD=${pass}
   fi
 
-  exit | sql -s "$(get_connect_string $targetschema)" @.bash4xcl/scripts/schema_export/export.sql ${object_name}
+  if [[ $targetschema == "ALL" ]]; then
+    for schema in "${SCHEMAS[@]}"
+    do
+      echo_warning " ... exporting $schema"
+      exit | sql -s "$(get_connect_string $schema)" @.bash4xcl/scripts/schema_export/export.sql ${object_name}
+      if [[ -f "db/$schema.exp.zip" ]]; then
+        unzip -qo "db/$schema.exp.zip" -d "db/${schema}"
+        rm "db/$schema.exp.zip"
+      fi
+    done
+  else
+    echo_warning " ... exporting $targetschema"
+    exit | sql -s "$(get_connect_string $targetschema)" @.bash4xcl/scripts/schema_export/export.sql ${object_name}
+    if [[ -f "db/$targetschema.exp.zip" ]]; then
+      unzip -qo "db/$targetschema.exp.zip" -d "db/${targetschema}"
+      rm "db/$targetschema.exp.zip"
+    fi
+  fi
 
-  for file in $(ls db | grep 'exp.zip')
-  do
-    unzip -qo "db/${file}" -d "db/${targetschema}"
+  # for file in $(ls db | grep 'exp.zip')
+  # do
+  #   unzip -qo "db/${file}" -d "db/${targetschema}"
 
-    rm "db/${file}"
-  done
+  #   rm "db/${file}"
+  # done
 
   echo -e "${GREEN}Done${NC}"
 } # export_schema
@@ -441,13 +477,13 @@ else
       generate $project
       ;;
     install)
-      yes="NO"
+      force="NO"
 
        # Process install options
-      while getopts ":y" opt; do
+      while getopts ":f" opt; do
         case ${opt} in
-          y )
-            yes="YES"
+          f )
+            force="YES"
             ;;
           \? )
             echo_error "Invalid Option: -$OPTARG"
@@ -457,15 +493,22 @@ else
       done
       shift $((OPTIND -1))
 
-      install $yes
+      install $force
 
       ;;
 
     export)
       [[ -z ${1-} ]] \
-        && echo_error "ERROR: You have to specify a source_schema"
+        && echo_error "ERROR: You have to specify a target-schema or ALL" \
+        && exit 1
+      targetschema=$1
 
-      targetschema=$1; shift  # Remove 'export' from the argument list
+      if [[ $targetschema != "ALL" ]]; then
+        if [[ ! " ${SCHEMAS[@]} " =~ " ${targetschema} " ]]; then
+          echo_error "ERROR: unknown targetschema $targetschema (use ALL or anything of: ${SCHEMAS[*]})"
+          exit 1
+        fi
+      fi
 
       object=""
       # Process package options
@@ -473,6 +516,10 @@ else
         case ${opt} in
           o )
             object=$OPTARG
+            if [[ $targetschema == "ALL" ]]; then
+              echo_error  "specific object export requires a target-schema"
+              exit 1
+            fi
             ;;
           \? )
             echo_error  "Invalid Option: -$OPTARG"
