@@ -79,9 +79,10 @@ fi
 # get branch name
 branch=$(git rev-parse --symbolic-full-name --abbrev-ref HEAD)
 
-if [[ ! "$branch" =~ ^(develop|test|acceptance|master)$ ]]; then
-    echo_warning "$branch is not in the list using develop"
-    branch=develop
+# do we know the branch???
+if [[ ! " ${BRANCHES[@]} " =~ " ${branch} " ]]; then
+    echo_error "unknown branch $branch - add it to build.env"
+    exit 1
 fi
 
 # at INIT there is no pretreatment or an evaluation of the table_ddl
