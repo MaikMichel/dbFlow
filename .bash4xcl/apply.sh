@@ -261,7 +261,7 @@ execute_schema_hook_scripts() {
   local currentpath=${2:-"/"}
   local sqlfile="tmp_hook_${entrypath}.sql"
 
-  if [[ -d "_hook/${entrypath}" ]]
+  if [[ -d ".hooks/${entrypath}" ]]
   then
     echo "executing schema hook entrypoint ${entrypath} in ${currentpath}" | write_log
     echo "set define '^'" > ${sqlfile}
@@ -272,10 +272,10 @@ execute_schema_hook_scripts() {
     echo "define VERSION = '^2'" >> ${sqlfile}
     echo "set timing on;" >> ${sqlfile}
     echo "spool ^SPOOLFILE append;" >> ${sqlfile}
-    for file in $(ls _hook/${entrypath} | sort )
+    for file in $(ls .hooks/${entrypath} | sort )
     do
-      echo "Prompt executing db/${currentpath}_hook/${entrypath}/${file}" >> ${sqlfile}
-      echo "@_hook/${entrypath}/${file} ^SPOOLFILE ^VERSION" >> ${sqlfile}
+      echo "Prompt executing db/${currentpath}.hooks/${entrypath}/${file}" >> ${sqlfile}
+      echo "@.hooks/${entrypath}/${file} ^SPOOLFILE ^VERSION" >> ${sqlfile}
       echo "" >> ${sqlfile}
     done
 
@@ -285,7 +285,7 @@ execute_schema_hook_scripts() {
 
     if [ $? -ne 0 ]
     then
-      echo "ERROR when executing db/${currentpath}_hook/${sqlfile}" | write_log $failure
+      echo "ERROR when executing db/${currentpath}.hooks/${sqlfile}" | write_log $failure
       cat ${sqlfile} >> ${full_log_file}
       manage_result "failure"
     fi
@@ -299,9 +299,9 @@ execute_global_hook_scripts() {
   local entrypath=$1    # pre or post
   local targetschema=""
 
-  if [[ -d "_hook/${entrypath}" ]]
+  if [[ -d ".hooks/${entrypath}" ]]
   then
-    for file in $(ls _hook/${entrypath} | sort )
+    for file in $(ls .hooks/${entrypath} | sort )
     do
       echo "executing global hook entrypoint ${entrypath}" | write_log
       case ${file} in
@@ -315,7 +315,7 @@ execute_global_hook_scripts() {
           targetschema=${APP_SCHEMA}
           ;;
       esac
-      runfile="_hook/${entrypath}/${file}"
+      runfile=".hooks/${entrypath}/${file}"
       echo "executing file ${runfile}" | write_log
       exit | $SQLCL -S "$(get_connect_string $targetschema)" @${runfile} ${full_log_file} ${patch}
       runfile=""
@@ -324,7 +324,7 @@ execute_global_hook_scripts() {
 
     if [ $? -ne 0 ]
     then
-      echo "ERROR when executing db/_hook/${entrypath}/${file}" | write_log $failure
+      echo "ERROR when executing db/.hooks/${entrypath}/${file}" | write_log $failure
       manage_result "failure"
     fi
   fi
