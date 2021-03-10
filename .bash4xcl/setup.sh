@@ -310,7 +310,7 @@ generate() {
     cp -rf .bash4xcl/scripts/setup/users/03_app.sql ${targetpath}/users/03_${project_name}_app.sql
     cp -rf .bash4xcl/scripts/setup/users/04_depl.sql ${targetpath}/users/04_${project_name}_depl.sql
   else
-    cp -rf .bash4xcl/scripts/setup/users/template/03_app.sql ${targetpath}/users/03_${project_name}_app.sql
+    cp -rf .bash4xcl/scripts/setup/users/03_app.sql ${targetpath}/users/03_${project_name}_app.sql
   fi
 
 

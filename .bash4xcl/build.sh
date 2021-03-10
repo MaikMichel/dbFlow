@@ -36,13 +36,77 @@ usage() {
 # get required functions and vars
 source ./.bash4xcl/lib.sh
 
-# set project-settings from build
-source ./build.env
+# set project-settings from build.env if exists
+if [ -e ./build.env ]
+then
+  source ./build.env
+fi
+# check require vars from build.env
+do_exit="NO"
+if [[ -z ${PROJECT:-} ]]; then
+  echo_error "undefined var: PROJECT"
+  do_exit="YES"
+fi
+
+if [[ -z ${APP_SCHEMA:-} ]]; then
+  echo_error "undefined var: APP_SCHEMA"
+  do_exit="YES"
+fi
+if [[ -z ${DATA_SCHEMA:-} ]]; then
+  echo_error "undefined var: DATA_SCHEMA"
+  do_exit="YES"
+fi
+if [[ -z ${LOGIC_SCHEMA:-} ]]; then
+  echo_error "undefined var: LOGIC_SCHEMA"
+  do_exit="YES"
+fi
+
+if [[ -z ${WORKSPACE:-} ]]; then
+  echo_error "undefined var: WORKSPACE"
+  do_exit="YES"
+fi
+
+if [ -z ${SCHEMAS:-} ]
+then
+  if [ -z ${SCHEMASDELIMITED:-} ]
+  then
+    echo_error "undefined var: SCHEMAS"
+    usage
+  else
+    SCHEMAS=(`echo ${SCHEMASDELIMITED} | sed 's/,/\n/g'`)
+  fi
+fi
+
+if [[ -z ${BRANCHES:-} ]]; then
+  echo_error "undefined var: BRANCHES"
+  do_exit="YES"
+fi
+
+####
+if [[ ${do_exit} == "YES" ]]; then
+  echo_warning "aborting"
+  exit 1;
+fi
+
 
 # set target-env settings from file if exists
 if [ -e ./apply.env ]
 then
   source ./apply.env
+fi
+
+# check require vars from apply.env
+do_exit="NO"
+if [[ -z ${DEPOT_PATH+x} ]]; then
+  echo_error "undefined var: DEPOT_PATH"
+  do_exit="YES"
+fi
+
+
+####
+if [[ ${do_exit} == "YES" ]]; then
+  echo_warning "aborting"
+  exit 1;
 fi
 
 
@@ -70,12 +134,7 @@ else
   fi
 fi
 
-if [ -z $DEPOT_PATH ]
-then
-  echo_error "Depotpath not defined"
-  usage
-fi
-
+# TODO: Hier kommt es zu einem Fehler, wenn nichts im HEAD
 # get branch name
 branch=$(git rev-parse --symbolic-full-name --abbrev-ref HEAD)
 
@@ -153,10 +212,9 @@ if [ "${mode}" == "init" ]; then
  cp -R .bash4xcl $targetpath
  cp -R db $targetpath
  cp -R apex $targetpath
- cp build.sh $targetpath
- cp build.env $targetpath
- cp apply.sh $targetpath
- cp .gitignore $targetpath
+ cp -R rest $targetpath
+ [ ! -f build.env ] || cp build.env $targetpath
+ [ ! -f .gitignore ] || cp .gitignore $targetpath
 else
 
   if [ $(uname) == "Darwin" ]; then
@@ -405,7 +463,7 @@ then
 fi
 
 # on branch master ask if we should tag current version and conmmit
-if [ $branch == "master" ]
+if [ $branch == "masterX" ]
 then
   echo
   echo "Do you wish to commit, tag and push the new version to origin"
@@ -433,7 +491,7 @@ then
   echo "calling apply"
 
   export SQLCL=sqlplus
-  ./apply.sh ${mode} ${version}
+  .bash4xcl/apply.sh ${mode} ${version}
 fi
 
 echo "Done"

@@ -34,8 +34,11 @@ usage() {
 # get required functions and vars
 source ./.bash4xcl/lib.sh
 
-# set project-settings from build
-source ./build.env
+# set project-settings from build.env if exists
+if [ -e ./build.env ]
+then
+  source ./build.env
+fi
 
 # set target-env settings from file if exists
 if [ -e ./apply.env ]
@@ -78,19 +81,19 @@ if [[ ! "$mode" =~ ^(init|patch)$ ]]; then
 fi
 
 
-if [ -z $DEPOT_PATH ]
+if [ -z ${DEPOT_PATH:-} ]
 then
   echo_error "Depotpath not defined"
   usage
 fi
 
-if [ -z $STAGE ]
+if [ -z ${STAGE:-} ]
 then
   echo_error  "Stage not defined"
   usage
 fi
 
-if [ -z $DB_APP_USER ]
+if [ -z ${DB_APP_USER:-} ]
 then
   echo "App-User not defined"
   usage
@@ -102,6 +105,16 @@ then
   usage
 fi
 
+if [ -z ${SCHEMAS:-} ]
+then
+  if [ -z ${SCHEMASDELIMITED:-} ]
+  then
+    echo "Schmemas not defined"
+    usage
+  else
+    SCHEMAS=(`echo ${SCHEMASDELIMITED} | sed 's/,/\n/g'`)
+  fi
+fi
 
 patch_target_path=.
 
@@ -179,7 +192,7 @@ print_info()
   echo -e "data_schema:  ${BWHITE}${DATA_SCHEMA}${NC}" | write_log
   echo -e "logic_schema: ${BWHITE}${LOGIC_SCHEMA}${NC}" | write_log
   echo -e "workspace:    ${BWHITE}${WORKSPACE}${NC}" | write_log
-  echo -e "schemas:      ${BWHITE}${SCHEMAS}${NC}" | write_log
+  echo -e "schemas:      ${BWHITE}${SCHEMAS[@]}${NC}" | write_log
   echo -e "----------------------------------------------------------" | write_log
   echo -e "stage:        ${BWHITE}${STAGE}${NC}" | write_log
   echo -e "depot:        ${BWHITE}${DEPOT_PATH}${NC}" | write_log
@@ -425,6 +438,9 @@ set_apps_unavailable() {
             apex_util.set_application_status(p_application_id => v_application_id,
                                             p_application_status => 'UNAVAILABLE',
                                             p_unavailable_value => '<h1><center>Wegen Wartungsarbeiten ist die Applikation vor&uuml;bergehend nicht erreichbar</center></h1>' );
+        Exception
+          when no_data_found then
+            dbms_output.put_line((chr(27) || '[31m') || 'Workspace: '||upper('${WORKSPACE}')||' not found!' || (chr(27) || '[0m'));
         End;
 /
 !
