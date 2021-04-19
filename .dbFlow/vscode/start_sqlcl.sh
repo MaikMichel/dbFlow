@@ -2,7 +2,7 @@
 
 SOURCE_FILE=$1
 
-source ./.bash4xcl/lib.sh
+source ./.dbFlow/lib.sh
 
 # params
 source ./build.env

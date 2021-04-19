@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source ../../../.bash4xcl/lib.sh
+source ../../../.dbFlow/lib.sh
 
 # target environment
 source ../../../build.env

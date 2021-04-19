@@ -2,7 +2,7 @@
 # echo "Your script args ($#) are: $@"
 
 usage() {
-  echo -e "${BYELLOW}apply [bash4xcl]${NC} - applies the given build to target database"
+  echo -e "${BYELLOW}apply [dbFlow]${NC} - applies the given build to target database"
   echo -e "------------------------------------------------------------------------------"
   echo -e " Looks in defined depot directory for a build-artifact and applies it to "
   echo -e " specified database connection. All build propterties ard define in build.env."
@@ -32,7 +32,7 @@ usage() {
   exit 1
 }
 # get required functions and vars
-source ./.bash4xcl/lib.sh
+source ./.dbFlow/lib.sh
 
 # set project-settings from build.env if exists
 if [ -e ./build.env ]
@@ -353,7 +353,7 @@ install_db_schemas()
     do
       # On init mode schema content will be dropped
         echo "DROPING ALL OBJECTS on schema $schema" | write_log
-        exit | $SQLCL -S "$(get_connect_string $schema)" @.bash4xcl/lib/drop_all.sql ${full_log_file} ${patch}
+        exit | $SQLCL -S "$(get_connect_string $schema)" @.dbFlow/lib/drop_all.sql ${full_log_file} ${patch}
     done
   fi
 
@@ -510,7 +510,7 @@ install_apps() {
 
 exec_final_unit_tests()
 {
-  if [ -e .bash4xcl/lib/execute_tests.sql ]
+  if [ -e .dbFlow/lib/execute_tests.sql ]
   then
   echo "Start testing with utplsql" | write_log
 
@@ -518,10 +518,10 @@ exec_final_unit_tests()
     for schema in "${SCHEMAS[@]}"
     do
       echo "Executing unit tests for schema $schema " | write_log
-      exit | $SQLCL -S "$(get_connect_string $schema)" @.bash4xcl/lib/execute_tests.sql ${full_log_file} ${patch}
+      exit | $SQLCL -S "$(get_connect_string $schema)" @.dbFlow/lib/execute_tests.sql ${full_log_file} ${patch}
       if [ $? -ne 0 ]
       then
-        echo "ERROR when executing .bash4xcl/lib/execute_tests.sql" | write_log $failure
+        echo "ERROR when executing .dbFlow/lib/execute_tests.sql" | write_log $failure
         manage_result "failure"
       fi
     done

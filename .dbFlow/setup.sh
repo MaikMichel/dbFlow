@@ -2,7 +2,7 @@
 # echo "Your script args ($#) are: $@"
 
 usage() {
-  echo -e "${BYELLOW}setup [bash4xcl]${NC} - generate project structure and install dependencies. "
+  echo -e "${BYELLOW}setup [dbFlow]${NC} - generate project structure and install dependencies. "
 
   echo
   echo -e "${BWHITE}USAGE${NC}"
@@ -31,7 +31,7 @@ usage() {
   exit 1
 }
 # get required functions and vars
-source ./.bash4xcl/lib.sh
+source ./.dbFlow/lib.sh
 
 # target environment
 [ ! -f ./build.env ] || source ./build.env
@@ -86,7 +86,7 @@ show_generate_summary() {
   echo -e "So before you start installing the components, you can edit or add them in the respective directories. "
   echo -e "Features are stored in the directory with the same name. "
   echo -e "At the beginning these are logger, utPlsql, teplsql and tapi."
-  echo -e "You can also find more information in the readme: ${BYELLOW}.bash4xcl/readme.md${NC}"
+  echo -e "You can also find more information in the readme: ${BYELLOW}.dbFlow/readme.md${NC}"
 
 }
 
@@ -291,12 +291,12 @@ generate() {
   mkdir -p ${depot_path}
 
   # copy some examples into it
-  cp -rf .bash4xcl/scripts/setup/workspaces/* ${targetpath}/workspaces
-  cp -rf .bash4xcl/scripts/setup/workspace_users/* ${targetpath}/workspace_users
-  cp -rf .bash4xcl/scripts/setup/acls/* ${targetpath}/acls
+  cp -rf .dbFlow/scripts/setup/workspaces/* ${targetpath}/workspaces
+  cp -rf .dbFlow/scripts/setup/workspace_users/* ${targetpath}/workspace_users
+  cp -rf .dbFlow/scripts/setup/acls/* ${targetpath}/acls
 
   if [ ${with_tools,,} == "y" ]; then
-    cp -rf .bash4xcl/scripts/setup/features/* ${targetpath}/features
+    cp -rf .dbFlow/scripts/setup/features/* ${targetpath}/features
     chmod +x ${targetpath}/features/*.sh
   else
     mkdir -p ${targetpath}/features
@@ -305,12 +305,12 @@ generate() {
 
   # create gen_users..
   if [ ${db_scheme_type,,} == "m" ]; then
-    cp -rf .bash4xcl/scripts/setup/users/01_data.sql ${targetpath}/users/01_${project_name}_data.sql
-    cp -rf .bash4xcl/scripts/setup/users/02_logic.sql ${targetpath}/users/02_${project_name}_logic.sql
-    cp -rf .bash4xcl/scripts/setup/users/03_app.sql ${targetpath}/users/03_${project_name}_app.sql
-    cp -rf .bash4xcl/scripts/setup/users/04_depl.sql ${targetpath}/users/04_${project_name}_depl.sql
+    cp -rf .dbFlow/scripts/setup/users/01_data.sql ${targetpath}/users/01_${project_name}_data.sql
+    cp -rf .dbFlow/scripts/setup/users/02_logic.sql ${targetpath}/users/02_${project_name}_logic.sql
+    cp -rf .dbFlow/scripts/setup/users/03_app.sql ${targetpath}/users/03_${project_name}_app.sql
+    cp -rf .dbFlow/scripts/setup/users/04_depl.sql ${targetpath}/users/04_${project_name}_depl.sql
   else
-    cp -rf .bash4xcl/scripts/setup/users/03_app.sql ${targetpath}/users/03_${project_name}_app.sql
+    cp -rf .dbFlow/scripts/setup/users/03_app.sql ${targetpath}/users/03_${project_name}_app.sql
   fi
 
 
@@ -326,7 +326,7 @@ generate() {
   # copy vscode files
   [ -d .vscode ] || mkdir .vscode
   # TODO backup existing tasks.json
-  cp -rf .bash4xcl/vscode/tasks-template.json .vscode/tasks.json
+  cp -rf .dbFlow/vscode/tasks-template.json .vscode/tasks.json
 
   # split ids gen directories
   apexids=(`echo $apex_ids | sed 's/,/\n/g'`)
@@ -398,7 +398,7 @@ export_schema() {
     for schema in "${SCHEMAS[@]}"
     do
       echo_warning " ... exporting $schema"
-      exit | sql -s "$(get_connect_string $schema)" @.bash4xcl/scripts/schema_export/export.sql ${object_name}
+      exit | sql -s "$(get_connect_string $schema)" @.dbFlow/scripts/schema_export/export.sql ${object_name}
       if [[ -f "db/$schema.exp.zip" ]]; then
         unzip -qo "db/$schema.exp.zip" -d "db/${schema}"
         rm "db/$schema.exp.zip"
@@ -406,7 +406,7 @@ export_schema() {
     done
   else
     echo_warning " ... exporting $targetschema"
-    exit | sql -s "$(get_connect_string $targetschema)" @.bash4xcl/scripts/schema_export/export.sql ${object_name}
+    exit | sql -s "$(get_connect_string $targetschema)" @.dbFlow/scripts/schema_export/export.sql ${object_name}
     if [[ -f "db/$targetschema.exp.zip" ]]; then
       unzip -qo "db/$targetschema.exp.zip" -d "db/${targetschema}"
       rm "db/$targetschema.exp.zip"

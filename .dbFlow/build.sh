@@ -2,7 +2,7 @@
 # echo "Your script args ($#) are: $@"
 
 usage() {
-  echo -e "${BYELLOW}build [bash4xcl]${NC} - build a patch with eiter all or only with changed files"
+  echo -e "${BYELLOW}build [dbFlow]${NC} - build a patch with eiter all or only with changed files"
   echo -e "-----------------------------------------------------------------------------"
   echo -e "  If mode is init a build file from the current directory is build and placed "
   echo -e "  inside the depot directory. If mode is patch then only the files which differ"
@@ -34,7 +34,7 @@ usage() {
   exit 1
 }
 # get required functions and vars
-source ./.bash4xcl/lib.sh
+source ./.dbFlow/lib.sh
 
 # set project-settings from build.env if exists
 if [ -e ./build.env ]
@@ -209,7 +209,7 @@ mkdir -p $targetpath
 # copy (and overwrite forcefully) in exact directory structure as in git repo
 echo "Copy files ..."
 if [ "${mode}" == "init" ]; then
- cp -R .bash4xcl $targetpath
+ cp -R .dbFlow $targetpath
  cp -R db $targetpath
  cp -R apex $targetpath
  cp -R rest $targetpath
@@ -491,7 +491,7 @@ then
   echo "calling apply"
 
   export SQLCL=sqlplus
-  .bash4xcl/apply.sh ${mode} ${version}
+  .dbFlow/apply.sh ${mode} ${version}
 fi
 
 echo "Done"

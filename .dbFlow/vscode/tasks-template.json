@@ -24,7 +24,7 @@
             "type": "shell",
             "command": "bash",
             "args": [
-                ".bash4xcl/vscode/start_sqlcl.sh",
+                ".dbFlow/vscode/start_sqlcl.sh",
                 "\"${relativeFile}\""
             ],
             "group": {
@@ -38,7 +38,7 @@
             "type": "shell",
             "command": "bash",
             "args": [
-                ".bash4xcl/vscode/export_app.sh",
+                ".dbFlow/vscode/export_app.sh",
                 "${input:applicationIDs}"
             ],
             "group": {
@@ -52,7 +52,7 @@
             "type": "shell",
             "command": "bash",
             "args": [
-                ".bash4xcl/vscode/deploy_file.sh",
+                ".dbFlow/vscode/deploy_file.sh",
                 "\"${relativeFile}\""
             ],
             "group": {
@@ -80,7 +80,7 @@
         {
             "label": "Test - Testen des akuellen Packages",
             "type": "shell",
-            "command": ".bash4xcl/vscode/test_file.sh \"${file}\" \"${fileBasenameNoExtension}\"",
+            "command": ".dbFlow/vscode/test_file.sh \"${file}\" \"${fileBasenameNoExtension}\"",
             "group": {
                 "kind": "test",
                 "isDefault": true

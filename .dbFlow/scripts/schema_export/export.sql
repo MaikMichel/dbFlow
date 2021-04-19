@@ -6,8 +6,8 @@ define OBJECT = '^1'
 
 Prompt uploading export package
 set feedback off
-@@.bash4xcl/scripts/schema_export/export_schema.pks
-@@.bash4xcl/scripts/schema_export/export_schema.pkb
+@@.dbFlow/scripts/schema_export/export_schema.pks
+@@.dbFlow/scripts/schema_export/export_schema.pkb
 set feedback on
 set serveroutput on
 Prompt exporting schema...
