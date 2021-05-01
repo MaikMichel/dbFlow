@@ -72,14 +72,17 @@ if [[ ${REST_MODULE} == "SCHEMA" ]]; then
   sql -s -l $CONNECTION <<!
     spool ${REST_MODULE}.sql
     rest export
+    prompt /
     spool off
 
 !
 
 else
+  [ -d modules ] || mkdir modules
   sql -s -l $CONNECTION <<!
     spool modules/${REST_MODULE}.sql
     rest export ${REST_MODULE}
+    prompt /
     spool off
 !
 
