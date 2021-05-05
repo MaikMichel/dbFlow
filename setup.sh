@@ -199,18 +199,26 @@ generate() {
   echo "" >> build.env
   echo "# what are the schema-names" >> build.env
   if [ ${db_scheme_type,,} == "m" ]; then
-    echo "APP_SCHEMA=\${PROJECT}_app" >> build.env
-    echo "DATA_SCHEMA=\${PROJECT}_data" >> build.env
-    echo "LOGIC_SCHEMA=\${PROJECT}_logic" >> build.env
+    echo "APP_SCHEMA=${project_name}_app" >> build.env
+    echo "DATA_SCHEMA=${project_name}_data" >> build.env
+    echo "LOGIC_SCHEMA=${project_name}_logic" >> build.env
   else
-    echo "APP_SCHEMA=\${PROJECT}" >> build.env
-    echo "DATA_SCHEMA=\${PROJECT}" >> build.env
-    echo "LOGIC_SCHEMA=\${PROJECT}" >> build.env
+    echo "APP_SCHEMA=${project_name}" >> build.env
+    echo "DATA_SCHEMA=${project_name}" >> build.env
+    echo "LOGIC_SCHEMA=${project_name}" >> build.env
+  fi
+  echo "" >> build.env
+  echo "" >> build.env
+  echo "# Use DB_USER as Proxy to multischemas, otherwise connect directly" >> build.env
+  if [ ${db_scheme_type,,} == "m" ]; then
+    echo "USE_PROXY=TRUE" >> build.env
+  else
+    echo "USE_PROXY=FALSE" >> build.env
   fi
 
   echo "" >> build.env
   echo "# workspace app belongs to" >> build.env
-  echo "WORKSPACE=\${PROJECT}" >> build.env
+  echo "WORKSPACE=${project_name}" >> build.env
   echo "" >> build.env
   echo "# array of schemas" >> build.env
   if [ ${db_scheme_type,,} == "m" ]; then
@@ -255,9 +263,9 @@ generate() {
   echo "" >> apply.env
   echo "# Deployment User" >> apply.env
   if [ ${db_scheme_type,,} == "m" ]; then
-    echo "DB_APP_USER=\${PROJECT}_depl" >> apply.env
+    echo "DB_APP_USER=${project_name}_depl" >> apply.env
   else
-    echo "DB_APP_USER=\${PROJECT}" >> apply.env
+    echo "DB_APP_USER=${project_name}" >> apply.env
   fi
   echo "DB_APP_PWD=${db_app_pwd}" >> apply.env
   echo "" >> apply.env
@@ -272,18 +280,22 @@ generate() {
   echo "# this is used to get artifact from depot_path" >> apply.env
   echo "STAGE=develop" >> apply.env
   echo "" >> apply.env
-  echo "# Use DB_USER as Proxy to multischemas, otherwise connect directly" >> apply.env
-  if [ ${db_scheme_type,,} == "m" ]; then
-    echo "USE_PROXY=TRUE" >> apply.env
-  else
-    echo "USE_PROXY=FALSE" >> apply.env
-  fi
   echo "" >> apply.env
   echo "# ADD this to original APP-NUM" >> apply.env
   echo "APP_OFFSET=0" >> apply.env
   echo "" >> apply.env
   echo "# What is the APEX Owner" >> apply.env
   echo "APEX_USER=${apex_user}" >> apply.env
+
+  # write gitignore
+  echo "# dbFlow target infos" >> .gitignore
+  echo "apply.env" >> .gitignore
+
+  echo "" >> .gitignore
+  echo "static files" >> .gitignore
+  echo "static/f*/dist" >> .gitignore
+
+
 
 
   # create targetpath directory
@@ -334,7 +346,7 @@ generate() {
   for apxID in "${apexids[@]}"
   do
       mkdir -p apex/f"$apxID"
-      mkdir -p static/f"$apxID"
+      mkdir -p static/f"$apxID"/{dist/{css,img,js},src/{css,img,js}}
   done
 
   # add application IDs to vscode task
