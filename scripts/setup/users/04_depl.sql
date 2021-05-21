@@ -38,7 +38,7 @@ alter user ^logic_schema
   grant connect through ^db_app_user;
 
 alter user ^app_schema
-  grant connect through ^app_schema;
+  grant connect through ^db_app_user;
 
 
 prompt **********************************************************************
