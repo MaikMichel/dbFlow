@@ -414,6 +414,8 @@ export_schema() {
       if [[ -f "db/$schema.exp.zip" ]]; then
         unzip -qo "db/$schema.exp.zip" -d "db/${schema}"
         rm "db/$schema.exp.zip"
+      else
+        echo_error "no export artifacts found!"
       fi
     done
   else
@@ -422,6 +424,8 @@ export_schema() {
     if [[ -f "db/$targetschema.exp.zip" ]]; then
       unzip -qo "db/$targetschema.exp.zip" -d "db/${targetschema}"
       rm "db/$targetschema.exp.zip"
+    else
+      echo_error "no export artifacts found!"
     fi
   fi
 
