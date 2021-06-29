@@ -49,6 +49,10 @@ If you use VSCode and build tasks to minify JavaScript or CSS files, you should 
   npm install -g uglifycss terser @babel/core @babel/cli @babel/preset-env
   ```
 
+- dbFlow is using bash. So on Windows make sure you are using Git-Bash
+- If you want to use schema-export you must hav APEX installed, cause we are using apex_zip Package
+
+
 
 ## Todo
 
