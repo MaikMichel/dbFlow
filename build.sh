@@ -146,7 +146,7 @@ fi
 
 # at INIT there is no pretreatment or an evaluation of the table_ddl
 if [ "${mode}" == "init" ]; then
-  array=( sequences tables indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies types sources/packages sources/functions sources/procedures views sources/triggers jobs tests/packages ddl/init dml/init )
+  array=( sequences tables indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies types sources/packages sources/functions sources/procedures views sources/triggers jobs tests/packages ddl/base ddl/init dml/base dml/init)
 else
   # building pre and post based on branches
   pres=()
@@ -160,7 +160,7 @@ else
   pres+=( ddl/pre )
   pres+=( dml/pre )
 
-  post=( dml/post ddl/post )
+  post=( ddl/base dml/base ddl/post dml/post  )
   for i in ${!BRANCHES[@]}; do
     if [ $i -gt 0 ]
     then
