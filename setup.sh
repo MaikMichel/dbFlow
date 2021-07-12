@@ -79,7 +79,7 @@ show_generate_summary() {
   echo -e "Your project ${YELLOW}$1${NC} has just been created ${GREEN}successfully${NC}."
   echo -e "APEX applications are stored in the ${CYAN}apex${NC} directory. "
   echo -e "If you use REST servies, you can store them in the ${CYAN}rest${NC} directory. "
-  echo -e "Both can be exported to VSCode with Ctrl+Shift+B. "
+  echo -e "Both can be exported to VSCode with our VSCode Exctension (dbFlow-vsce)"
   echo -e
   echo -e "The ${CYAN}db${NC} directory contains all your database objects, whereas the ${CYAN}_setup${NC} folder contains "
   echo -e "objects / dependencies whose installation requires ${PURPLE}sys${NC} permissions."
@@ -332,11 +332,6 @@ generate() {
   rest_modules=${rest_modules:-"com.${project_name}.api.version,com.${project_name}.api.test"}
 
 
-  # copy vscode files
-  [ -d .vscode ] || mkdir .vscode
-  # TODO backup existing tasks.json
-  cp -rf .dbFlow/vscode/tasks-template.json .vscode/tasks.json
-
   # split ids gen directories
   apexids=(`echo $apex_ids | sed 's/,/\n/g'`)
   apexidsquotes="\""${apex_ids/,/"\",\""}"\""
@@ -345,13 +340,6 @@ generate() {
       mkdir -p apex/f"$apxID"
       mkdir -p static/f"$apxID"/{dist/{css,img,js},src/{css,img,js}}
   done
-
-  # add application IDs to vscode task
-  lineNum="`grep -Fn -m 1 DEFAULT_APP_ID .vscode/tasks.json | grep -Po '^[0-9]+'`"
-  sed -i ${lineNum}s/.*/"            \"default\": \"${apexids[0]}\", \/\/ \$DEFAULT_APP_ID"/ .vscode/tasks.json
-
-  lineNum="`grep -Fn -m 1 ARRAY_OF_AVAILABLE_APP_IDS .vscode/tasks.json | grep -Po '^[0-9]+'`"
-  sed -i ${lineNum}s/.*/"            \"options\": [${apexidsquotes}], \/\/ \$ARRAY_OF_AVAILABLE_APP_IDS"/ .vscode/tasks.json
 
   # split modules
   restmodules=(`echo $rest_modules | sed 's/,/\n/g'`)
@@ -363,9 +351,6 @@ generate() {
   mkdir -p rest/privileges
   mkdir -p rest/roles
 
-  # add rest Modules to vscode task
-  lineNum="`grep -Fn -m 1 ARRAY_OF_AVAILABLE_REST_MODULES .vscode/tasks.json | grep -Po '^[0-9]+'`"
-  sed -i ${lineNum}s/.*/"            \"options\": [\"SCHEMA\",${restmodulesquotes}], \/\/ \$ARRAY_OF_AVAILABLE_REST_MODULES"/ .vscode/tasks.json
 
   show_generate_summary ${project_name}
 } # generate

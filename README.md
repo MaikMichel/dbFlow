@@ -6,12 +6,18 @@ Deployment framework for Oracle Database Applications
 
 - create an Oracle Database / APEX Project per command line
 - install dependent features (Logger, utPLSQL, ...)
-- use a deployment flow, which automaicaly build and apply patches based on Git diffs
+- use a deployment flow, which automaticaly build and apply patches based on Git diffs
 - configure your project dependencies
-- compile PL/SQL and SQL towards your database connection
-- minify and upload CSS and JavaScript files to Application Static Files
-- upload images and other binary files
-- export APEX Applications and REST Modules
+
+###  If you are using VSCode you should install > [dbFlow-vsce VSCode extension](https://marketplace.visualstudio.com/items?itemName=MaikMichel.dbflow)
+With that in place you get the ability to:
+- compile SQL or PLSQL based on folder structure
+- execute tests based on folder structure
+- minify and upload JavaScript to your APEX Application
+- minify and upload CSS to your Application
+- Export APEX Applications
+- Export REST Modules
+- Create and Upload binary files for reporting (AOP)
 
 
 ## Quick Preferred way of installation
@@ -38,21 +44,10 @@ Deployment framework for Oracle Database Applications
 
 First of all you need a database. If you set up the project from scratch, you will need the login data of an admin in between. If you use the APEX functionality, this database should have a current version of APEX installed.
 
-If you use VSCode and build tasks to minify JavaScript or CSS files, you should have the following npm packages installed globally
-  - `uglifycc` to minimize CSS
-  - `terser` to minimize JavaScript
-  - `@babel/*` to transpile the JavaScript code per polyfills in a defined standard
-
-
-
-  ``` shell
-  npm install -g uglifycss terser @babel/core @babel/cli @babel/preset-env
-  ```
-
 - dbFlow is using bash. So on Windows make sure you are using Git-Bash
-- If you want to use schema-export you must hav APEX installed, cause we are using apex_zip Package
-
-
+- dbFlow can be configured to use either SQLplus or SQLcl
+- SQLcl is required to export APEX-Applications and ORDS-REST modules
+- If you want to use schema-export you must have APEX installed, cause we are using apex_zip Package
 
 ## Todo
 
