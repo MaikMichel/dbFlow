@@ -226,9 +226,6 @@ generate() {
   else
     echo "SCHEMAS=( \$APP_SCHEMA )" >> build.env
   fi
-  echo "" >> build.env
-  echo "# array of branches" >> build.env
-  echo "BRANCHES=( develop test master )" >> build.env
 
   # ask for some vars to put into file
   read -p "Enter database connections [localhost:1521/xepdb1]: " db_tns
