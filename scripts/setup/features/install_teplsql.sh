@@ -32,7 +32,7 @@ then
   DB_ADMINUSER=${DB_ADMINUSER:-"sys"}
 fi
 
-if [[ ${DB_ADMINUSER,,} != "sys" ]]; then
+if [[ $(toLowerCase $DB_ADMINUSER) != "sys" ]]; then
   DBA_OPTION=""
   teplsql_tspace="data" # no users tablespace when using autonomous db
 fi
@@ -67,7 +67,7 @@ then
     reinstall=${reinstall:-"Y"}
   fi
 
-  if [ ${reinstall,,} == "y" ]; then
+  if [ $(toLowerCase $reinstall) == "y" ]; then
     sqlplus -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
   Prompt ${teplsql_schema} droppen
   drop user ${teplsql_schema} cascade;

@@ -98,3 +98,7 @@ get_connect_string() {
     echo "$DB_APP_USER[$arg1]/$DB_APP_PWD@$DB_TNS"
   fi
 }
+
+function toLowerCase() {
+  echo "$1" | tr '[:upper:]' '[:lower:]'
+}
