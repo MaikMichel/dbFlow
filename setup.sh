@@ -107,7 +107,7 @@ install() {
     DB_ADMINUSER=${DB_ADMINUSER:-"sys"}
   fi
 
-  if [[ ${DB_ADMINUSER,,} != "sys" ]]; then
+  if [[ $(toLowerCase $DB_ADMINUSER) != "sys" ]]; then
    DBA_OPTION=""
   fi
 
@@ -124,11 +124,11 @@ install() {
   fi
 
   PROJECT_INSTALLED=$(is_any_schema_installed)
-  echo "PROJECT_INSTALLED = $PROJECT_INSTALLED"
-  if [ "${PROJECT_INSTALLED}" == "true" ] && [ ${yes} == "NO" ]
+  if [[ "${PROJECT_INSTALLED}" == *"true"* ]] && [[ ${yes} == "NO" ]]
   then
     echo_error "Project allready installed and option force not recoginized. \nTry option -f to force overwrite (drop + create)"
-    usage
+
+    exit 1
   fi
 
   print2envsql
@@ -139,7 +139,7 @@ install() {
   do
     if [[ -d "$targetpath"/$path ]]
     then
-      echo "Installing $path"
+      echo "Installing $path" 
       for file in $(ls "$targetpath"/$path | sort )
       do
         if [ -f "$targetpath"/$path/${file} ]
@@ -150,8 +150,8 @@ install() {
           if [ $EXTENSION == "sql" ]
           then
             cd $targetpath/$path
-            echo "Calling $targetpath/$path/${file}"
-            exit | sqlplus -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} @${file}
+            echo "Calling $targetpath/$path/${file}"  
+            exit | ${SQLCLI} -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} @${file} 
             cd ../../..
           elif [ $EXTENSION == "sh" ]
           then
@@ -181,12 +181,12 @@ generate() {
   db_scheme_type=${db_scheme_type:-"M"}
 
   # create directories
-  if [ ${db_scheme_type,,} == "m" ]; then
-    mkdir -p db/{.hooks/{pre,post},${project_name}_data/{.hooks/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/{packages},ddl/{init,pre,post},dml/{init,pre,post}}}
-    mkdir -p db/{.hooks/{pre,post},${project_name}_logic/{.hooks/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/{packages},ddl/{init,pre,post},dml/{init,pre,post}}}
-    mkdir -p db/{.hooks/{pre,post},${project_name}_app/{.hooks/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/{packages},ddl/{init,pre,post},dml/{init,pre,post}}}
-  elif [ ${db_scheme_type,,} == "s" ]; then
-    mkdir -p db/{.hooks/{pre,post},${project_name}/{.hooks/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/{packages},ddl/{init,pre,post},dml/{init,pre,post}}}
+  if [ $(toLowerCase $db_scheme_type) == "m" ]; then
+    mkdir -p db/{.hooks/{pre,post},${project_name}_data/{.hooks/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/packages,ddl/{init,pre,post},dml/{init,pre,post}}}
+    mkdir -p db/{.hooks/{pre,post},${project_name}_logic/{.hooks/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/packages,ddl/{init,pre,post},dml/{init,pre,post}}}
+    mkdir -p db/{.hooks/{pre,post},${project_name}_app/{.hooks/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/packages,ddl/{init,pre,post},dml/{init,pre,post}}}
+  elif [ $(toLowerCase $db_scheme_type) == "s" ]; then
+    mkdir -p db/{.hooks/{pre,post},${project_name}/{.hooks/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/packages,ddl/{init,pre,post},dml/{init,pre,post}}}
   else
     echo_error "unknown type ${db_scheme_type}"
     exit 1
@@ -198,7 +198,7 @@ generate() {
   echo "PROJECT=${project_name}" >> build.env
   echo "" >> build.env
   echo "# what are the schema-names" >> build.env
-  if [ ${db_scheme_type,,} == "m" ]; then
+  if [ $(toLowerCase $db_scheme_type) == "m" ]; then
     echo "APP_SCHEMA=${project_name}_app" >> build.env
     echo "DATA_SCHEMA=${project_name}_data" >> build.env
     echo "LOGIC_SCHEMA=${project_name}_logic" >> build.env
@@ -210,7 +210,7 @@ generate() {
   echo "" >> build.env
   echo "" >> build.env
   echo "# Use DB_USER as Proxy to multischemas, otherwise connect directly" >> build.env
-  if [ ${db_scheme_type,,} == "m" ]; then
+  if [ $(toLowerCase $db_scheme_type) == "m" ]; then
     echo "USE_PROXY=TRUE" >> build.env
   else
     echo "USE_PROXY=FALSE" >> build.env
@@ -221,7 +221,7 @@ generate() {
   echo "WORKSPACE=${project_name}" >> build.env
   echo "" >> build.env
   echo "# array of schemas" >> build.env
-  if [ ${db_scheme_type,,} == "m" ]; then
+  if [ $(toLowerCase $db_scheme_type) == "m" ]; then
     echo "SCHEMAS=( \$DATA_SCHEMA \$LOGIC_SCHEMA \$APP_SCHEMA )" >> build.env
   else
     echo "SCHEMAS=( \$APP_SCHEMA )" >> build.env
@@ -237,7 +237,7 @@ generate() {
   ask4pwd "Enter password for ${db_adminuser} [leave blank and you will be asked for]: "
   db_password=${pass}
 
-  if [ ${db_scheme_type,,} == "m" ]; then
+  if [ $(toLowerCase $db_scheme_type) == "m" ]; then
     ask4pwd "Enter password for deployment_user (proxyuser: ${project_name}_depl) [leave blank and you will be asked for]: "
   else
     ask4pwd "Enter password for application_user (user: ${project_name}) [leave blank and you will be asked for]: "
@@ -259,7 +259,7 @@ generate() {
   echo "DB_TNS=${db_tns}" >> apply.env
   echo "" >> apply.env
   echo "# Deployment User" >> apply.env
-  if [ ${db_scheme_type,,} == "m" ]; then
+  if [ $(toLowerCase $db_scheme_type) == "m" ]; then
     echo "DB_APP_USER=${project_name}_depl" >> apply.env
   else
     echo "DB_APP_USER=${project_name}" >> apply.env
@@ -284,6 +284,12 @@ generate() {
   echo "# What is the APEX Owner" >> apply.env
   echo "APEX_USER=${apex_user}" >> apply.env
 
+  read -p "Install with sql(cl) or sqlplus? [sqlplus]: " SQLCLI
+  SQLCLI=${SQLCLI:-"sqlplus"}
+  echo "# Scripts are executed with" >> apply.env
+  echo "SQLCLI=${SQLCLI}" >> apply.env
+
+
   # write gitignore
   echo "# dbFlow target infos" >> .gitignore
   echo "apply.env" >> .gitignore
@@ -304,7 +310,7 @@ generate() {
   cp -rf .dbFlow/scripts/setup/workspace_users/* ${targetpath}/workspace_users
   cp -rf .dbFlow/scripts/setup/acls/* ${targetpath}/acls
 
-  if [ ${with_tools,,} == "y" ]; then
+  if [ $(toLowerCase $with_tools) == "y" ]; then
     cp -rf .dbFlow/scripts/setup/features/* ${targetpath}/features
     chmod +x ${targetpath}/features/*.sh
   else
@@ -313,7 +319,7 @@ generate() {
 
 
   # create gen_users..
-  if [ ${db_scheme_type,,} == "m" ]; then
+  if [ $(toLowerCase $db_scheme_type) == "m" ]; then
     cp -rf .dbFlow/scripts/setup/users/01_data.sql ${targetpath}/users/01_${project_name}_data.sql
     cp -rf .dbFlow/scripts/setup/users/02_logic.sql ${targetpath}/users/02_${project_name}_logic.sql
     cp -rf .dbFlow/scripts/setup/users/03_app.sql ${targetpath}/users/03_${project_name}_app.sql
@@ -356,7 +362,7 @@ generate() {
 } # generate
 
 is_any_schema_installed () {
-    sqlplus -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
+    ${SQLCLI} -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
     set heading off
     set feedback off
     set pages 0

@@ -130,7 +130,11 @@ else
 fi
 
 # get branch name
-branch=$(git branch --show-current)
+{ #try
+  branch=$(git branch --show-current)
+} || { # catch 
+  branch="develop"
+}
 
 # at INIT there is no pretreatment or an evaluation of the table_ddl
 if [ "${mode}" == "init" ]; then
@@ -461,7 +465,6 @@ if [ $version == "install" ]
 then
   echo "calling apply"
 
-  export SQLCL=sqlplus
   .dbFlow/apply.sh ${mode} ${version}
 fi
 

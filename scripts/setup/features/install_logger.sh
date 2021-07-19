@@ -15,10 +15,10 @@ yes=${1:-"NO"}
 DB_PASSWORD=${2:-$DB_PASSWORD}
 
 logger_schema="logger"
-logger_pass=$(shuf -zer -n20 {A..Z} {a..z} {0..9} | tr -d '\0')
+logger_pass=$(base64 < /dev/urandom | tr -d 'O0Il1+/' | head -c 20; printf '\n')
 logger_tspace="users"
 
-tag_name=$(curl --silent "https://api.github.com/repos/OraOpenSource/Logger/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+tag_name=$(curl --silent "https://github.com/OraOpenSource/Logger/releases/latest" | sed 's#.*tag/\(.*\)\".*#\1#')
 curl -OL "https://github.com/OraOpenSource/Logger/raw/master/releases/logger_${tag_name}.zip"
 
 unzip logger_${tag_name}.zip -d logger
@@ -30,7 +30,7 @@ then
   DB_ADMINUSER=${DB_ADMINUSER:-"sys"}
 fi
 
-if [[ ${DB_ADMINUSER,,} != "sys" ]]; then
+if [[ $(toLowerCase $DB_ADMINUSER) != "sys" ]]; then
   DBA_OPTION=""
   logger_tspace="data" # no users tablespace when using autonomous db
 fi
@@ -42,7 +42,7 @@ then
 fi
 
 is_logger_installed () {
-    sqlplus -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
+    ${SQLCLI} -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
     set heading off
     set feedback off
     set pages 0
@@ -55,7 +55,7 @@ is_logger_installed () {
 }
 
 LOGGER_INSTALLED=$(is_logger_installed)
-if [ "${LOGGER_INSTALLED}" == "true" ]
+if [[ "${LOGGER_INSTALLED}" == *"true"* ]]
 then
   if [ $yes == "YES" ]; then
     reinstall="Y"
@@ -64,8 +64,8 @@ then
     reinstall=${reinstall:-"Y"}
   fi
 
-  if [ ${reinstall,,} == "y" ]; then
-    sqlplus -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
+  if [ $(toLowerCase $reinstall) == "y" ]; then
+    ${SQLCLI} -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
   Prompt ${logger_schema} droppen
   drop user ${logger_schema} cascade;
 !
@@ -75,7 +75,7 @@ then
   fi
 fi
 
-sqlplus -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
+${SQLCLI} -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
 Prompt create user: ${logger_schema}
 create user ${logger_schema} identified by "${logger_pass}" default tablespace ${logger_tspace} temporary tablespace temp
 /
