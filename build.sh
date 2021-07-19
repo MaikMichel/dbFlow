@@ -130,7 +130,11 @@ else
 fi
 
 # get branch name
+{ #try
 branch=$(git branch --show-current)
+} || { # catch 
+  branch="develop"
+}
 
 # at INIT there is no pretreatment or an evaluation of the table_ddl
 if [ "${mode}" == "init" ]; then
