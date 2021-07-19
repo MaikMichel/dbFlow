@@ -131,7 +131,7 @@ fi
 
 # get branch name
 { #try
-branch=$(git branch --show-current)
+  branch=$(git branch --show-current)
 } || { # catch 
   branch="develop"
 }

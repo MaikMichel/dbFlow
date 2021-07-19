@@ -15,10 +15,10 @@ yes=${1:-"NO"}
 DB_PASSWORD=${2:-$DB_PASSWORD}
 
 teplsql_schema="teplsql"
-teplsql_pass=$(shuf -zer -n20 {A..Z} {a..z} {0..9} | tr -d '\0')
+teplsql_pass=$(base64 < /dev/urandom | tr -d 'O0Il1+/' | head -c 20; printf '\n')
 teplsql_tspace="users"
 
-tag_name=$(curl --silent "https://api.github.com/repos/MaikMichel/tePLSQL/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+tag_name=$(curl --silent "https://github.com/MaikMichel/tePLSQL/releases/latest" | sed 's#.*tag/\(.*\)\".*#\1#')
 curl -OL "https://github.com/MaikMichel/tePLSQL/archive/${tag_name}.zip"
 
 unzip ${tag_name}.zip -d "tePLSQL-${tag_name}"
@@ -45,7 +45,7 @@ fi
 
 
 is_teplsql_installed () {
-    sqlplus -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
+    ${SQLCLI} -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
     set heading off
     set feedback off
     set pages 0
@@ -58,7 +58,7 @@ is_teplsql_installed () {
 }
 
 TEPLSQL_INSTALLED=$(is_teplsql_installed)
-if [ "${TEPLSQL_INSTALLED}" == "true" ]
+if [[ "${TEPLSQL_INSTALLED}" == *"true"* ]]
 then
   if [ $yes == "YES" ]; then
     reinstall="Y"
@@ -68,7 +68,7 @@ then
   fi
 
   if [ $(toLowerCase $reinstall) == "y" ]; then
-    sqlplus -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
+    ${SQLCLI} -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
   Prompt ${teplsql_schema} droppen
   drop user ${teplsql_schema} cascade;
 !
@@ -79,7 +79,7 @@ then
   fi
 fi
 
-sqlplus -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
+${SQLCLI} -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
 Prompt create user: ${teplsql_schema}
 create user ${teplsql_schema} identified by "${teplsql_pass}" default tablespace ${teplsql_tspace} temporary tablespace temp
 /

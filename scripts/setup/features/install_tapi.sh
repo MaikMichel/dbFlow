@@ -15,10 +15,10 @@ yes=${1:-"NO"}
 DB_PASSWORD=${2:-$DB_PASSWORD}
 
 tapi_schema="tapi"
-tapi_pass=$(shuf -zer -n20 {A..Z} {a..z} {0..9} | tr -d '\0')
+tapi_pass=$(base64 < /dev/urandom | tr -d 'O0Il1+/' | head -c 20; printf '\n')
 tapi_tspace="users"
 
-tag_name=$(curl --silent "https://api.github.com/repos/MaikMichel/table-api-generator/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+tag_name=$(curl --silent "https://github.com/MaikMichel/table-api-generator/releases/latest" | sed 's#.*tag/\(.*\)\".*#\1#')
 curl -OL "https://github.com/MaikMichel/table-api-generator/archive/${tag_name}.zip"
 
 unzip ${tag_name}.zip -d "tapi-${tag_name}"
@@ -45,7 +45,7 @@ fi
 
 
 is_tapi_installed () {
-    sqlplus -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
+    ${SQLCLI} -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
     set heading off
     set feedback off
     set pages 0
@@ -59,7 +59,7 @@ is_tapi_installed () {
 
 TAPI_INSTALLED=$(is_tapi_installed)
 
-if [ "${TAPI_INSTALLED}" == "true" ]
+if [[ "${TAPI_INSTALLED}" == *"true"* ]]
 then
   if [ $yes == "YES" ]; then
     reinstall="Y"
@@ -69,7 +69,7 @@ then
   fi
 
   if [ $(toLowerCase $reinstall) == "y" ]; then
-    sqlplus -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
+    ${SQLCLI} -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
   Prompt ${tapi_schema} droppen
   drop user ${tapi_schema} cascade;
 !
@@ -80,7 +80,7 @@ then
   fi
 fi
 
-sqlplus -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
+${SQLCLI} -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
 Prompt create user: ${tapi_schema}
 create user ${tapi_schema} identified by "${tapi_pass}" default tablespace ${tapi_tspace} temporary tablespace temp
 /
