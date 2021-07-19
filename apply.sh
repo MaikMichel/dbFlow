@@ -47,7 +47,7 @@ then
 fi
 
 
-#some env settings sqlcl needs
+#some env settings SQLCL needs
 export NLS_LANG="GERMAN_GERMANY.AL32UTF8"
 export NLS_DATE_FORMAT="DD.MM.YYYY HH24:MI:SS"
 export JAVA_TOOL_OPTIONS="-Duser.language=en -Duser.region=US -Dfile.encoding=UTF-8"
@@ -58,7 +58,7 @@ mingw64_nt-10*)
   chcp.com 65001
 ;;
 esac
-SQLCL=${SQLCL:-sqlplus}
+SQLCLI=${SQLCLI:-sqlplus}
 
 
 # validate parameters
@@ -293,7 +293,7 @@ execute_schema_hook_scripts() {
     done
 
     runfile=${sqlfile}
-    exit | $SQLCL -S "$(get_connect_string $schema)" @${runfile} ${full_log_file} ${patch}
+    exit | $SQLCLI -S "$(get_connect_string $schema)" @${runfile} ${full_log_file} ${patch}
     runfile=""
 
     if [ $? -ne 0 ]
@@ -330,7 +330,7 @@ execute_global_hook_scripts() {
       esac
       runfile=".hooks/${entrypath}/${file}"
       echo "executing file ${runfile}" | write_log
-      exit | $SQLCL -S "$(get_connect_string $targetschema)" @${runfile} ${full_log_file} ${patch}
+      exit | $SQLCLI -S "$(get_connect_string $targetschema)" @${runfile} ${full_log_file} ${patch}
       runfile=""
     done
 
@@ -353,7 +353,7 @@ install_db_schemas()
     do
       # On init mode schema content will be dropped
         echo "DROPING ALL OBJECTS on schema $schema" | write_log
-        exit | $SQLCL -S "$(get_connect_string $schema)" @.dbFlow/lib/drop_all.sql ${full_log_file} ${patch}
+        exit | $SQLCLI -S "$(get_connect_string $schema)" @.dbFlow/lib/drop_all.sql ${full_log_file} ${patch}
     done
   fi
 
@@ -384,7 +384,7 @@ install_db_schemas()
         sed -i -E "s:--$STAGE:Prompt uncommented cleanup for stage $STAGE\n:g" $db_install_file
 
         runfile=$db_install_file
-        $SQLCL -S "$(get_connect_string $schema)" @$db_install_file ${full_log_file} ${patch}
+        $SQLCLI -S "$(get_connect_string $schema)" @$db_install_file ${full_log_file} ${patch}
         runfile=""
 
         if [ $? -ne 0 ]
@@ -418,7 +418,7 @@ set_apps_unavailable() {
     echo "disabling APEX-Apps ..." | write_log
     # loop throug content
     while IFS= read -r line; do
-      $SQLCL -S "$(get_connect_string $APP_SCHEMA)" <<!
+      $SQLCLI -S "$(get_connect_string $APP_SCHEMA)" <<!
         set serveroutput on;
         prompt logging to ${log_file}
         set define off;
@@ -465,7 +465,7 @@ install_apps() {
       then
         echo "Installing $line Num: ${line/apex\/f} Workspace: ${WORKSPACE}" | write_log
         cd $line
-        $SQLCL -S "$(get_connect_string $APP_SCHEMA)" <<!
+        $SQLCLI -S "$(get_connect_string $APP_SCHEMA)" <<!
           spool ../../${log_file} append;
           Prompt Workspace: ${WORKSPACE}
           Prompt Application: ${line/apex\/f}
@@ -518,7 +518,7 @@ exec_final_unit_tests()
     for schema in "${SCHEMAS[@]}"
     do
       echo "Executing unit tests for schema $schema " | write_log
-      exit | $SQLCL -S "$(get_connect_string $schema)" @.dbFlow/lib/execute_tests.sql ${full_log_file} ${patch}
+      exit | $SQLCLI -S "$(get_connect_string $schema)" @.dbFlow/lib/execute_tests.sql ${full_log_file} ${patch}
       if [ $? -ne 0 ]
       then
         echo "ERROR when executing .dbFlow/lib/execute_tests.sql" | write_log $failure

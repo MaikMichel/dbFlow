@@ -151,7 +151,7 @@ install() {
           then
             cd $targetpath/$path
             echo "Calling $targetpath/$path/${file}"
-            exit | sqlplus -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} @${file}
+            exit | ${SQLCLI} -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} @${file} 
             cd ../../..
           elif [ $EXTENSION == "sh" ]
           then
@@ -284,6 +284,12 @@ generate() {
   echo "# What is the APEX Owner" >> apply.env
   echo "APEX_USER=${apex_user}" >> apply.env
 
+  read -p "Install with sql(cl) or sqlplus? [sqlplus]: " SQLCLI
+  SQLCLI=${SQLCLI:-"sqlplus"}
+  echo "# Scripts are executed with" >> apply.env
+  echo "SQLCLI=${SQLCLI}" >> apply.env
+
+
   # write gitignore
   echo "# dbFlow target infos" >> .gitignore
   echo "apply.env" >> .gitignore
@@ -356,7 +362,7 @@ generate() {
 } # generate
 
 is_any_schema_installed () {
-    sqlplus -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
+    ${SQLCLI} -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
     set heading off
     set feedback off
     set pages 0

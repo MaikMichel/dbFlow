@@ -461,7 +461,6 @@ if [ $version == "install" ]
 then
   echo "calling apply"
 
-  export SQLCL=sqlplus
   .dbFlow/apply.sh ${mode} ${version}
 fi
 
