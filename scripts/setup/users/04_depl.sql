@@ -1,6 +1,4 @@
 set define '^'
-set concat on
-set concat .
 set verify off
 
 @../env.sql
@@ -8,15 +6,28 @@ set verify off
 prompt
 prompt
 prompt **********************************************************************
-prompt ***  USER CREATION: ^depl_schema
+prompt ***  USER CREATION: ^db_app_user
 prompt **********************************************************************
 prompt
 prompt
 
 prompt ^db_app_user droppen
+declare
+  v_check number(1) := 0;
+begin
+  select 1
+    into v_check
+    from all_users
+   where username = upper('^db_app_user');
+  dbms_output.put_line('drop user ^db_app_user cascade');
+  execute immediate 'drop user ^db_app_user cascade';
+exception
+  when no_data_found then
+    null; -- ok, nothing to drop  ´
+end;
+/
 
-drop user ^db_app_user cascade;
-
+prompt create user ^db_app_user identified by ^db_app_pwd default tablespace ^deftablespace
 create user ^db_app_user
   identified by ^db_app_pwd
   default tablespace ^deftablespace
