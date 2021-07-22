@@ -209,7 +209,6 @@ mkdir -p $targetpath
 # copy (and overwrite forcefully) in exact directory structure as in git repo
 echo "Copy files ..."
 if [ "${mode}" == "init" ]; then
- cp -R .dbFlow $targetpath
  cp -R db $targetpath
  cp -R apex $targetpath
  cp -R rest $targetpath
