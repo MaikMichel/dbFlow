@@ -132,17 +132,17 @@ fi
 # get branch name
 { #try
   branch=$(git branch --show-current)
-} || { # catch 
+} || { # catch
   branch="develop"
 }
 
 # at INIT there is no pretreatment or an evaluation of the table_ddl
 if [ "${mode}" == "init" ]; then
-  array=( sequences tables indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies types sources/packages sources/functions sources/procedures views sources/triggers jobs tests/packages ddl/base ddl/init dml/base dml/init)
+  array=( .hooks/pre sequences tables indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies types sources/packages sources/functions sources/procedures views sources/triggers jobs tests/packages ddl/init dml/base dml/init .hooks/post)
 else
   # building pre and post based on branches
-  pres=( ddl/pre_${branch} dml/pre_${branch} ddl/pre dml/pre )
-  post=( ddl/post_${branch} dml/post_${branch} ddl/post dml/post )
+  pres=( .hooks/pre ddl/pre_${branch} dml/pre_${branch} ddl/pre dml/pre )
+  post=( ddl/post_${branch} dml/post_${branch} ddl/post dml/base dml/post .hooks/post )
 
   array=${pres[@]}
   array+=( sequences tables tables_ddl indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies types sources/packages sources/functions sources/procedures views sources/triggers jobs tests/packages )

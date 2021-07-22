@@ -139,7 +139,7 @@ install() {
   do
     if [[ -d "$targetpath"/$path ]]
     then
-      echo "Installing $path" 
+      echo "Installing $path"
       for file in $(ls "$targetpath"/$path | sort )
       do
         if [ -f "$targetpath"/$path/${file} ]
@@ -150,8 +150,8 @@ install() {
           if [ $EXTENSION == "sql" ]
           then
             cd $targetpath/$path
-            echo "Calling $targetpath/$path/${file}"  
-            exit | ${SQLCLI} -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} @${file} 
+            echo "Calling $targetpath/$path/${file}"
+            exit | ${SQLCLI} -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} @${file}
             cd ../../..
           elif [ $EXTENSION == "sh" ]
           then
@@ -182,11 +182,11 @@ generate() {
 
   # create directories
   if [ $(toLowerCase $db_scheme_type) == "m" ]; then
-    mkdir -p db/{.hooks/{pre,post},${project_name}_data/{.hooks/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/packages,ddl/{init,pre,post},dml/{init,pre,post}}}
-    mkdir -p db/{.hooks/{pre,post},${project_name}_logic/{.hooks/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/packages,ddl/{init,pre,post},dml/{init,pre,post}}}
-    mkdir -p db/{.hooks/{pre,post},${project_name}_app/{.hooks/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/packages,ddl/{init,pre,post},dml/{init,pre,post}}}
+    mkdir -p  db/{.hooks/{pre,post},${project_name}_data/{.hooks/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/packages,ddl/{init,pre,post},dml/{base,init,pre,post}}}
+    mkdir -p db/{.hooks/{pre,post},${project_name}_logic/{.hooks/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/packages,ddl/{init,pre,post},dml/{base,init,pre,post}}}
+    mkdir -p   db/{.hooks/{pre,post},${project_name}_app/{.hooks/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/packages,ddl/{init,pre,post},dml/{base,init,pre,post}}}
   elif [ $(toLowerCase $db_scheme_type) == "s" ]; then
-    mkdir -p db/{.hooks/{pre,post},${project_name}/{.hooks/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/packages,ddl/{init,pre,post},dml/{init,pre,post}}}
+    mkdir -p db/{.hooks/{pre,post},${project_name}/{.hooks/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/packages,ddl/{init,pre,post},dml/{base,init,pre,post}}}
   else
     echo_error "unknown type ${db_scheme_type}"
     exit 1
