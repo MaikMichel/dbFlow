@@ -248,8 +248,11 @@ generate() {
   read -p "Enter path to depot [_depot]: " depot_path
   depot_path=${depot_path:-"_depot"}
 
-  read -p "Enter apex schema [APEX_200200]: " apex_user
-  apex_user=${apex_user:-"APEX_200200"}
+  read -p "Enter stage of this configuration mapped to branch (develop, test, master) [develop]: " stage
+  stage=${stage:-"develop"}
+
+  read -p "Enter apex schema [APEX_210100]: " apex_user
+  apex_user=${apex_user:-"APEX_210100"}
 
   read -p "Do you wish to generate and install default tooling? (Logger, utPLSQL, teplsql, tapi) [Y]: " with_tools
   with_tools=${with_tools:-"Y"}
@@ -274,8 +277,8 @@ generate() {
   echo "DEPOT_PATH=${depot_path}" >> apply.env
   echo "" >> apply.env
   echo "# Stage mapped to source branch ( develop test master )" >> apply.env
-  echo "# this is used to get artifact from depot_path" >> apply.env
-  echo "STAGE=develop" >> apply.env
+  echo "# this is used to get artifacts from depot_path" >> apply.env
+  echo "STAGE=${stage}" >> apply.env
   echo "" >> apply.env
   echo "" >> apply.env
   echo "# ADD this to original APP-NUM" >> apply.env
