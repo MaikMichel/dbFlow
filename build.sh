@@ -77,11 +77,6 @@ then
   fi
 fi
 
-if [[ -z ${BRANCHES:-} ]]; then
-  echo_error "undefined var: BRANCHES"
-  do_exit="YES"
-fi
-
 ####
 if [[ ${do_exit} == "YES" ]]; then
   echo_warning "aborting"
@@ -134,40 +129,20 @@ else
   fi
 fi
 
-# TODO: Hier kommt es zu einem Fehler, wenn nichts im HEAD
 # get branch name
-branch=$(git rev-parse --symbolic-full-name --abbrev-ref HEAD)
-
-# do we know the branch???
-if [[ ! " ${BRANCHES[@]} " =~ " ${branch} " ]]; then
-    echo_error "unknown branch $branch - add it to build.env"
-    exit 1
-fi
+{ #try
+  branch=$(git branch --show-current)
+} || { # catch 
+  branch="develop"
+}
 
 # at INIT there is no pretreatment or an evaluation of the table_ddl
 if [ "${mode}" == "init" ]; then
-  array=( sequences tables indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies types sources/packages sources/functions sources/procedures views sources/triggers jobs tests/packages ddl/init dml/init )
+  array=( sequences tables indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies types sources/packages sources/functions sources/procedures views sources/triggers jobs tests/packages ddl/base ddl/init dml/base dml/init)
 else
   # building pre and post based on branches
-  pres=()
-  for i in ${!BRANCHES[@]}; do
-    if [ $i -gt 0 ]
-    then
-      pres+=( ddl/pre_${BRANCHES[$i]} )
-      pres+=( dml/pre_${BRANCHES[$i]} )
-    fi
-  done
-  pres+=( ddl/pre )
-  pres+=( dml/pre )
-
-  post=( dml/post ddl/post )
-  for i in ${!BRANCHES[@]}; do
-    if [ $i -gt 0 ]
-    then
-      post+=( ddl/post_${BRANCHES[$i]} )
-      post+=( dml/post_${BRANCHES[$i]} )
-    fi
-  done
+  pres=( ddl/pre_${branch} dml/pre_${branch} ddl/pre dml/pre )
+  post=( ddl/post_${branch} dml/post_${branch} ddl/post dml/post )
 
   array=${pres[@]}
   array+=( sequences tables tables_ddl indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies types sources/packages sources/functions sources/procedures views sources/triggers jobs tests/packages )
@@ -489,7 +464,6 @@ if [ $version == "install" ]
 then
   echo "calling apply"
 
-  export SQLCL=sqlplus
   .dbFlow/apply.sh ${mode} ${version}
 fi
 

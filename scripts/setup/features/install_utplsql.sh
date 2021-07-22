@@ -15,10 +15,10 @@ yes=${1:-"NO"}
 DB_PASSWORD=${2:-$DB_PASSWORD}
 
 utplsql_schema="ut3"
-utplsql_pass=$(shuf -zer -n20 {A..Z} {a..z} {0..9} | tr -d '\0')
+utplsql_pass=$(base64 < /dev/urandom | tr -d 'O0Il1+/' | head -c 20; printf '\n')
 utplsql_tspace="users"
 
-tag_name=$(curl --silent "https://api.github.com/repos/utPLSQL/utPLSQL/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+tag_name=$(curl --silent "https://github.com/utPLSQL/utPLSQL/releases/latest" | sed 's#.*tag/\(.*\)\".*#\1#')
 curl -OL "https://github.com/utPLSQL/utPLSQL/releases/download/${tag_name}/utPLSQL.zip"
 
 unzip utPLSQL.zip -d utplsql
@@ -32,7 +32,7 @@ then
   DB_ADMINUSER=${DB_ADMINUSER:-"sys"}
 fi
 
-if [[ ${DB_ADMINUSER,,} != "sys" ]]; then
+if [[ $(toLowerCase $DB_ADMINUSER) != "sys" ]]; then
   DBA_OPTION=""
   utplsql_tspace="data" # no users tablespace when using autonomous db
 fi
@@ -44,7 +44,7 @@ then
 fi
 
 is_utplsql_installed () {
-    sqlplus -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
+    ${SQLCLI} -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
     set heading off
     set feedback off
     set pages 0
@@ -57,7 +57,7 @@ is_utplsql_installed () {
 }
 
 UTPLSQL_INSTALLED=$(is_utplsql_installed)
-if [ "${UTPLSQL_INSTALLED}" == "true" ]
+if [[ "${UTPLSQL_INSTALLED}" == *"true"* ]]
 then
   if [ $yes == "YES" ]; then
     reinstall="Y"
@@ -66,10 +66,10 @@ then
     reinstall=${reinstall:-"Y"}
   fi
 
-  if [ ${reinstall,,} == "y" ]; then
-    sqlplus -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} @uninstall.sql ${utplsql_schema}
+  if [ $(toLowerCase $reinstall) == "y" ]; then
+    ${SQLCLI} -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} @uninstall.sql ${utplsql_schema}
 
-    sqlplus -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
+    ${SQLCLI} -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
   Prompt ${utplsql_schema} droppen
   drop user ${utplsql_schema} cascade;
 !
@@ -80,7 +80,7 @@ then
   fi
 fi
 
-sqlplus -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} @install_headless.sql ${utplsql_schema} ${utplsql_pass} ${utplsql_tspace}
+${SQLCLI} -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} @install_headless.sql ${utplsql_schema} ${utplsql_pass} ${utplsql_tspace}
 
 cd ../../..
 rm -rf utplsql
