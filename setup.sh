@@ -139,7 +139,7 @@ install() {
   do
     if [[ -d "$targetpath"/$path ]]
     then
-      echo "Installing $path" 
+      echo "Installing $path"
       for file in $(ls "$targetpath"/$path | sort )
       do
         if [ -f "$targetpath"/$path/${file} ]
@@ -150,8 +150,8 @@ install() {
           if [ $EXTENSION == "sql" ]
           then
             cd $targetpath/$path
-            echo "Calling $targetpath/$path/${file}"  
-            exit | ${SQLCLI} -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} @${file} 
+            echo "Calling $targetpath/$path/${file}"
+            exit | ${SQLCLI} -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} @${file}
             cd ../../..
           elif [ $EXTENSION == "sh" ]
           then
@@ -220,12 +220,6 @@ generate() {
   echo "# workspace app belongs to" >> build.env
   echo "WORKSPACE=${project_name}" >> build.env
   echo "" >> build.env
-  echo "# array of schemas" >> build.env
-  if [ $(toLowerCase $db_scheme_type) == "m" ]; then
-    echo "SCHEMAS=( \$DATA_SCHEMA \$LOGIC_SCHEMA \$APP_SCHEMA )" >> build.env
-  else
-    echo "SCHEMAS=( \$APP_SCHEMA )" >> build.env
-  fi
 
   # ask for some vars to put into file
   read -p "Enter database connections [localhost:1521/xepdb1]: " db_tns
@@ -377,6 +371,9 @@ is_any_schema_installed () {
 export_schema() {
   local targetschema=${1:-"ALL"}
   local object_name=${2:-"ALL"}
+
+  ALL_SCHEMAS=( ${DATA_SCHEMA} ${LOGIC_SCHEMA} ${APP_SCHEMA} )
+  SCHEMAS=($(printf "%s\n" "${ALL_SCHEMAS[@]}" | tr '\n' ' '))
 
   echo "targetschema: $targetschema"
   echo "object_name:  $object_name"

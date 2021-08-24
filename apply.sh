@@ -62,11 +62,12 @@ SQLCLI=${SQLCLI:-sqlplus}
 
 
 # validate parameters
+do_exit="NO"
 
 # at least 2 params are required
 if [ $# -lt 2 ]; then
   echo_error "not enough parameters"
-  usage
+  do_exit="YES"
 fi
 
 mode=${1:-""}
@@ -77,46 +78,37 @@ runfile=""
 
 if [[ ! "$mode" =~ ^(init|patch)$ ]]; then
     echo "unknown mode: $mode"
-    usage
+    do_exit="YES"
 fi
 
 
 if [ -z ${DEPOT_PATH:-} ]
 then
   echo_error "Depotpath not defined"
-  usage
+  do_exit="YES"
 fi
 
 if [ -z ${STAGE:-} ]
 then
   echo_error  "Stage not defined"
-  usage
+  do_exit="YES"
 fi
 
 if [ -z ${DB_APP_USER:-} ]
 then
   echo "App-User not defined"
-  usage
+  do_exit="YES"
 fi
 
 if [ -z $DB_TNS ]
 then
   echo "TNS not defined"
-  usage
+  do_exit="YES"
 fi
 
-if [ -z ${SCHEMAS:-} ]
-then
-  if [ -z ${SCHEMASDELIMITED:-} ]
-  then
-    echo "Schmemas not defined"
-    usage
-  else
-    SCHEMAS=(`echo ${SCHEMASDELIMITED} | sed 's/,/\n/g'`)
-  fi
-fi
+ALL_SCHEMAS=( ${DATA_SCHEMA} ${LOGIC_SCHEMA} ${APP_SCHEMA} )
+SCHEMAS=($(printf "%s\n" "${ALL_SCHEMAS[@]}" | tr '\n' ' '))
 
-patch_target_path=.
 
 if [ -d $DEPOT_PATH/$STAGE ]
 then
@@ -124,13 +116,21 @@ then
   patch_source_path=${basepath}/$DEPOT_PATH/$STAGE
 else
   echo "Targetstage $STAGE inside $DEPOT_PATH is unknown"
-  exit 1
+  do_exit="YES"
+fi
+
+
+####
+if [[ ${do_exit} == "YES" ]]; then
+  echo_warning "aborting"
+  usage;
 fi
 
 # Defing some vars
 app_install_file=apex_files_${patch}.lst
 remove_old_files=remove_files_${patch}.lst
 
+patch_target_path=.
 patch_source_file=$patch_source_path/${mode}_${patch}.tar.gz
 patch_target_file=$patch_target_path/${mode}_${patch}.tar.gz
 
@@ -425,7 +425,7 @@ set_apps_unavailable() {
         spool ${log_file} append;
         Declare
           v_application_id  apex_application_build_options.application_id%type := ${line/apex\/f} + ${APP_OFFSET};
-          v_workspace_id	apex_workspaces.workspace_id%type;
+          v_workspace_id    apex_workspaces.workspace_id%type;
         Begin
           select workspace_id
               into v_workspace_id
@@ -435,9 +435,18 @@ set_apps_unavailable() {
             apex_application_install.set_workspace_id(v_workspace_id);
             apex_util.set_security_group_id(p_security_group_id => apex_application_install.get_workspace_id);
 
-            apex_util.set_application_status(p_application_id => v_application_id,
-                                            p_application_status => 'UNAVAILABLE',
-                                            p_unavailable_value => '<h1><center>Wegen Wartungsarbeiten ist die Applikation vor&uuml;bergehend nicht erreichbar</center></h1>' );
+            begin
+              apex_util.set_application_status(p_application_id => v_application_id,
+                                              p_application_status => 'UNAVAILABLE',
+                                              p_unavailable_value => '<h1><center>Wegen Wartungsarbeiten ist die Applikation vor&uuml;bergehend nicht erreichbar</center></h1>' );
+            exception
+              when others then
+                if sqlerrm like '%Application not found%' then
+                  dbms_output.put_line((chr(27) || '[31m') || 'Application: '||upper(v_application_id)||' not found!' || (chr(27) || '[0m'));
+                else
+                  raise;
+                end if;
+            end;
         Exception
           when no_data_found then
             dbms_output.put_line((chr(27) || '[31m') || 'Workspace: '||upper('${WORKSPACE}')||' not found!' || (chr(27) || '[0m'));
