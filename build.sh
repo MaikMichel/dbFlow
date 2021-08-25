@@ -66,16 +66,8 @@ if [[ -z ${WORKSPACE:-} ]]; then
   do_exit="YES"
 fi
 
-if [ -z ${SCHEMAS:-} ]
-then
-  if [ -z ${SCHEMASDELIMITED:-} ]
-  then
-    echo_error "undefined var: SCHEMAS"
-    usage
-  else
-    SCHEMAS=(`echo ${SCHEMASDELIMITED} | sed 's/,/\n/g'`)
-  fi
-fi
+ALL_SCHEMAS=( ${DATA_SCHEMA} ${LOGIC_SCHEMA} ${APP_SCHEMA} )
+SCHEMAS=($(printf "%s\n" "${ALL_SCHEMAS[@]}" | tr '\n' ' '))
 
 ####
 if [[ ${do_exit} == "YES" ]]; then
@@ -177,14 +169,14 @@ echo -e "sourcepath:    ${BWHITE}${sourcepath}${NC}"
 echo -e "----------------------------------------"
 
 
-echo "Creating directory $targetpath"
-mkdir -p $targetpath
-
 # getting updated files, and
 # copy (and overwrite forcefully) in exact directory structure as in git repo
-echo "Copy files ..."
 if [ "${mode}" == "init" ]; then
- cp -R .dbFlow $targetpath
+ echo "Creating directory $targetpath"
+ mkdir -p $targetpath
+
+ echo "Copy files ..."
+
  cp -R db $targetpath
  cp -R apex $targetpath
  cp -R rest $targetpath
@@ -195,6 +187,17 @@ else
   if [ $(uname) == "Darwin" ]; then
     rsync -R $(git diff-tree -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB) ${targetpath}
   else
+    num_changes=$(git diff-tree -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB | wc -l)
+
+    if [[ $num_changes == 0 ]]; then
+      echo_warning "No changes, nothing to build!"
+      exit 1
+    fi
+
+    echo "Creating directory $targetpath"
+    mkdir -p $targetpath
+
+    echo "Copy files ..."
     cp --parents -rf $(git diff-tree -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB) ${targetpath}
   fi
 
@@ -248,6 +251,7 @@ do
     # file to write to
     target_install_base=${mode}_${schema}_${version}.sql
     target_install_file="$targetpath"/db/$schema/$target_install_base
+    echo ">>>>>> /db/$schema/$target_install_base"
 
     # write some infos
     echo "set define '^'" > "$target_install_file"
@@ -405,36 +409,48 @@ function make_a_new_version() {
 
 }
 
-function push_to_depot() {
+function check_push_to_depot() {
+  local force_push=${1:-"FALSE"}
   local current_path=$(pwd)
 
   cd $depotpath
-  git pull
-  git add $targetpath.tar.gz
-  git commit -m "Adds $targetpath.tar.gz"
-  git push
+
+  if [ -d ".git" ]
+  then
+    if [[ "$force_push" == "FALSE" ]]; then
+      echo
+      echo "Do you wish to push changes to depot remote?"
+      echo "  Y - $targetpath.tar.gz will be commited and pushed"
+      echo "  N - Nothing will happen..."
+
+      read modus
+
+      shopt -s nocasematch
+      case "$modus" in
+        "Y" )
+          force_push="TRUE"
+          ;;
+        *)
+          echo "no push to depot"
+          ;;
+      esac
+    fi
+
+    if [[ "$force_push" == "TRUE" ]]; then
+      git pull
+      git add $targetpath.tar.gz
+      git commit -m "Adds $targetpath.tar.gz"
+      git push
+    fi
+
+  fi # git path
 
   cd $current_path
 }
 
 if [ $branch != "master" ] && [ $version != "install" ]
 then
-  echo
-  echo "Do you wish to push changes to depot remote?"
-  echo "  Y - $targetpath.tar.gz will be commited and pushed"
-  echo "  N - Nothing will happen..."
-
-  read modus
-
-  shopt -s nocasematch
-  case "$modus" in
-    "Y" )
-      push_to_depot
-      ;;
-    *)
-      echo "no push to depot"
-      ;;
-  esac
+  check_push_to_depot
 fi
 
 # on branch master ask if we should tag current version and conmmit
@@ -451,7 +467,7 @@ then
   case "$modus" in
     "Y" )
       make_a_new_version
-      push_to_depot
+      check_push_to_depot
       ;;
     *)
       echo "Nothing has happened"
