@@ -209,14 +209,6 @@ generate() {
   fi
   echo "" >> build.env
   echo "" >> build.env
-  echo "# Use DB_USER as Proxy to multischemas, otherwise connect directly" >> build.env
-  if [ $(toLowerCase $db_scheme_type) == "m" ]; then
-    echo "USE_PROXY=TRUE" >> build.env
-  else
-    echo "USE_PROXY=FALSE" >> build.env
-  fi
-
-  echo "" >> build.env
   echo "# workspace app belongs to" >> build.env
   echo "WORKSPACE=${project_name}" >> build.env
   echo "" >> build.env
