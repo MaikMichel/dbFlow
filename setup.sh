@@ -182,11 +182,11 @@ generate() {
 
   # create directories
   if [ $(toLowerCase $db_scheme_type) == "m" ]; then
-    mkdir -p db/{.hooks/{pre,post},${project_name}_data/{.hooks/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/packages,ddl/{init,pre,post},dml/{base,init,pre,post}}}
-    mkdir -p db/{.hooks/{pre,post},${project_name}_logic/{.hooks/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/packages,ddl/{init,pre,post},dml/{base,init,pre,post}}}
-    mkdir -p db/{.hooks/{pre,post},${project_name}_app/{.hooks/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/packages,ddl/{init,pre,post},dml/{base,init,pre,post}}}
+    mkdir -p db/{.hooks/{pre,post},${project_name}_data/{.hooks/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,tests/packages,ddl/{init,pre,post},dml/{base,init,pre,post}}}
+    mkdir -p db/{.hooks/{pre,post},${project_name}_logic/{.hooks/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,tests/packages,ddl/{init,pre,post},dml/{base,init,pre,post}}}
+    mkdir -p db/{.hooks/{pre,post},${project_name}_app/{.hooks/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,tests/packages,ddl/{init,pre,post},dml/{base,init,pre,post}}}
   elif [ $(toLowerCase $db_scheme_type) == "s" ]; then
-    mkdir -p db/{.hooks/{pre,post},${project_name}/{.hooks/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,views,triggers},jobs,tests/packages,ddl/{init,pre,post},dml/{base,init,pre,post}}}
+    mkdir -p db/{.hooks/{pre,post},${project_name}/{.hooks/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,tests/packages,ddl/{init,pre,post},dml/{base,init,pre,post}}}
   else
     echo_error "unknown type ${db_scheme_type}"
     exit 1
@@ -209,14 +209,7 @@ generate() {
   fi
   echo "" >> build.env
   echo "" >> build.env
-  echo "# Use DB_USER as Proxy to multischemas, otherwise connect directly" >> build.env
-  if [ $(toLowerCase $db_scheme_type) == "m" ]; then
-    echo "USE_PROXY=TRUE" >> build.env
-  else
-    echo "USE_PROXY=FALSE" >> build.env
-  fi
 
-  echo "" >> build.env
   echo "# workspace app belongs to" >> build.env
   echo "WORKSPACE=${project_name}" >> build.env
   echo "" >> build.env
