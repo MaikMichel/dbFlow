@@ -69,6 +69,8 @@ fi
 ALL_SCHEMAS=( ${DATA_SCHEMA} ${LOGIC_SCHEMA} ${APP_SCHEMA} )
 SCHEMAS=($(printf "%s\n" "${ALL_SCHEMAS[@]}" | tr '\n' ' '))
 
+MAINFOLDERS=( apex db reports rest )
+
 ####
 if [[ ${do_exit} == "YES" ]]; then
   echo_warning "aborting"
@@ -172,34 +174,43 @@ echo -e "----------------------------------------"
 # getting updated files, and
 # copy (and overwrite forcefully) in exact directory structure as in git repo
 if [ "${mode}" == "init" ]; then
- echo "Creating directory $targetpath"
- mkdir -p $targetpath
+  echo "Creating directory $targetpath"
+  mkdir -p $targetpath
 
- echo "Copy files ..."
+  echo "Copy files ..."
+  for folder in "${MAINFOLDERS[@]}"
+  do
+    cp -R ${folder} $targetpath
+  fi
 
- cp -R db $targetpath
- cp -R apex $targetpath
- cp -R rest $targetpath
- [ ! -f build.env ] || cp build.env $targetpath
- [ ! -f .gitignore ] || cp .gitignore $targetpath
+  [ ! -f build.env ] || cp build.env $targetpath
+  [ ! -f .gitignore ] || cp .gitignore $targetpath
 else
 
-  if [ $(uname) == "Darwin" ]; then
-    rsync -R $(git diff-tree -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB) ${targetpath}
-  else
-    num_changes=$(git diff-tree -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB | wc -l)
+  for folder in "${MAINFOLDERS[@]}"
+  do
 
-    if [[ $num_changes == 0 ]]; then
-      echo_warning "No changes, nothing to build!"
-      exit 1
+    num_changes=$(git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB -- ${folder} | wc -l)
+
+    if [[ $num_changes > 0 ]]; then
+
+      echo "Creating directory $targetpath"
+      mkdir -p $targetpath
+
+      echo "Copy files ..."
+      if [ $(uname) == "Darwin" ]; then
+        rsync -R $(git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB -- ${folder}) ${targetpath}
+      else
+        yes | cp --parents -Rf $(git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB -- ${folder}) ${targetpath}
+      fi
+    else
+      echo_warning "No changes in folder: ${folder} !"
     fi
 
-    echo "Creating directory $targetpath"
-    mkdir -p $targetpath
+  done
 
-    echo "Copy files ..."
-    cp --parents -rf $(git diff-tree -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB) ${targetpath}
-  fi
+
+
 
   # additionaly we need all triggers belonging to views
   # loop through schemas
