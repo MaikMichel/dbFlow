@@ -209,7 +209,6 @@ generate() {
   fi
   echo "" >> build.env
   echo "" >> build.env
-
   echo "# workspace app belongs to" >> build.env
   echo "WORKSPACE=${project_name}" >> build.env
   echo "" >> build.env

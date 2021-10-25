@@ -109,6 +109,12 @@ fi
 ALL_SCHEMAS=( ${DATA_SCHEMA} ${LOGIC_SCHEMA} ${APP_SCHEMA} )
 SCHEMAS=($(printf "%s\n" "${ALL_SCHEMAS[@]}" | tr '\n' ' '))
 
+if [ ${#SCHEMAS[@]} -gt 1 ]
+then
+  USE_PROXY="TRUE"
+else
+  USE_PROXY="FALSE"
+fi
 
 if [ -d $DEPOT_PATH/$STAGE ]
 then
