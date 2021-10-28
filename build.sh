@@ -180,8 +180,10 @@ if [ "${mode}" == "init" ]; then
   echo "Copy files ..."
   for folder in "${MAINFOLDERS[@]}"
   do
-    cp -R ${folder} $targetpath
-  fi
+    if [[ -d ${folder} ]]; then
+      cp -R ${folder} $targetpath
+    fi
+  done
 
   [ ! -f build.env ] || cp build.env $targetpath
   [ ! -f .gitignore ] || cp .gitignore $targetpath
