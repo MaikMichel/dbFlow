@@ -71,6 +71,8 @@ SCHEMAS=($(printf "%s\n" "${ALL_SCHEMAS[@]}" | sort -u))
 
 MAINFOLDERS=( apex db reports rest )
 
+MAINFOLDERS=( apex db reports rest )
+
 ####
 if [[ ${do_exit} == "YES" ]]; then
   echo_warning "aborting"
@@ -180,8 +182,10 @@ if [ "${mode}" == "init" ]; then
   echo "Copy files ..."
   for folder in "${MAINFOLDERS[@]}"
   do
-    cp -R ${folder} $targetpath
-  fi
+    if [[ -d ${folder} ]]; then
+      cp -R ${folder} $targetpath
+    fi
+  done
 
   [ ! -f build.env ] || cp build.env $targetpath
   [ ! -f .gitignore ] || cp .gitignore $targetpath

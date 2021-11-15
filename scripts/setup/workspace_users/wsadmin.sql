@@ -12,11 +12,6 @@ PROMPT  ==   CREATE APEX User wsadmin
 PROMPT  =============================================================================
 PROMPT
 
-
-PROMPT Change session to APEX_USER
-ALTER SESSION SET CURRENT_SCHEMA = ^apex_user;
-set serveroutput on
-
 Declare
   v_workspace_id number;
 Begin
