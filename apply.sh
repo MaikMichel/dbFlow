@@ -107,14 +107,7 @@ then
 fi
 
 ALL_SCHEMAS=( ${DATA_SCHEMA} ${LOGIC_SCHEMA} ${APP_SCHEMA} )
-SCHEMAS=($(printf "%s\n" "${ALL_SCHEMAS[@]}" | tr '\n' ' '))
-
-if [ ${#SCHEMAS[@]} -gt 1 ]
-then
-  USE_PROXY="TRUE"
-else
-  USE_PROXY="FALSE"
-fi
+SCHEMAS=($(printf "%s\n" "${ALL_SCHEMAS[@]}" | sort -u))
 
 if [ -d $DEPOT_PATH/$STAGE ]
 then
@@ -202,7 +195,6 @@ print_info()
   echo -e "----------------------------------------------------------" | write_log
   echo -e "stage:        ${BWHITE}${STAGE}${NC}" | write_log
   echo -e "depot:        ${BWHITE}${DEPOT_PATH}${NC}" | write_log
-  echo -e "use_proxy:    ${BWHITE}${USE_PROXY}${NC}" | write_log
   echo -e "app_offset:   ${BWHITE}${APP_OFFSET}${NC}" | write_log
   echo -e "db_app_user:  ${BWHITE}${DB_APP_USER}${NC}" | write_log
   echo -e "db_tns:       ${BWHITE}${DB_TNS}${NC}" | write_log

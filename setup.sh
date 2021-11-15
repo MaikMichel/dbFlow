@@ -41,6 +41,9 @@ source ./.dbFlow/lib.sh
 targetpath="db/_setup"
 basepath=$(pwd)
 
+# when defined get it
+ALL_SCHEMAS=( ${DATA_SCHEMA} ${LOGIC_SCHEMA} ${APP_SCHEMA} )
+SCHEMAS=($(printf "%s\n" "${ALL_SCHEMAS[@]}" | sort -u))
 
 # array of subdirectories inside $targetpath to scan for executables (sh/sql)
 array=( tablespaces directories users features workspaces workspace_users acls )
@@ -366,9 +369,6 @@ is_any_schema_installed () {
 export_schema() {
   local targetschema=${1:-"ALL"}
   local object_name=${2:-"ALL"}
-
-  ALL_SCHEMAS=( ${DATA_SCHEMA} ${LOGIC_SCHEMA} ${APP_SCHEMA} )
-  SCHEMAS=($(printf "%s\n" "${ALL_SCHEMAS[@]}" | tr '\n' ' '))
 
   echo "targetschema: $targetschema"
   echo "object_name:  $object_name"

@@ -86,16 +86,17 @@ function echo_warning() {
 # used when admin user is sys
 DBA_OPTION=" as sysdba"
 
+
 # Function return connect string
 #########################################
 get_connect_string() {
   local arg1=$1
 
-  if [ $USE_PROXY == "FALSE" ]
+  if [ ${#SCHEMAS[@]} -gt 1 ]
   then
-    echo "$DB_APP_USER/$DB_APP_PWD@$DB_TNS"
-  else
     echo "$DB_APP_USER[$arg1]/$DB_APP_PWD@$DB_TNS"
+  else
+    echo "$DB_APP_USER/$DB_APP_PWD@$DB_TNS"
   fi
 }
 
