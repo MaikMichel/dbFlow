@@ -67,7 +67,7 @@ if [[ -z ${WORKSPACE:-} ]]; then
 fi
 
 ALL_SCHEMAS=( ${DATA_SCHEMA} ${LOGIC_SCHEMA} ${APP_SCHEMA} )
-SCHEMAS=($(printf "%s\n" "${ALL_SCHEMAS[@]}" | tr '\n' ' '))
+SCHEMAS=($(printf "%s\n" "${ALL_SCHEMAS[@]}" | sort -u))
 
 MAINFOLDERS=( apex db reports rest )
 
@@ -132,14 +132,14 @@ fi
 
 # at INIT there is no pretreatment or an evaluation of the table_ddl
 if [ "${mode}" == "init" ]; then
-  array=( .hooks/pre sequences tables indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies types sources/packages sources/functions sources/procedures views sources/triggers jobs tests/packages ddl/init dml/base dml/init .hooks/post)
+  array=( .hooks/pre sequences tables indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies sources/types sources/packages sources/functions sources/procedures views sources/triggers jobs tests/packages ddl/init dml/base dml/init .hooks/post)
 else
   # building pre and post based on branches
   pres=( .hooks/pre ddl/pre_${branch} dml/pre_${branch} ddl/pre dml/pre )
   post=( ddl/post_${branch} dml/post_${branch} ddl/post dml/base dml/post .hooks/post )
 
   array=${pres[@]}
-  array+=( sequences tables tables_ddl indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies types sources/packages sources/functions sources/procedures views sources/triggers jobs tests/packages )
+  array+=( sequences tables tables_ddl indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies sources/types sources/packages sources/functions sources/procedures views sources/triggers jobs tests/packages )
   array+=( ${post[@]} )
 fi
 
@@ -199,9 +199,9 @@ else
 
       echo "Copy files ..."
       if [ $(uname) == "Darwin" ]; then
-        rsync -R $(git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB -- ${folder}) ${targetpath}
+        rsync -R "$(git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB -- ${folder})" ${targetpath}
       else
-        yes | cp --parents -Rf $(git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB -- ${folder}) ${targetpath}
+        yes | cp --parents -Rf "$(git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB -- ${folder})" ${targetpath}
       fi
     else
       echo_warning "No changes in folder: ${folder} !"
@@ -248,7 +248,7 @@ if [ "${mode}" == "patch" ]; then
 
   # to avoid dead-files
   echo "@echo removing dead-files"
-  for line in $(git diff-tree -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=D)
+  for line in "$(git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=D -- ${folder})"
   do
     echo "${line}" >> $target_drop_file
   done
@@ -259,6 +259,7 @@ for schema in "${SCHEMAS[@]}"
 do
   if [[ -d "$targetpath"/db/$schema ]]
   then
+    echo "writing schema: ${schema}"
     # file to write to
     target_install_base=${mode}_${schema}_${version}.sql
     target_install_file="$targetpath"/db/$schema/$target_install_base
@@ -398,12 +399,14 @@ done
 
 
 # loop through applications
-target_apex_file="$targetpath"/apex_files_$version.lst
-[ -f $target_apex_file ] && rm $target_apex_file
+if [[ -d "apex" ]]; then
+  target_apex_file="$targetpath"/apex_files_$version.lst
+  [ -f $target_apex_file ] && rm $target_apex_file
 
-for appid in apex/*/ ; do
-  echo "${appid%/}" >> $target_apex_file
-done
+  for appid in apex/*/ ; do
+    echo "${appid%/}" >> $target_apex_file
+  done
+fi
 
 # pack directoy
 tar -C $targetpath -czvf $targetpath.tar.gz .
