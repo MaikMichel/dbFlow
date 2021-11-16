@@ -208,7 +208,7 @@ else
         cp --parents -Rf `git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB -- ${folder}` ${targetpath}
       fi
     else
-      echo_warning "No changes in folder: ${folder} !"
+      echo_warning "No changes in folder: ${folder}"
     fi
 
   done
@@ -250,11 +250,22 @@ fi
 if [ "${mode}" == "patch" ]; then
   target_drop_file="$targetpath"/remove_files_$version.lst
 
-  # to avoid dead-files
-  echo "@echo removing dead-files"
-  for line in "$(git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=D -- ${folder})"
+  for folder in "${MAINFOLDERS[@]}"
   do
-    echo "${line}" >> $target_drop_file
+
+    # to avoid dead-files
+    num_changes=$(git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=D -- ${folder} | wc -l)
+
+    if [[ $num_changes > 0 ]]; then
+      echo "echo removing dead-files"
+
+      for line in `git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=D -- ${folder}`
+      do
+        echo "${line}" >> $target_drop_file
+      done
+    else
+      echo_warning "No deleted files in folder: ${folder}"
+    fi
   done
 fi
 
@@ -408,14 +419,20 @@ if [[ -d "apex" ]]; then
   [ -f $target_apex_file ] && rm $target_apex_file
 
   for appid in apex/*/ ; do
-    echo "${appid%/}" >> $target_apex_file
+    if [[ -d "$appid" ]]; then
+      echo "${appid%/}" >> $target_apex_file
+    fi
   done
 fi
 
-# pack directoy
-tar -C $targetpath -czvf $targetpath.tar.gz .
-rm -rf $targetpath
-
+if [[ -d $targetpath ]]; then
+  # pack directoy
+  tar -C $targetpath -czvf $targetpath.tar.gz .
+  rm -rf $targetpath
+else
+  echo_error "Nothing to release, aborting"
+  exit 1
+fi
 
 function make_a_new_version() {
   # Merge pushen
