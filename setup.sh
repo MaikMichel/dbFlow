@@ -63,7 +63,6 @@ print2envsql() {
   echo define workspace=${WORKSPACE} >> $targetpath/env.sql
   echo define db_app_pwd=${DB_APP_PWD} >> $targetpath/env.sql
   echo define db_app_user=${DB_APP_USER} >> $targetpath/env.sql
-  echo define apex_user=${APEX_USER} >> $targetpath/env.sql
 
   if [[ ${DB_ADMINUSER} != "sys" ]]; then
     echo define deftablespace=data >> $targetpath/env.sql
@@ -236,9 +235,6 @@ generate() {
   read -p "Enter stage of this configuration mapped to branch (develop, test, master) [develop]: " stage
   stage=${stage:-"develop"}
 
-  read -p "Enter apex schema [APEX_210100]: " apex_user
-  apex_user=${apex_user:-"APEX_210100"}
-
   read -p "Do you wish to generate and install default tooling? (Logger, utPLSQL, teplsql, tapi) [Y]: " with_tools
   with_tools=${with_tools:-"Y"}
 
@@ -269,9 +265,6 @@ generate() {
   echo "# ADD this to original APP-NUM" >> apply.env
   echo "APP_OFFSET=0" >> apply.env
   echo "" >> apply.env
-  echo "# What is the APEX Owner" >> apply.env
-  echo "APEX_USER=${apex_user}" >> apply.env
-
   read -p "Install with sql(cl) or sqlplus? [sqlplus]: " SQLCLI
   SQLCLI=${SQLCLI:-"sqlplus"}
   echo "# Scripts are executed with" >> apply.env
@@ -318,12 +311,12 @@ generate() {
 
 
   # ask for application IDs
-  read -p "Enter application IDs (comma separated) you wish to use initialy [1000,2000]: " apex_ids
-  apex_ids=${apex_ids:-"1000,2000"}
+  apex_ids=""
+  read -p "Enter application IDs (comma separated) you wish to use initialy (1000,2000): " apex_ids
 
   # ask for restful Modulsa
-  read -p "Enter restful Moduls (comma separated) you wish to use initialy [com.${project_name}.api.version,com.${project_name}.api.test]: " rest_modules
-  rest_modules=${rest_modules:-"com.${project_name}.api.version,com.${project_name}.api.test"}
+  rest_modules=""
+  read -p "Enter restful Moduls (comma separated) you wish to use initialy (com.${project_name}.api.version,com.${project_name}.api.test): " rest_modules
 
 
   # split ids gen directories
