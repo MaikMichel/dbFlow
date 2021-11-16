@@ -203,9 +203,9 @@ else
 
       echo "Copy files ..."
       if [ $(uname) == "Darwin" ]; then
-        rsync -R "$(git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB -- ${folder})" ${targetpath}
+        rsync -R `git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB -- ${folder})` ${targetpath}
       else
-        yes | cp --parents -Rf "$(git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB -- ${folder})" ${targetpath}
+        cp --parents -Rf `git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB -- ${folder}` ${targetpath}
       fi
     else
       echo_warning "No changes in folder: ${folder} !"
