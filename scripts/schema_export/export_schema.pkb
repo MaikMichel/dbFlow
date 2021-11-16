@@ -1,4 +1,4 @@
-create or replace package body export_schema is
+create or replace package body dbflow$exp_schema is
   c_crlf constant varchar2(10) :=  chr(13)||chr(10);
 
   function clob_to_blob (p_clob in clob) return blob is
@@ -272,7 +272,7 @@ create or replace package body export_schema is
                  where object_type in ('TYPE', 'PACKAGE BODY', 'PACKAGE', 'FUNCTION', 'PROCEDURE', 'TRIGGER')
                    and object_name not like 'TEST\_%' escape '\'
                    and object_name not like 'SYS\_PLSQL\_%' escape '\'
-                   and object_name != 'EXPORT_SCHEMA'
+                   and object_name != 'DBFLOW$EXP_SCHEMA'
                    and (p_object = 'ALL' or upper(object_name) = upper(p_object)) )
     loop
       v_file := clob_to_blob(get_source(p_source_name => cur.object_name,

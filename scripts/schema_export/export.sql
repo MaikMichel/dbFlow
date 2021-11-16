@@ -18,7 +18,7 @@ script
 
 
 var binds = {}
-var ret = util.executeReturnList("select export_schema.get_zip('^OBJECT') content from dual",binds);
+var ret = util.executeReturnList("select dbflow$exp_schema.get_zip('^OBJECT') content from dual",binds);
 var usr = util.executeReturnOneCol("select lower(user) from dual");
 
 // loop the results
@@ -38,5 +38,5 @@ for (var i = 0; i < ret.length; i++) {
 }
 /
 set feedback off
-drop package export_schema;
+drop package dbflow$exp_schema;
 set feedback on

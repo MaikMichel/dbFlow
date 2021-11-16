@@ -1,4 +1,4 @@
-create or replace package export_schema is
+create or replace package dbflow$exp_schema is
 
   function get_zip(p_object in varchar2 default 'ALL') return blob;
 

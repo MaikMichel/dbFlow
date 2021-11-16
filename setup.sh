@@ -366,9 +366,17 @@ export_schema() {
   local targetschema=${1:-"ALL"}
   local object_name=${2:-"ALL"}
 
+
   # when defined get it
   ALL_SCHEMAS=( ${DATA_SCHEMA} ${LOGIC_SCHEMA} ${APP_SCHEMA} )
   SCHEMAS=($(printf "%s\n" "${ALL_SCHEMAS[@]}" | sort -u))
+
+  if [[ $targetschema != "ALL" ]]; then
+    if [[ ! " ${SCHEMAS[@]} " =~ " ${targetschema} " ]]; then
+      echo_error "ERROR: unknown targetschema $targetschema (use ALL or anything of: ${SCHEMAS[*]})"
+      exit 1
+    fi
+  fi
 
   echo "targetschema: $targetschema"
   echo "object_name:  $object_name"
@@ -497,14 +505,7 @@ else
       [[ -z ${1-} ]] \
         && echo_error "ERROR: You have to specify a target-schema or ALL" \
         && exit 1
-      targetschema=$1
-
-      if [[ $targetschema != "ALL" ]]; then
-        if [[ ! " ${SCHEMAS[@]} " =~ " ${targetschema} " ]]; then
-          echo_error "ERROR: unknown targetschema $targetschema (use ALL or anything of: ${SCHEMAS[*]})"
-          exit 1
-        fi
-      fi
+      targetschema=$1; shift
 
       object=""
       # Process package options
