@@ -261,7 +261,7 @@ create or replace package body dbflow$exp_schema is
                         'sources/'||
                         case
                           when object_type in ('PACKAGE', 'PACKAGE BODY') then 'packages'
-                          else lower(object_type)
+                          else lower(object_type)||'s' -- plural
                         end||'/'||lower(object_name)||'.'||
                         case
                           when object_type = 'PACKAGE BODY' then 'pkb'
@@ -328,7 +328,7 @@ create or replace package body dbflow$exp_schema is
           );
     end loop;
 
-    for cur in (select view_name, 'sources/views/'||lower(view_name)||'.sql' filename
+    for cur in (select view_name, 'views/'||lower(view_name)||'.sql' filename
                   from user_views
                  where (p_object = 'ALL' or upper(view_name) = upper(p_object)) )
     loop
