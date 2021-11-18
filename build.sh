@@ -68,6 +68,10 @@ fi
 
 ALL_SCHEMAS=( ${DATA_SCHEMA} ${LOGIC_SCHEMA} ${APP_SCHEMA} )
 SCHEMAS=($(printf "%s\n" "${ALL_SCHEMAS[@]}" | sort -u))
+# if length is equal than ALL_SCHEMAS, otherwise distinct
+if [[ ${#SCHEMAS[@]} == ${#ALL_SCHEMAS[@]} ]]; then
+  SCHEMAS=(${ALL_SCHEMAS[@]})
+fi
 
 MAINFOLDERS=( apex db reports rest )
 
