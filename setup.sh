@@ -363,7 +363,10 @@ export_schema() {
   # when defined get it
   ALL_SCHEMAS=( ${DATA_SCHEMA} ${LOGIC_SCHEMA} ${APP_SCHEMA} )
   SCHEMAS=($(printf "%s\n" "${ALL_SCHEMAS[@]}" | sort -u))
-
+  # if length is equal than ALL_SCHEMAS, otherwise distinct
+  if [[ ${#SCHEMAS[@]} == ${#ALL_SCHEMAS[@]} ]]; then
+    SCHEMAS=(${ALL_SCHEMAS[@]})
+  fi
   if [[ $targetschema != "ALL" ]]; then
     if [[ ! " ${SCHEMAS[@]} " =~ " ${targetschema} " ]]; then
       echo_error "ERROR: unknown targetschema $targetschema (use ALL or anything of: ${SCHEMAS[*]})"

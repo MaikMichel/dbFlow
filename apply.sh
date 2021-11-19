@@ -97,6 +97,10 @@ fi
 
 ALL_SCHEMAS=( ${DATA_SCHEMA} ${LOGIC_SCHEMA} ${APP_SCHEMA} )
 SCHEMAS=($(printf "%s\n" "${ALL_SCHEMAS[@]}" | sort -u))
+# if length is equal than ALL_SCHEMAS, otherwise distinct
+if [[ ${#SCHEMAS[@]} == ${#ALL_SCHEMAS[@]} ]]; then
+  SCHEMAS=(${ALL_SCHEMAS[@]})
+fi
 
 if [ -d $DEPOT_PATH/$STAGE ]
 then
@@ -598,8 +602,10 @@ trap 'rc=$?; notify $rc; exit $rc' EXIT
 
 
 print_info
+
 extract_patchfile
 read_db_pass
+
 set_apps_unavailable
 remove_dropped_files
 
