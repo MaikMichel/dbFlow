@@ -9,7 +9,7 @@ Deployment framework for Oracle Database Applications
 - use a deployment flow, which automaticaly build and apply patches based on Git diffs
 - configure your project dependencies
 
-###  If you are using VSCode you should install > [dbFlow-vsce VSCode extension](https://marketplace.visualstudio.com/items?itemName=MaikMichel.dbflow)
+###  If you are using VSCode you should install > [dbFlux](https://marketplace.visualstudio.com/items?itemName=MaikMichel.dbflow)
 With that in place you get the ability to:
 - compile SQL or PLSQL based on folder structure
 - execute tests based on folder structure
@@ -54,3 +54,13 @@ First of all you need a database. If you set up the project from scratch, you wi
 - [ ] Finalize documentation
 - [ ] Create some tutorials
 - [ ] Create son blogposts
+
+
+## Frequently Asked Question
+
+> Git creates wrong filenames and dbFlow can't copy / rsync them in a right manner
+
+- This is a git problem and you can turn if of by using following option:
+```bash
+git config --global core.quotepath off
+```
