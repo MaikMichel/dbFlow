@@ -194,7 +194,7 @@ else
   for folder in "${MAINFOLDERS[@]}"
   do
 
-    num_changes=$(git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB -- ${folder} | wc -l)
+    num_changes=`git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB -- ${folder} | wc -l | xargs`
 
     if [[ $num_changes > 0 ]]; then
 
@@ -203,7 +203,7 @@ else
 
       echo "Copy files ..."
       if [ $(uname) == "Darwin" ]; then
-        rsync -R `git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB -- ${folder})` ${targetpath}
+        rsync -R `git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB -- ${folder}` ${targetpath}
       else
         cp --parents -Rf `git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB -- ${folder}` ${targetpath}
       fi
@@ -254,7 +254,7 @@ if [ "${mode}" == "patch" ]; then
   do
 
     # to avoid dead-files
-    num_changes=$(git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=D -- ${folder} | wc -l)
+    num_changes=`git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=D -- ${folder} | wc -l | xargs`
 
     if [[ $num_changes > 0 ]]; then
       echo "echo removing dead-files"
