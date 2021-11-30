@@ -138,14 +138,14 @@ fi
 
 # at INIT there is no pretreatment or an evaluation of the table_ddl
 if [ "${mode}" == "init" ]; then
-  array=( .hooks/pre sequences tables indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies sources/types sources/packages sources/functions sources/procedures views sources/triggers jobs tests/packages ddl/init dml/base dml/init .hooks/post)
+  array=( .hooks/pre sequences tables indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies sources/types sources/packages sources/functions sources/procedures views mviews sources/triggers jobs tests/packages ddl/init dml/base dml/init .hooks/post)
 else
   # building pre and post based on branches
   pres=( .hooks/pre ddl/pre_${branch} dml/pre_${branch} ddl/pre dml/pre )
   post=( ddl/post_${branch} dml/post_${branch} ddl/post dml/base dml/post .hooks/post )
 
   array=${pres[@]}
-  array+=( sequences tables tables_ddl indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies sources/types sources/packages sources/functions sources/procedures views sources/triggers jobs tests/packages )
+  array+=( sequences tables tables_ddl indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies sources/types sources/packages sources/functions sources/procedures views mviews sources/triggers jobs tests/packages )
   array+=( ${post[@]} )
 fi
 
@@ -248,6 +248,18 @@ else
       done
     fi
   done
+
+  ## and we need all hooks
+  for schema in "${SCHEMAS[@]}"
+  do
+    # yes, so copy it...
+    if [ $(uname) == "Darwin" ]; then
+      rsync -R ${sourcepath}/db/$schema/.hooks $targetpath
+    else
+      yes | cp --parents -rf ${sourcepath}/db/$schema/.hooks $targetpath
+    fi
+  done
+
 fi
 
 # if patch mode we remove unnecessary files
@@ -295,6 +307,7 @@ do
     echo "" >> "$target_install_file"
     echo "define LOGFILE = '^1'" >> "$target_install_file"
     echo "define VERSION = '^2'" >> "$target_install_file"
+    echo "define MODE = '^3'" >> "$target_install_file"
     echo "set timing on" >> "$target_install_file"
     echo "set trim off" >> "$target_install_file"
     echo "set linesize 2000" >> "$target_install_file"
@@ -310,8 +323,6 @@ do
     echo "Prompt .. Start Installation for schema: $schema " >> "$target_install_file"
     echo "Prompt ..                       Version: ^VERSION " >> "$target_install_file"
     echo "Prompt .............................................................................. " >> "$target_install_file"
-    echo "set scan off" >> "$target_install_file"
-    echo "set define off" >> "$target_install_file"
     echo "set serveroutput on" >> "$target_install_file"
     echo "" >> "$target_install_file"
 
@@ -337,6 +348,21 @@ do
         echo "Writing calls for $path"
         echo "Prompt Installing $path ..." >> "$target_install_file"
 
+        # pre hook
+        if [[ -d "${targetpath}/db/${schema}/.hooks/pre/${path}" ]]; then
+          for file in $(ls "${targetpath}/db/${schema}/.hooks/pre/${path}" | sort )
+          do
+            if [[ -f "${targetpath}/db/${schema}/.hooks/pre/${path}/${file}" ]]; then
+              echo "Prompt >>> ${path}/$file" >> "$target_install_file"
+              echo "@@.hooks/pre/${path}/$file ^LOGFILE ^VERSION ^MODE" >> "$target_install_file"
+            fi
+          done
+        fi
+        echo "set scan off" >> "$target_install_file"
+        echo "set define off" >> "$target_install_file"
+
+        echo "Prompt" >> "$target_install_file"
+
         if [ "$path" == "ddl/pre" ] || [ "$path" == "ddl/pre_tst" ] || [ "$path" == "ddl/pre_uat" ] || [ "$path" == "views" ]
         then
           echo "WHENEVER SQLERROR CONTINUE" >> "$target_install_file"
@@ -351,45 +377,47 @@ do
 
         for file in $(ls "$targetpath"/db/$schema/$path | sort $sortdirection )
         do
-          # if tables_ddl, this is only written in install if there is no
-          # matching table in the branch
-          if [ "$path" == "tables" ]
-          then
-            skipfile="FALSE"
-            table_changes="TRUE"
-
-            if [ "${mode}" == "patch" ]; then
-              if [ -d "${targetpath}/db/$schema/tables_ddl" ]
-              then
-
-                for f in ${targetpath}/db/$schema/tables_ddl/${file%%.*}.*; do
-                  if [ -e "$f" ];
-                  then
-                      skipfile="TRUE"
-                  fi
-                done
-              fi
-            fi
-
-
-            if [ "$skipfile" == "TRUE" ]
+          if [[ -f "${targetpath}/db/${schema}/${path}/${file}" ]]; then
+            # if tables_ddl, this is only written in install if there is no
+            # matching table in the branch
+            if [ "$path" == "tables" ]
             then
-              echo "Skipping $file"
-              echo "Prompt ... skipped $file" >> "$target_install_file"
+              skipfile="FALSE"
+              table_changes="TRUE"
+
+              if [ "${mode}" == "patch" ]; then
+                if [ -d "${targetpath}/db/$schema/tables_ddl" ]
+                then
+
+                  for f in ${targetpath}/db/$schema/tables_ddl/${file%%.*}.*; do
+                    if [ -e "$f" ];
+                    then
+                        skipfile="TRUE"
+                    fi
+                  done
+                fi
+              fi
+
+
+              if [ "$skipfile" == "TRUE" ]
+              then
+                echo "Skipping $file"
+                echo "Prompt ... skipped $file" >> "$target_install_file"
+              else
+                echo "Prompt ... $file" >> "$target_install_file"
+                echo "@@$path/$file" >> "$target_install_file"
+              fi
             else
               echo "Prompt ... $file" >> "$target_install_file"
-              echo "@@$path/$file" >> "$target_install_file"
-            fi
-          else
-            echo "Prompt ... $file" >> "$target_install_file"
-            if [ "$path" == "ddl/pre_tst" ] && [ "${mode}" == "patch" ]
-            then
-              echo "--tst@@$path/$file" >> "$target_install_file"
-            elif [ "$path" == "ddl/pre_uat" ] && [ "${mode}" == "patch" ]
-            then
-              echo "--uat@@$path/$file" >> "$target_install_file"
-            else
-              echo "@@$path/$file" >> "$target_install_file"
+              if [ "$path" == "ddl/pre_tst" ] && [ "${mode}" == "patch" ]
+              then
+                echo "--tst@@$path/$file" >> "$target_install_file"
+              elif [ "$path" == "ddl/pre_uat" ] && [ "${mode}" == "patch" ]
+              then
+                echo "--uat@@$path/$file" >> "$target_install_file"
+              else
+                echo "@@$path/$file" >> "$target_install_file"
+              fi
             fi
           fi
         done
@@ -397,6 +425,21 @@ do
         if [ "$path" == "ddl/pre" ] || [ "$path" == "ddl/pre_tst" ] || [ "$path" == "ddl/pre_uat" ] || [ "$path" == "views" ]
         then
           echo "WHENEVER SQLERROR EXIT SQL.SQLCODE" >> "$target_install_file"
+        fi
+
+        echo "set scan on" >> "$target_install_file"
+        echo "set define on" >> "$target_install_file"
+
+        # post hook
+        echo "Prompt" >> "$target_install_file"
+        if [[ -d "${targetpath}/db/${schema}/.hooks/post/${path}" ]]; then
+          for file in $(ls "${targetpath}/db/${schema}/.hooks/post/${path}" | sort )
+          do
+            if [[ -f "${targetpath}/db/${schema}/.hooks/post/${path}/${file}" ]]; then
+              echo "Prompt <<< ${path}/$file" >> "$target_install_file"
+              echo "@@.hooks/post/${path}/$file ^LOGFILE ^VERSION ^MODE" >> "$target_install_file"
+            fi
+          done
         fi
 
         echo "Prompt" >> "$target_install_file"
@@ -432,7 +475,7 @@ fi
 if [[ -d $targetpath ]]; then
   # pack directoy
   tar -C $targetpath -czvf $targetpath.tar.gz .
-  rm -rf $targetpath
+  #rm -rf $targetpath
 else
   echo_error "Nothing to release, aborting"
   exit 1

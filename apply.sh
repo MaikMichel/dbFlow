@@ -46,6 +46,15 @@ then
   source ./apply.env
 fi
 
+# get unavalable text
+if [[ -e ./apex/maintence.html ]]; then
+  maintence=`cat ./apex/maintence.html`
+else
+  maintence=`cat .dbFlow/maintence.html`
+fi
+maintence="<span />${maintence}"
+
+
 
 SQLCLI=${SQLCLI:-sqlplus}
 
@@ -260,45 +269,6 @@ remove_dropped_files()
   fi
 }
 
-execute_schema_hook_scripts() {
-  local entrypath=$1
-  local currentpath=${2:-"/"}
-  local sqlfile="tmp_hook_${entrypath}.sql"
-
-  if [[ -d ".hooks/${entrypath}" ]]
-  then
-    echo "executing schema hook entrypoint ${entrypath} in ${currentpath}" | write_log
-    echo "set define '^'" > ${sqlfile}
-    echo "set concat on" >> ${sqlfile}
-    echo "set concat ." >> ${sqlfile}
-    echo "set verify off" >> ${sqlfile}
-    echo "define SPOOLFILE = '^1'" >> ${sqlfile}
-    echo "define VERSION = '^2'" >> ${sqlfile}
-    echo "set timing on;" >> ${sqlfile}
-    echo "spool ^SPOOLFILE append;" >> ${sqlfile}
-    for file in $(ls .hooks/${entrypath} | sort )
-    do
-      echo "Prompt executing db/${currentpath}.hooks/${entrypath}/${file}" >> ${sqlfile}
-      echo "@.hooks/${entrypath}/${file} ^SPOOLFILE ^VERSION" >> ${sqlfile}
-      echo "" >> ${sqlfile}
-    done
-
-    runfile=${sqlfile}
-    exit | $SQLCLI -S "$(get_connect_string $schema)" @${runfile} ${full_log_file} ${patch}
-    runfile=""
-
-    if [ $? -ne 0 ]
-    then
-      echo "ERROR when executing db/${currentpath}.hooks/${sqlfile}" | write_log $failure
-      cat ${sqlfile} >> ${full_log_file}
-      manage_result "failure"
-    fi
-
-    rm ${sqlfile}
-  fi
-}
-
-
 execute_global_hook_scripts() {
   local entrypath=$1    # pre or post
   local targetschema=""
@@ -307,7 +277,6 @@ execute_global_hook_scripts() {
   then
     for file in $(ls .hooks/${entrypath} | sort )
     do
-      echo "executing global hook entrypoint ${entrypath}" | write_log
       case ${file} in
         *"${DATA_SCHEMA}"*)
           targetschema=${DATA_SCHEMA}
@@ -320,23 +289,21 @@ execute_global_hook_scripts() {
           ;;
       esac
       runfile=".hooks/${entrypath}/${file}"
-      echo "executing file ${runfile}" | write_log
-      exit | $SQLCLI -S "$(get_connect_string $targetschema)" @${runfile} ${full_log_file} ${patch}
+      echo "executing hook file ${runfile}" | write_log
+      exit | $SQLCLI -S "$(get_connect_string $targetschema)" @${runfile} ${full_log_file} ${patch} ${mode}
       runfile=""
     done
 
 
     if [ $? -ne 0 ]
     then
-      echo "ERROR when executing db/.hooks/${entrypath}/${file}" | write_log $failure
+      echo "ERROR when executing .hooks/${entrypath}/${file}" | write_log $failure
       manage_result "failure"
     fi
   fi
 }
 
-
-install_db_schemas()
-{
+clear_db_schemas_on_init() {
   if [ "${mode}" == "init" ]; then
     echo "INIT - Mode, Schemas will be cleared" | write_log
     # loop through schemas
@@ -344,9 +311,13 @@ install_db_schemas()
     do
       # On init mode schema content will be dropped
         echo "DROPING ALL OBJECTS on schema $schema" | write_log
-        exit | $SQLCLI -S "$(get_connect_string $schema)" @.dbFlow/lib/drop_all.sql ${full_log_file} ${patch}
+        exit | $SQLCLI -S "$(get_connect_string $schema)" @.dbFlow/lib/drop_all.sql ${full_log_file} ${patch} ${mode}
     done
   fi
+}
+
+install_db_schemas()
+{
 
   cd db
   # execute all files in global pre path
@@ -360,10 +331,6 @@ install_db_schemas()
     then
       cd $schema
 
-      # execute all files in schema pre path
-      execute_schema_hook_scripts "pre" "$schema/"
-
-
       # now executing main installation file if exists
       db_install_file=${mode}_${schema}_${patch}.sql
       # exists db install file
@@ -375,7 +342,7 @@ install_db_schemas()
         sed -i -E "s:--$STAGE:Prompt uncommented cleanup for stage $STAGE\n:g" $db_install_file
 
         runfile=$db_install_file
-        $SQLCLI -S "$(get_connect_string $schema)" @$db_install_file ${full_log_file} ${patch}
+        $SQLCLI -S "$(get_connect_string $schema)" @$db_install_file ${full_log_file} ${patch} ${mode}
         runfile=""
 
         if [ $? -ne 0 ]
@@ -388,9 +355,6 @@ install_db_schemas()
         echo "File db/$schema/$db_install_file does not exist" | write_log
       fi
 
-      # execute all files in schema post path
-      execute_schema_hook_scripts "post" "$schema/"
-
       cd ..
     fi
   done
@@ -401,57 +365,149 @@ install_db_schemas()
   cd ..
 }
 
+set_rest_unavailable() {
+  if [[ -d rest ]]; then
+    echo "disabling REST" | write_log
+
+    # disable REST for entire schema
+    $SQLCLI -s "$(get_connect_string $APP_SCHEMA)" <<!
+  set define off;
+  Begin
+    ORDS.ENABLE_SCHEMA(p_enabled             => FALSE);
+  End;
+  /
+!
+
+  fi
+}
+
+
+set_rest_available() {
+  if [[ -d rest ]]; then
+    echo "enabling REST for entire schema $APP_SCHEMA" | write_log
+    # enable REST for entire schema
+    $SQLCLI -s "$(get_connect_string $APP_SCHEMA)" <<!
+set define off;
+Begin
+  ORDS.ENABLE_SCHEMA(p_enabled             => TRUE);
+End;
+/
+!
+
+  fi
+}
+
+
+
 
 set_apps_unavailable() {
-  # exists app_install_file
-  if [ -e $app_install_file ]
-  then
-    echo "disabling APEX-Apps ..." | write_log
-    # loop throug content
-    while IFS= read -r line; do
-      $SQLCLI -S "$(get_connect_string $APP_SCHEMA)" <<!
+  cd ${basepath}
+
+  if [[ -d "apex" ]]; then
+    for appid in apex/* ; do
+      if [[ -d "$appid" ]]; then
+        echo "disabling APEX-App $appid ..." | write_log
+        $SQLCLI -S "$(get_connect_string $APP_SCHEMA)" <<!
         set serveroutput on;
         prompt logging to ${log_file}
         set define off;
         spool ${log_file} append;
         Declare
-          v_application_id  apex_application_build_options.application_id%type := ${line/apex\/f} + ${APP_OFFSET};
+          v_application_id  apex_application_build_options.application_id%type := ${appid/apex\/f} + ${APP_OFFSET};
           v_workspace_id    apex_workspaces.workspace_id%type;
         Begin
           select workspace_id
-              into v_workspace_id
-              from apex_workspaces
-            where workspace = upper('${WORKSPACE}');
+            into v_workspace_id
+            from apex_workspaces
+           where workspace = upper('${WORKSPACE}');
 
-            apex_application_install.set_workspace_id(v_workspace_id);
-            apex_util.set_security_group_id(p_security_group_id => apex_application_install.get_workspace_id);
+          apex_application_install.set_workspace_id(v_workspace_id);
+          apex_util.set_security_group_id(p_security_group_id => apex_application_install.get_workspace_id);
 
-            begin
-              apex_util.set_application_status(p_application_id => v_application_id,
-                                              p_application_status => 'UNAVAILABLE',
-                                              p_unavailable_value => '<h1><center>Wegen Wartungsarbeiten ist die Applikation vor&uuml;bergehend nicht erreichbar</center></h1>' );
-            exception
-              when others then
-                if sqlerrm like '%Application not found%' then
-                  dbms_output.put_line((chr(27) || '[31m') || 'Application: '||upper(v_application_id)||' not found!' || (chr(27) || '[0m'));
-                else
-                  raise;
-                end if;
-            end;
+          begin
+            apex_util.set_application_status(p_application_id     => v_application_id,
+                                             p_application_status => 'UNAVAILABLE',
+                                             p_unavailable_value  => '${maintence}' );
+          exception
+            when others then
+              if sqlerrm like '%Application not found%' then
+                dbms_output.put_line((chr(27) || '[31m') || 'Application: '||upper(v_application_id)||' not found!' || (chr(27) || '[0m'));
+              else
+                raise;
+              end if;
+          end;
         Exception
           when no_data_found then
             dbms_output.put_line((chr(27) || '[31m') || 'Workspace: '||upper('${WORKSPACE}')||' not found!' || (chr(27) || '[0m'));
         End;
 /
 !
-
-    done < "$app_install_file"
+      fi
+    done
   else
-    echo "File $app_install_file does not exist" | write_log $warning
+    echo "Directory apex does not exist" | write_log $warning
   fi
 
 }
 
+set_apps_available() {
+  cd ${basepath}
+
+  if [[ -d "apex" ]]; then
+    for appid in apex/* ; do
+      if [[ -d "$appid" ]]; then
+        echo "enabling APEX-App $appid ..." | write_log
+        $SQLCLI -S "$(get_connect_string $APP_SCHEMA)" <<!
+        set serveroutput on;
+        prompt logging to ${log_file}
+        set define off;
+        spool ${log_file} append;
+        Declare
+          v_application_id  apex_application_build_options.application_id%type := ${appid/apex\/f} + ${APP_OFFSET};
+          v_workspace_id    apex_workspaces.workspace_id%type;
+          l_text            varchar2(100);
+        Begin
+          select workspace_id
+            into v_workspace_id
+            from apex_workspaces
+           where workspace = upper('${WORKSPACE}');
+
+          apex_application_install.set_workspace_id(v_workspace_id);
+          apex_util.set_security_group_id(p_security_group_id => apex_application_install.get_workspace_id);
+
+          begin
+            select substr(unavailable_text, 1, 50)
+              into l_text
+              from apex_applications
+             where application_id = v_application_id;
+
+            if (apex_util.get_application_status(p_application_id => v_application_id) = 'UNAVAILABLE' and l_text like '<span />%') then
+              apex_util.set_application_status(p_application_id     => v_application_id,
+                                               p_application_status => 'AVAILABLE_W_EDIT_LINK');
+            end if;
+          exception
+            when no_data_found then
+              dbms_output.put_line((chr(27) || '[31m') || 'Application: '||upper(v_application_id)||' not found!' || (chr(27) || '[0m'));
+            when others then
+              if sqlerrm like '%Application not found%' then
+                dbms_output.put_line((chr(27) || '[31m') || 'Application: '||upper(v_application_id)||' not found!' || (chr(27) || '[0m'));
+              else
+                raise;
+              end if;
+          end;
+        Exception
+          when no_data_found then
+            dbms_output.put_line((chr(27) || '[31m') || 'Workspace: '||upper('${WORKSPACE}')||' not found!' || (chr(27) || '[0m'));
+        End;
+/
+!
+      fi
+    done
+  else
+    echo "Directory apex does not exist" | write_log $warning
+  fi
+
+}
 
 install_apps() {
   # app install
@@ -488,7 +544,7 @@ install_apps() {
           end;
           /
 
-          @@install.sql
+          @@install.sql ${full_log_file} ${patch} ${mode}
 !
 
 
@@ -518,7 +574,7 @@ exec_final_unit_tests()
     for schema in "${SCHEMAS[@]}"
     do
       echo "Executing unit tests for schema $schema " | write_log
-      exit | $SQLCLI -S "$(get_connect_string $schema)" @.dbFlow/lib/execute_tests.sql ${full_log_file} ${patch}
+      exit | $SQLCLI -S "$(get_connect_string $schema)" @.dbFlow/lib/execute_tests.sql ${full_log_file} ${patch} ${mode}
       if [ $? -ne 0 ]
       then
         echo "ERROR when executing .dbFlow/lib/execute_tests.sql" | write_log $failure
@@ -600,17 +656,40 @@ trap '(exit 130)' INT
 trap '(exit 143)' TERM
 trap 'rc=$?; notify $rc; exit $rc' EXIT
 
-
+# print some global vars to output
 print_info
 
+# extract patchfile and read passwords
 extract_patchfile
 read_db_pass
 
-set_apps_unavailable
+# files to be removed
 remove_dropped_files
 
+# when in init mode, ALL schema objects will be
+# dropped
+clear_db_schemas_on_init
+
+# now disable all, so that during build noone can do anything
+set_apps_unavailable
+set_rest_unavailable
+
+
+# execute pre hooks in root folder
+execute_global_hook_scripts "pre"
+
+
+# install db and apps
 install_db_schemas
 install_apps
 
-exec_final_unit_tests
+# execute post hooks in root folder
+execute_global_hook_scripts "post"
+
+# now enable all,
+set_apps_available
+set_rest_available
+
+
+# final works
 manage_result "success"
