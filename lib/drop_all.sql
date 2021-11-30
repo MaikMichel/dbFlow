@@ -8,15 +8,31 @@ set timing on;
 set serveroutput on;
 spool ^SPOOLFILE append;
 begin
-  for cur in ( select 'DROP ' || object_type || ' ' || object_name ||
-                      decode ( object_type, 'TABLE', ' CASCADE CONSTRAINTS PURGE',
-                                            'TYPE', ' force' ) as v_sql
-                from user_objects
-               where object_type in ( 'TABLE', 'VIEW', 'PACKAGE', 'TYPE', 'PROCEDURE', 'FUNCTION', 'TRIGGER', 'SEQUENCE' )
-                 and object_name not like 'SYS_PLSQL_%'
-                 and object_name not like 'ISEQ$$_%'
-               order by decode ( object_type, 'TRIGGER', 'AAA', object_type ), object_name)
-  loop
+  for cur in (
+    
+      with base as (
+          select 
+                object_type,
+                object_name
+          from user_objects
+          where object_type in ( 'TABLE', 'VIEW','MATERIALIZED VIEW', 'PACKAGE', 'TYPE', 'PROCEDURE', 'FUNCTION', 'TRIGGER', 'SEQUENCE' )
+          and object_name not like 'SYS_PLSQL_%'
+          and object_name not like 'ISEQ$$_%'   
+          minus -- we have to remove the drop table command for materialized views as they appear twice above
+          select 
+              'TABLE',
+              object_name
+          from user_objects 
+          where object_type = 'MATERIALIZED VIEW'
+          and object_name not like 'SYS_PLSQL_%'
+          and object_name not like 'ISEQ$$_%' 
+      )
+      select 'DROP ' || object_type || ' ' || object_name || decode ( object_type, 'TABLE', ' CASCADE CONSTRAINTS PURGE', 'TYPE', ' force' ) as v_sql
+      from base 
+      order by decode( object_type, 'TRIGGER', 'AAA', object_type ), object_name  
+                      
+    
+  ) loop
     execute immediate cur.v_sql;
   end loop;
 end;
