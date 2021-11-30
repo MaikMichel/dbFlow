@@ -366,35 +366,68 @@ install_db_schemas()
 }
 
 set_rest_unavailable() {
-  if [[ -d rest ]]; then
-    echo "disabling REST" | write_log
+  cd ${basepath}
 
-    # disable REST for entire schema
-    $SQLCLI -s "$(get_connect_string $APP_SCHEMA)" <<!
-  set define off;
-  Begin
-    ORDS.ENABLE_SCHEMA(p_enabled             => FALSE);
-  End;
-  /
+  if [[ -d "rest/modules" ]]; then
+    cd rest/modules
+    for module in *; do
+      if [[ -d "$module" ]]; then
+
+        echo "disabling REST module $module ..." | write_log
+        $SQLCLI -S "$(get_connect_string $APP_SCHEMA)" <<!
+        set define off;
+        prompt logging to ${log_file}
+        set serveroutput on;
+        spool ${log_file} append;
+        Begin
+          ords.publish_module(p_module_name  => '${module}',
+                              p_status       => 'NOT_PUBLISHED');
+        Exception
+          when no_data_found then
+            dbms_output.put_line((chr(27) || '[31m') || 'REST Module: ${module} not found!' || (chr(27) || '[0m'));
+        End;
+/
 !
-
+      fi
+    done
+  else
+    echo "Directory rest/modules does not exist" | write_log $warning
   fi
+
+  cd ${basepath}
 }
 
 
 set_rest_available() {
-  if [[ -d rest ]]; then
-    echo "enabling REST for entire schema $APP_SCHEMA" | write_log
-    # enable REST for entire schema
-    $SQLCLI -s "$(get_connect_string $APP_SCHEMA)" <<!
-set define off;
-Begin
-  ORDS.ENABLE_SCHEMA(p_enabled             => TRUE);
-End;
+  cd ${basepath}
+
+  if [[ -d "rest/modules" ]]; then
+    cd rest/modules
+    for module in *; do
+      if [[ -d "$module" ]]; then
+
+        echo "enabling REST module $module ..." | write_log
+        $SQLCLI -S "$(get_connect_string $APP_SCHEMA)" <<!
+        set define off;
+        prompt logging to ${log_file}
+        set serveroutput on;
+        spool ${log_file} append;
+        Begin
+          ords.publish_module(p_module_name  => '${module}',
+                              p_status       => 'PUBLISHED');
+        Exception
+          when no_data_found then
+            dbms_output.put_line((chr(27) || '[31m') || 'REST Modul: ${module} not found!' || (chr(27) || '[0m'));
+        End;
 /
 !
-
+      fi
+    done
+  else
+    echo "Directory rest/modules does not exist" | write_log $warning
   fi
+
+  cd ${basepath}
 }
 
 
@@ -406,9 +439,11 @@ set_apps_unavailable() {
   if [[ -d "apex" ]]; then
     for appid in apex/* ; do
       if [[ -d "$appid" ]]; then
+
         echo "disabling APEX-App $appid ..." | write_log
         $SQLCLI -S "$(get_connect_string $APP_SCHEMA)" <<!
         set serveroutput on;
+        set escchar @
         prompt logging to ${log_file}
         set define off;
         spool ${log_file} append;
@@ -666,13 +701,13 @@ read_db_pass
 # files to be removed
 remove_dropped_files
 
-# when in init mode, ALL schema objects will be
-# dropped
-clear_db_schemas_on_init
-
 # now disable all, so that during build noone can do anything
 set_apps_unavailable
 set_rest_unavailable
+
+# when in init mode, ALL schema objects will be
+# dropped
+clear_db_schemas_on_init
 
 
 # execute pre hooks in root folder
