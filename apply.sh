@@ -306,12 +306,12 @@ execute_global_hook_scripts() {
 clear_db_schemas_on_init() {
   if [ "${mode}" == "init" ]; then
     echo "INIT - Mode, Schemas will be cleared" | write_log
-    # loop through schemas
-    for schema in "${SCHEMAS[@]}"
-    do
+    # loop through schemas reverse
+    for (( idx=${#SCHEMAS[@]}-1 ; idx>=0 ; idx-- )) ; do
+      local schema=${SCHEMAS[idx]}
       # On init mode schema content will be dropped
-        echo "DROPING ALL OBJECTS on schema $schema" | write_log
-        exit | $SQLCLI -S "$(get_connect_string $schema)" @.dbFlow/lib/drop_all.sql ${full_log_file} ${patch} ${mode}
+      echo "DROPING ALL OBJECTS on schema $schema" | write_log
+       exit | $SQLCLI -S "$(get_connect_string $schema)" @.dbFlow/lib/drop_all.sql ${full_log_file} ${patch} ${mode}
     done
   fi
 }
