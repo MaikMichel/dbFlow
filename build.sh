@@ -323,6 +323,8 @@ do
     echo "Prompt .. Start Installation for schema: $schema " >> "$target_install_file"
     echo "Prompt ..                       Version: ^VERSION " >> "$target_install_file"
     echo "Prompt .............................................................................. " >> "$target_install_file"
+    echo "set scan off" >> "$target_install_file"
+    echo "set define off" >> "$target_install_file"
     echo "set serveroutput on" >> "$target_install_file"
     echo "" >> "$target_install_file"
 
@@ -353,13 +355,12 @@ do
           for file in $(ls "${targetpath}/db/${schema}/.hooks/pre/${path}" | sort )
           do
             if [[ -f "${targetpath}/db/${schema}/.hooks/pre/${path}/${file}" ]]; then
-              echo "Prompt >>> ${path}/$file" >> "$target_install_file"
-              echo "@@.hooks/pre/${path}/$file ^LOGFILE ^VERSION ^MODE" >> "$target_install_file"
+              echo "Prompt >>> db/${schema}/.hooks/pre/${path}/${file}" >> "$target_install_file"
+              echo "@@.hooks/pre/${path}/$file" >> "$target_install_file"
+              echo "Prompt <<< db/${schema}/.hooks/pre/${path}/${file}" >> "$target_install_file"
             fi
           done
         fi
-        echo "set scan off" >> "$target_install_file"
-        echo "set define off" >> "$target_install_file"
 
         echo "Prompt" >> "$target_install_file"
 
@@ -404,11 +405,12 @@ do
                 echo "Skipping $file"
                 echo "Prompt ... skipped $file" >> "$target_install_file"
               else
-                echo "Prompt ... $file" >> "$target_install_file"
+                echo "Prompt >>> db/${schema}/${path}/${file}" >> "$target_install_file"
                 echo "@@$path/$file" >> "$target_install_file"
+                echo "Prompt <<< db/${schema}/${path}/${file}" >> "$target_install_file"
               fi
             else
-              echo "Prompt ... $file" >> "$target_install_file"
+              echo "Prompt >>> db/${schema}/${path}/${file}" >> "$target_install_file"
               if [ "$path" == "ddl/pre_tst" ] && [ "${mode}" == "patch" ]
               then
                 echo "--tst@@$path/$file" >> "$target_install_file"
@@ -417,6 +419,7 @@ do
                 echo "--uat@@$path/$file" >> "$target_install_file"
               else
                 echo "@@$path/$file" >> "$target_install_file"
+                echo "Prompt <<< db/${schema}/${path}/${file}" >> "$target_install_file"
               fi
             fi
           fi
@@ -427,8 +430,7 @@ do
           echo "WHENEVER SQLERROR EXIT SQL.SQLCODE" >> "$target_install_file"
         fi
 
-        echo "set scan on" >> "$target_install_file"
-        echo "set define on" >> "$target_install_file"
+
 
         # post hook
         echo "Prompt" >> "$target_install_file"
@@ -436,8 +438,9 @@ do
           for file in $(ls "${targetpath}/db/${schema}/.hooks/post/${path}" | sort )
           do
             if [[ -f "${targetpath}/db/${schema}/.hooks/post/${path}/${file}" ]]; then
-              echo "Prompt <<< ${path}/$file" >> "$target_install_file"
-              echo "@@.hooks/post/${path}/$file ^LOGFILE ^VERSION ^MODE" >> "$target_install_file"
+              echo "Prompt >>> db/${schema}/.hooks/post/${path}/${file}" >> "$target_install_file"
+              echo "@@.hooks/post/${path}/$file" >> "$target_install_file"
+              echo "Prompt <<< db/${schema}/.hooks/post/${path}/${file}" >> "$target_install_file"
             fi
           done
         fi
