@@ -465,7 +465,7 @@ fi
 if [[ -d $targetpath ]]; then
   # pack directoy
   tar -C $targetpath -czvf $targetpath.tar.gz .
-  #rm -rf $targetpath
+  rm -rf $targetpath
 else
   echo_error "Nothing to release, aborting"
   exit 1
