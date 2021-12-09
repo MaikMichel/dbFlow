@@ -47,7 +47,7 @@ function ask4pwd() {
       fi
       # Backspace
       if [[ $CHAR == $'\177' ]] ; then
-          if [ $CHARCOUNT -gt 0 ] ; then
+          if [[ $CHARCOUNT -gt 0 ]] ; then
               CHARCOUNT=$((CHARCOUNT-1))
               PROMPT=$'\b \b'
               pass="${pass%?}"
@@ -92,8 +92,7 @@ DBA_OPTION=" as sysdba"
 get_connect_string() {
   local arg1=$1
 
-  if [ ${#SCHEMAS[@]} -gt 1 ]
-  then
+  if [[ ${#SCHEMAS[@]} -gt 1 ]]; then
     echo "$DB_APP_USER[$arg1]/$DB_APP_PWD@$DB_TNS"
   else
     echo "$DB_APP_USER/$DB_APP_PWD@$DB_TNS"

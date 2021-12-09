@@ -95,12 +95,11 @@ remove2envsql() {
 install() {
   local yes=${1:-"NO"}
 
-  if [ $yes == "YES" ]; then
+  if [[ $yes == "YES" ]]; then
     echo_warning "Force option detected!"
   fi
 
-  if [ -z "$DB_ADMINUSER" ]
-  then
+  if [[ -z "$DB_ADMINUSER" ]]; then
     read -p "Enter username of admin user (admin, sys, ...) [sys]: " DB_ADMINUSER
     DB_ADMINUSER=${DB_ADMINUSER:-"sys"}
   fi
@@ -109,14 +108,12 @@ install() {
    DBA_OPTION=""
   fi
 
-  if [ -z "$DB_PASSWORD" ]
-  then
+  if [[ -z "$DB_PASSWORD" ]]; then
     ask4pwd "Enter password für user ${DB_ADMINUSER}: "
     DB_PASSWORD=${pass}
   fi
 
-  if [ -z "$DB_APP_PWD" ]
-  then
+  if [[ -z "$DB_APP_PWD" ]]; then
     ask4pwd "Enter password für user ${DB_APP_USER}: "
     DB_APP_PWD=${pass}
   fi
@@ -140,19 +137,16 @@ install() {
       echo "Installing $path"
       for file in $(ls "$targetpath"/$path | sort )
       do
-        if [ -f "$targetpath"/$path/${file} ]
-        then
+        if [[ -f "$targetpath"/$path/${file} ]]; then
           BASEFL=$(basename -- "${file}")
           EXTENSION="${BASEFL##*.}"
 
-          if [ $EXTENSION == "sql" ]
-          then
+          if [[ $EXTENSION == "sql" ]]; then
             cd $targetpath/$path
             echo "Calling $targetpath/$path/${file}"
             exit | ${SQLCLI} -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} @${file}
             cd ../../..
-          elif [ $EXTENSION == "sh" ]
-          then
+          elif [[ $EXTENSION == "sh" ]]; then
             cd $targetpath/$path
             echo "Executing $targetpath/$path/${file}"
             ./${file} ${yes} ${DB_PASSWORD}
@@ -179,11 +173,11 @@ generate() {
   db_scheme_type=${db_scheme_type:-"M"}
 
   # create directories
-  if [ $(toLowerCase $db_scheme_type) == "m" ]; then
+  if [[ $(toLowerCase $db_scheme_type) == "m" ]]; then
     mkdir -p db/{.hooks/{pre,post},${project_name}_data/{.hooks/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,tests/packages,ddl/{init,pre,post},dml/{base,init,pre,post}}}
     mkdir -p db/{.hooks/{pre,post},${project_name}_logic/{.hooks/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,tests/packages,ddl/{init,pre,post},dml/{base,init,pre,post}}}
     mkdir -p db/{.hooks/{pre,post},${project_name}_app/{.hooks/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,tests/packages,ddl/{init,pre,post},dml/{base,init,pre,post}}}
-  elif [ $(toLowerCase $db_scheme_type) == "s" ]; then
+  elif [[ $(toLowerCase $db_scheme_type) == "s" ]]; then
     mkdir -p db/{.hooks/{pre,post},${project_name}/{.hooks/{pre,post},sequences,tables,tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,tests/packages,ddl/{init,pre,post},dml/{base,init,pre,post}}}
   else
     echo_error "unknown type ${db_scheme_type}"
@@ -196,7 +190,7 @@ generate() {
   echo "PROJECT=${project_name}" >> build.env
   echo "" >> build.env
   echo "# what are the schema-names" >> build.env
-  if [ $(toLowerCase $db_scheme_type) == "m" ]; then
+  if [[ $(toLowerCase $db_scheme_type) == "m" ]]; then
     echo "APP_SCHEMA=${project_name}_app" >> build.env
     echo "DATA_SCHEMA=${project_name}_data" >> build.env
     echo "LOGIC_SCHEMA=${project_name}_logic" >> build.env
@@ -221,7 +215,7 @@ generate() {
   ask4pwd "Enter password for ${db_adminuser} [leave blank and you will be asked for]: "
   db_password=${pass}
 
-  if [ $(toLowerCase $db_scheme_type) == "m" ]; then
+  if [[ $(toLowerCase $db_scheme_type) == "m" ]]; then
     ask4pwd "Enter password for deployment_user (proxyuser: ${project_name}_depl) [leave blank and you will be asked for]: "
   else
     ask4pwd "Enter password for application_user (user: ${project_name}) [leave blank and you will be asked for]: "
@@ -243,7 +237,7 @@ generate() {
   echo "DB_TNS=${db_tns}" >> apply.env
   echo "" >> apply.env
   echo "# Deployment User" >> apply.env
-  if [ $(toLowerCase $db_scheme_type) == "m" ]; then
+  if [[ $(toLowerCase $db_scheme_type) == "m" ]]; then
     echo "DB_APP_USER=${project_name}_depl" >> apply.env
   else
     echo "DB_APP_USER=${project_name}" >> apply.env
@@ -291,7 +285,7 @@ generate() {
   cp -rf .dbFlow/scripts/setup/workspace_users/* ${targetpath}/workspace_users
   cp -rf .dbFlow/scripts/setup/acls/* ${targetpath}/acls
 
-  if [ $(toLowerCase $with_tools) == "y" ]; then
+  if [[ $(toLowerCase $with_tools) == "y" ]]; then
     cp -rf .dbFlow/scripts/setup/features/* ${targetpath}/features
     chmod +x ${targetpath}/features/*.sh
   else
@@ -300,7 +294,7 @@ generate() {
 
 
   # create gen_users..
-  if [ $(toLowerCase $db_scheme_type) == "m" ]; then
+  if [[ $(toLowerCase $db_scheme_type) == "m" ]]; then
     cp -rf .dbFlow/scripts/setup/users/01_data.sql ${targetpath}/users/01_${project_name}_data.sql
     cp -rf .dbFlow/scripts/setup/users/02_logic.sql ${targetpath}/users/02_${project_name}_logic.sql
     cp -rf .dbFlow/scripts/setup/users/03_app.sql ${targetpath}/users/03_${project_name}_app.sql
@@ -384,8 +378,7 @@ export_schema() {
   done
 
 
-  if [ -z "$DB_APP_PWD" ]
-  then
+  if [[ -z "$DB_APP_PWD" ]]; then
     ask4pwd "Enter password für user ${DB_APP_USER}: "
     DB_APP_PWD=${pass}
   fi
@@ -424,7 +417,7 @@ export_schema() {
 } # export_schema
 
 
-if [ $# -lt 1 ]; then
+if [[ $# -lt 1 ]]; then
   echo -e "${RED}No parameters found${NC}" 1>&2
   usage
   exit 1

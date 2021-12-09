@@ -26,8 +26,7 @@ rm ${tag_name}.zip
 
 cd tapi-${tag_name}/table-api-generator-${tag_name/v/} # remove v from tag-name
 
-if [ -z "$DB_ADMINUSER" ]
-then
+if [[ -z "$DB_ADMINUSER" ]]; then
   read -p "Enter username of admin user (admin, sys, ...) [sys]: " DB_ADMINUSER
   DB_ADMINUSER=${DB_ADMINUSER:-"sys"}
 fi
@@ -37,8 +36,7 @@ if [[ $(toLowerCase $DB_ADMINUSER) != "sys" ]]; then
   tapi_tspace="data" # no users tablespace when using autonomous db
 fi
 
-if [ -z "$DB_PASSWORD" ]
-then
+if [[ -z "$DB_PASSWORD" ]]; then
   ask4pwd "Enter password für user ${DB_ADMINUSER}: "
   DB_PASSWORD=${pass}
 fi
@@ -61,14 +59,14 @@ TAPI_INSTALLED=$(is_tapi_installed)
 
 if [[ "${TAPI_INSTALLED}" == *"true"* ]]
 then
-  if [ $yes == "YES" ]; then
+  if [[ $yes == "YES" ]]; then
     reinstall="Y"
   else
     read -p "$(echo -e ${BWHITE}"TableAPI is allready installed. Would you like to reinstall? (Y/N) [Y]: "${NC})" reinstall
     reinstall=${reinstall:-"Y"}
   fi
 
-  if [ $(toLowerCase $reinstall) == "y" ]; then
+  if [[ $(toLowerCase $reinstall) == "y" ]]; then
     ${SQLCLI} -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
   Prompt ${tapi_schema} droppen
   drop user ${tapi_schema} cascade;

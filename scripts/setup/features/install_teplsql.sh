@@ -26,8 +26,7 @@ rm ${tag_name}.zip
 
 cd "tePLSQL-"${tag_name}/tePLSQL-${tag_name/v/} # remove v from tag-name
 
-if [ -z "$DB_ADMINUSER" ]
-then
+if [[ -z "$DB_ADMINUSER" ]]; then
   read -p "Enter username of admin user (admin, sys, ...) [sys]: " DB_ADMINUSER
   DB_ADMINUSER=${DB_ADMINUSER:-"sys"}
 fi
@@ -37,8 +36,7 @@ if [[ $(toLowerCase $DB_ADMINUSER) != "sys" ]]; then
   teplsql_tspace="data" # no users tablespace when using autonomous db
 fi
 
-if [ -z "$DB_PASSWORD" ]
-then
+if [[ -z "$DB_PASSWORD" ]]; then
   ask4pwd "Enter password für user ${DB_ADMINUSER}: "
   DB_PASSWORD=${pass}
 fi
@@ -60,14 +58,14 @@ is_teplsql_installed () {
 TEPLSQL_INSTALLED=$(is_teplsql_installed)
 if [[ "${TEPLSQL_INSTALLED}" == *"true"* ]]
 then
-  if [ $yes == "YES" ]; then
+  if [[ $yes == "YES" ]]; then
     reinstall="Y"
   else
     read -p "$(echo -e ${BWHITE}"TEPLSQL is allready installed. Would you like to reinstall? (Y/N) [Y]: "${NC})" reinstall
     reinstall=${reinstall:-"Y"}
   fi
 
-  if [ $(toLowerCase $reinstall) == "y" ]; then
+  if [[ $(toLowerCase $reinstall) == "y" ]]; then
     ${SQLCLI} -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
   Prompt ${teplsql_schema} droppen
   drop user ${teplsql_schema} cascade;
