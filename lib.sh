@@ -114,3 +114,43 @@ mingw64_nt-10*)
   chcp.com 65001
 ;;
 esac
+
+
+## Logging
+
+failure="failure"
+success="success"
+warning="warning"
+
+write_log() {
+  local type=${1:-""}
+  case "$type" in
+    ${failure})
+      color=${RED}
+      reset=${NC}
+      ;;
+    ${success})
+      color=${GREEN}
+      reset=${NC}
+      ;;
+    ${warning})
+      color=${YELLOW}
+      reset=${NC}
+      ;;
+    *)
+      color=""
+      reset=""
+  esac
+
+
+  while read text
+  do
+    LOGTIME=`date "+%Y-%m-%d %H:%M:%S"`
+    # If log file is not defined, just echo the output
+    if [[ "$full_log_file" == "" ]]; then
+      echo -e $LOGTIME": ${color}${text}${reset}";
+    else
+      echo -e $LOGTIME": ${color}${text}${reset}" | tee -a $full_log_file;
+    fi
+  done
+}
