@@ -72,9 +72,9 @@ if [[ ${#SCHEMAS[@]} == ${#ALL_SCHEMAS[@]} ]]; then
   SCHEMAS=(${ALL_SCHEMAS[@]})
 fi
 
-MAINFOLDERS=( apex db reports rest )
+MAINFOLDERS=( apex db reports rest .hooks )
 
-MAINFOLDERS=( apex db reports rest )
+MAINFOLDERS=( apex db reports rest .hooks )
 
 ####
 if [[ ${do_exit} == "YES" ]]; then
@@ -159,29 +159,38 @@ depotpath="$(pwd)/$DEPOT_PATH/$branch"
 targetpath=$depotpath/${mode}_${version}
 sourcepath="."
 
-echo -e "Building ${BWHITE}${mode}${NC} deployment version: ${BWHITE}${version}${NC}"
-echo -e "----------------------------------------"
-echo -e "project:       ${BWHITE}${PROJECT}${NC}"
-echo -e "branch:        ${BWHITE}${branch}${NC}"
-echo
-echo -e "app_schema:    ${BWHITE}${APP_SCHEMA}${NC}"
-echo -e "data_schema:   ${BWHITE}${DATA_SCHEMA}${NC}"
-echo -e "logic_schema:  ${BWHITE}${LOGIC_SCHEMA}${NC}"
-echo -e "schemas:      (${BWHITE}${SCHEMAS[@]}${NC})"
-echo
-echo -e "depotpath:     ${BWHITE}${depotpath}${NC}"
-echo -e "targetpath:    ${BWHITE}${targetpath}${NC}"
-echo -e "sourcepath:    ${BWHITE}${sourcepath}${NC}"
-echo -e "----------------------------------------"
+MDATE=`date "+%Y%m%d%H%M%S"`
+log_file="${MDATE}_bld_${mode}_${version}.log"
+
+touch $log_file
+full_log_file="$( cd "$( dirname "${log_file}" )" >/dev/null 2>&1 && pwd )/${log_file}"
+
+
+echo -e "Building ${BWHITE}${mode}${NC} deployment version: ${BWHITE}${version}${NC}" | write_log
+echo -e "----------------------------------------------------------" | write_log
+echo -e "project:       ${BWHITE}${PROJECT}${NC}" | write_log
+echo -e "branch:        ${BWHITE}${branch}${NC}" | write_log
+echo -e "----------------------------------------------------------" | write_log
+echo -e "app_schema:    ${BWHITE}${APP_SCHEMA}${NC}" | write_log
+echo -e "data_schema:   ${BWHITE}${DATA_SCHEMA}${NC}" | write_log
+echo -e "logic_schema:  ${BWHITE}${LOGIC_SCHEMA}${NC}" | write_log
+echo -e "schemas:      (${BWHITE}${SCHEMAS[@]}${NC})" | write_log
+echo -e "----------------------------------------------------------" | write_log
+echo -e "depotpath:     ${BWHITE}${depotpath}${NC}"  | write_log
+echo -e "targetpath:    ${BWHITE}${targetpath}${NC}" | write_log
+echo -e "sourcepath:    ${BWHITE}${sourcepath}${NC}" | write_log
+echo -e "----------------------------------------------------------" | write_log
+echo -e "----------------------------------------------------------" | write_log
+echo -e "----------------------------------------------------------" | write_log
 
 
 # getting updated files, and
 # copy (and overwrite forcefully) in exact directory structure as in git repo
 if [[ "${mode}" == "init" ]]; then
-  echo "Creating directory $targetpath"
+  echo "Creating directory $targetpath" | write_log
   mkdir -p $targetpath
 
-  echo "Copy files ..."
+  echo "Copy files ..." | write_log
   for folder in "${MAINFOLDERS[@]}"
   do
     if [[ -d ${folder} ]]; then
@@ -200,17 +209,17 @@ else
 
     if [[ $num_changes > 0 ]]; then
 
-      echo "Creating directory $targetpath"
+      echo "Creating directory $targetpath" | write_log
       mkdir -p $targetpath
 
-      echo "Copy files ..."
+      echo "Copy files ..." | write_log
       if [[ $(uname) == "Darwin" ]]; then
         rsync -R `git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB -- ${folder}` ${targetpath}
       else
         cp --parents -Rf `git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB -- ${folder}` ${targetpath}
       fi
     else
-      echo_warning "No changes in folder: ${folder}"
+      echo_warning "No changes in folder: ${folder}" | write_log
     fi
 
   done
@@ -240,7 +249,7 @@ else
                 yes | cp --parents -rf $f $targetpath
               fi
 
-              echo "Additionaly add $f"
+              echo "Additionaly add $f" | write_log
           fi
         done
       done
@@ -258,6 +267,12 @@ else
     fi
   done
 
+
+  if [[ $(uname) == "Darwin" ]]; then
+    rsync -R ${sourcepath}/.hooks $targetpath
+  else
+    yes | cp --parents -rf ${sourcepath}/.hooks $targetpath
+  fi
 fi
 
 # if patch mode we remove unnecessary files
@@ -271,14 +286,14 @@ if [[ "${mode}" == "patch" ]]; then
     num_changes=`git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=D -- ${folder} | wc -l | xargs`
 
     if [[ $num_changes > 0 ]]; then
-      echo "echo removing dead-files"
+      echo "echo removing dead-files" | write_log
 
       for line in `git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=D -- ${folder}`
       do
         echo "${line}" >> $target_drop_file
       done
     else
-      echo_warning "No deleted files in folder: ${folder}"
+      echo_warning "No deleted files in folder: ${folder}" | write_log
     fi
   done
 fi
@@ -288,13 +303,13 @@ for schema in "${SCHEMAS[@]}"
 do
   if [[ -d "$targetpath"/db/$schema ]]
   then
-    echo "writing schema: ${schema}"
+    echo "writing schema: ${schema}" | write_log
     # file to write to
     target_install_base=${mode}_${schema}_${version}.sql
     target_install_file="$targetpath"/db/$schema/$target_install_base
-    echo ""
-    echo " ==== /db/$schema/$target_install_base ===="
-    echo ""
+    echo "" | write_log
+    echo " ==== /db/$schema/$target_install_base ====" | write_log
+    echo "" | write_log
 
     # write some infos
     echo "set define '^'" > "$target_install_file"
@@ -342,7 +357,7 @@ do
     for path in "${array[@]}"
     do
       if [[ -d "$targetpath"/db/$schema/$path ]]; then
-        echo "Writing calls for $path"
+        echo "Writing calls for $path" | write_log
         echo "Prompt Installing $path ..." >> "$target_install_file"
 
         # pre hook
@@ -451,19 +466,32 @@ done
 
 
 # loop through applications
-if [[ -d "apex" ]]; then
+if [[ -d "$targetpath"/apex ]]; then
   target_apex_file="$targetpath"/apex_files_$version.lst
   [ -f $target_apex_file ] && rm $target_apex_file
 
   for appid in apex/*/ ; do
     if [[ -d "$appid" ]]; then
       echo "${appid%/}" >> $target_apex_file
+      echo "Application ${appid%/} will be installed " | write_log
     fi
   done
 fi
 
+# TODO! REST install
+
+
+echo "All files are placed in $depotpath" | write_log
+echo "Done" | write_log
+
+
+cat ${full_log_file} | sed -r "s/\x1B\[([0-9]{1,3}((;[0-9]{1,3})*)?)?[m|K]//g" > ${full_log_file}.colorless
+rm ${full_log_file}
+mv ${full_log_file}.colorless ${full_log_file}
+
 if [[ -d $targetpath ]]; then
   # pack directoy
+  mv ${full_log_file} $targetpath/
   tar -C $targetpath -czvf $targetpath.tar.gz .
   rm -rf $targetpath
 else
@@ -544,12 +572,10 @@ if [[ $branch == "masterX" ]]; then
   esac
 fi
 
-echo "All files are placed in $depotpath"
+
 
 if [[ $version == "install" ]]; then
   echo "calling apply"
 
   .dbFlow/apply.sh ${mode} ${version}
 fi
-
-echo "Done"
