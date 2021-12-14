@@ -270,8 +270,12 @@ generate() {
   echo "apply.env" >> .gitignore
 
   echo "" >> .gitignore
-  echo "static files" >> .gitignore
+  echo "# static files" >> .gitignore
   echo "static/f*/dist" >> .gitignore
+
+  echo "" >> .gitignore
+  echo "# vscode configuration" >> .gitignore
+  echo ".vscode" >> .gitignore
 
 
 
