@@ -139,6 +139,7 @@ fi
 
 # Defing some vars
 app_install_file=apex_files_${patch}.lst
+rest_install_file=rest_${mode}_${patch}.sql
 remove_old_files=remove_files_${patch}.lst
 
 patch_target_path=.
@@ -146,7 +147,7 @@ patch_source_file=$patch_source_path/${mode}_${patch}.tar.gz
 patch_target_file=$patch_target_path/${mode}_${patch}.tar.gz
 
 MDATE=`date "+%Y%m%d%H%M%S"`
-log_file="${MDATE}_${mode}_${patch}.log"
+log_file="${MDATE}_dpl_${mode}_${patch}.log"
 
 touch $log_file
 full_log_file="$( cd "$( dirname "${log_file}" )" >/dev/null 2>&1 && pwd )/${log_file}"
@@ -296,8 +297,22 @@ execute_global_hook_scripts() {
             ;;
         esac
         runfile=".hooks/${entrypath}/${file}"
+
         echo "executing hook file ${runfile}" | write_log
-        exit | $SQLCLI -S "$(get_connect_string $targetschema)" @${runfile} ${full_log_file} ${patch} ${mode} | tee -a ${full_log_file}
+        $SQLCLI -S "$(get_connect_string $targetschema)" <<! | tee -a ${full_log_file}
+          define VERSION="${patch}"
+          define MODE="${mode}"
+
+          set define '^'
+          set concat on
+          set concat .
+          set verify off
+
+          Prompt calling file ${runfile}
+          @${runfile}
+!
+
+
         runfile=""
       fi
     done
@@ -329,7 +344,20 @@ execute_global_hook_scripts() {
         esac
         runfile=".hooks/${entrypath}/${mode}/${file}"
         echo "executing hook file ${runfile}" | write_log
-        exit | $SQLCLI -S "$(get_connect_string $targetschema)" @${runfile} ${full_log_file} ${patch} ${mode} | tee -a ${full_log_file}
+
+        $SQLCLI -S "$(get_connect_string $targetschema)" <<! | tee -a ${full_log_file}
+          define VERSION="${patch}"
+          define MODE="${mode}"
+
+          set define '^'
+          set concat on
+          set concat .
+          set verify off
+
+          Prompt calling file ${runfile}
+          @${runfile}
+!
+
         runfile=""
       fi
     done
@@ -396,7 +424,7 @@ install_db_schemas()
   done
 
   # execute all files in global post path
-  execute_global_hook_scripts "post" "/"
+  execute_global_hook_scripts "post"
 
   cd ..
 }
@@ -462,33 +490,6 @@ set_rest_available() {
   cd ${basepath}
 }
 
-
-install_rest() {
-  cd ${basepath}
-
-  if [[ -d "rest/modules" ]]; then
-    cd rest/modules
-    for module in *; do
-      if [[ -d "$module" ]]; then
-        if [[ -f "${module}/${module}.module.sql" ]]; then
-          echo "Installing REST module $module ..." | write_log
-          $SQLCLI -S "$(get_connect_string $APP_SCHEMA)" <<! | tee -a ${full_log_file}
-          set define off;
-          set serveroutput on;
-          @@${module}/${module}.module.sql
-/
-!
-        else
-          echo "File rest/${module}/${module}.module.sql does not exist" | write_log $warning
-        fi
-      fi
-    done
-  else
-    echo "Directory rest/modules does not exist" | write_log $warning
-  fi
-
-  cd ${basepath}
-}
 
 
 
@@ -610,6 +611,14 @@ install_apps() {
         echo "Installing $line Num: ${line/apex\/f} Workspace: ${WORKSPACE}" | write_log
         cd $line
         $SQLCLI -S "$(get_connect_string $APP_SCHEMA)" <<! | tee -a ${full_log_file}
+          define VERSION="${patch}"
+          define MODE="${mode}"
+
+          set define '^'
+          set concat on
+          set concat .
+          set verify off
+
           Prompt Workspace: ${WORKSPACE}
           Prompt Application: ${line/apex\/f}
           declare
@@ -631,12 +640,12 @@ install_apps() {
           end;
           /
 
-          @@install.sql ${full_log_file} ${patch} ${mode}
+          @@install.sql
 !
 
 
         if [[ $? -ne 0 ]]; then
-          echo "ERROR when executing $line" | write_log
+          echo "ERROR when executing $line" | write_log $failure
           manage_result "failure"
         fi
 
@@ -648,6 +657,51 @@ install_apps() {
   fi
 
 }
+
+
+# Function to install REST-Services
+#######################################
+
+install_rest() {
+  cd ${basepath}
+
+  if [[ -d rest ]]; then
+    cd rest
+
+    # exists rest_install_file
+    if [ -e $rest_install_file ]
+    then
+      echo "Installing REST-Services ..." | write_log
+      $SQLCLI -s "$(get_connect_string $APP_SCHEMA)" <<! | tee -a ${full_log_file}
+
+      define VERSION="${patch}"
+      define MODE="${mode}"
+
+      set define '^'
+      set concat on
+      set concat .
+      set verify off
+
+      Prompt calling file ${rest_install_file}
+      @@${rest_install_file}
+!
+
+      if [ $? -ne 0 ]
+      then
+        echo "ERROR when executing $line" | write_log $failure
+        exit 1
+      fi
+    else
+      echo "File $rest_install_file does not exist" | write_log $warning
+    fi
+
+  else
+    echo "Directory rest does not exist" | write_log
+  fi
+
+
+}
+
 
 
 exec_final_unit_tests()
@@ -687,16 +741,15 @@ manage_result()
 
   # move all
   mv *${patch}* ${target_finalize_path}
+  mv rest/*${patch}* ${target_finalize_path}
 
   # loop through schemas
   for schema in "${SCHEMAS[@]}"
   do
 
     db_install_file=${mode}_${schema}_${patch}.sql
-    # exists db install file
-    if [[ -e db/$schema/$db_install_file ]]; then
-      mv db/$schema/$db_install_file ${target_finalize_path} | write_log ${target_move}
-    fi
+    mv db/$schema/$db_install_file* ${target_finalize_path} | write_log ${target_move}
+
   done
 
   # write Info to markdown-table
@@ -761,8 +814,7 @@ clear_db_schemas_on_init
 # execute pre hooks in root folder
 execute_global_hook_scripts "pre"
 
-
-# install db and apps
+# install product
 install_db_schemas
 install_apps
 install_rest

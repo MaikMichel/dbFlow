@@ -147,6 +147,9 @@ else
   array+=( ${post[@]} )
 fi
 
+# folders for REST
+rest_array=( access modules )
+
 # if table changes are inside release, we have to call special-functionalities
 table_changes="FALSE"
 
@@ -301,12 +304,13 @@ fi
 # loop through schemas
 for schema in "${SCHEMAS[@]}"
 do
-  if [[ -d "$targetpath"/db/$schema ]]
-  then
+  if [[ -d "$targetpath"/db/$schema ]]; then
     echo "writing schema: ${schema}" | write_log
+
     # file to write to
     target_install_base=${mode}_${schema}_${version}.sql
     target_install_file="$targetpath"/db/$schema/$target_install_base
+
     echo "" | write_log
     echo " ==== /db/$schema/$target_install_base ====" | write_log
     echo "" | write_log
@@ -319,8 +323,10 @@ do
     echo "WHENEVER SQLERROR EXIT SQL.SQLCODE" >> "$target_install_file"
 
     echo "" >> "$target_install_file"
+
     echo "define VERSION = '^1'" >> "$target_install_file"
     echo "define MODE = '^2'" >> "$target_install_file"
+
     echo "set timing on" >> "$target_install_file"
     echo "set trim off" >> "$target_install_file"
     echo "set linesize 2000" >> "$target_install_file"
@@ -335,8 +341,8 @@ do
     echo "Prompt .. Start Installation for schema: $schema " >> "$target_install_file"
     echo "Prompt ..                       Version: $mode $version " >> "$target_install_file"
     echo "Prompt .............................................................................. " >> "$target_install_file"
-    echo "set scan off" >> "$target_install_file"
-    echo "set define off" >> "$target_install_file"
+    # echo "set scan off" >> "$target_install_file"
+    # echo "set define off" >> "$target_install_file"
     echo "set serveroutput on" >> "$target_install_file"
     echo "" >> "$target_install_file"
 
@@ -467,6 +473,7 @@ done
 
 # loop through applications
 if [[ -d "$targetpath"/apex ]]; then
+# file to write to
   target_apex_file="$targetpath"/apex_files_$version.lst
   [ -f $target_apex_file ] && rm $target_apex_file
 
@@ -478,8 +485,75 @@ if [[ -d "$targetpath"/apex ]]; then
   done
 fi
 
-# TODO! REST install
 
+# check rest
+if [[ -d "$targetpath"/rest ]]; then
+
+  # file to write to
+  target_install_base=rest_${mode}_${version}.sql
+  target_install_file="$targetpath"/rest/$target_install_base
+  [ -f $target_install_file ] && rm $target_install_file
+
+  # write some infos
+    echo "Prompt .............................................................................. " >> "$target_install_file"
+    echo "Prompt .............................................................................. " >> "$target_install_file"
+    echo "Prompt .. Start REST installation " >> "$target_install_file"
+    echo "Prompt .. Version: $mode $version " >> "$target_install_file"
+    echo "Prompt .............................................................................. " >> "$target_install_file"
+    # echo "set scan off" >> "$target_install_file"
+    # echo "set define off" >> "$target_install_file"
+    echo "set serveroutput on" >> "$target_install_file"
+    echo "" >> "$target_install_file"
+
+
+  # check every path in given order
+  for path in "${rest_array[@]}"
+  do
+    if [[ -d "$targetpath"/rest/$path ]]; then
+      for directory in $(ls -d -- "$targetpath"/rest/$path/*/ | sort )
+      do
+        dir="$path/"$(basename $directory)
+        echo "Writing calls for $dir" | write_log
+        echo "Prompt Installing $dir ..." >> "$target_install_file"
+
+        for file in $(ls "$directory" | sort )
+        do
+
+          if [[ "${file}" == *".sql" ]] && [[ "${file}" != *".condition.sql" ]]; then
+
+            echo "Prompt ... $file" >> "$target_install_file"
+
+            if [[ -f $directory${file/.sql/.condition.sql} ]]; then
+              echo "begin" >> "$target_install_file"
+              echo "  if" >> "$target_install_file"
+              echo "  @@$dir/${file/.sql/.condition.sql}" >> "$target_install_file"
+              echo "  then" >> "$target_install_file"
+              echo "    @@$dir/$file" >> "$target_install_file"
+              echo "  else" >> "$target_install_file"
+              echo "    dbms_output.put_line('!!! ${file} not installed cause condition did not match');" >> "$target_install_file"
+              echo "  end if;" >> "$target_install_file"
+              echo "end;" >> "$target_install_file"
+            else
+              echo "@@$dir/$file" >> "$target_install_file"
+            fi
+            echo "/" >> "$target_install_file"
+          fi
+        done
+      done
+
+      echo "Prompt" >> "$target_install_file"
+      echo "Prompt" >> "$target_install_file"
+      echo "" >> "$target_install_file"
+
+    fi
+  done
+fi
+
+
+
+
+echo "List files ... "  | write_log
+find $targetpath | sed -e 's/[^-][^\/]*\//--/g;s/--/ |-/' >> ${full_log_file}
 
 echo "All files are placed in $depotpath" | write_log
 echo "Done" | write_log
@@ -488,11 +562,10 @@ echo "Done" | write_log
 cat ${full_log_file} | sed -r "s/\x1B\[([0-9]{1,3}((;[0-9]{1,3})*)?)?[m|K]//g" > ${full_log_file}.colorless
 rm ${full_log_file}
 mv ${full_log_file}.colorless ${full_log_file}
-
 if [[ -d $targetpath ]]; then
   # pack directoy
   mv ${full_log_file} $targetpath/
-  tar -C $targetpath -czvf $targetpath.tar.gz .
+  tar -C $targetpath -czf $targetpath.tar.gz .
   rm -rf $targetpath
 else
   echo_error "Nothing to release, aborting"
