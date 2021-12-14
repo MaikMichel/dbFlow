@@ -37,8 +37,7 @@ usage() {
 source ./.dbFlow/lib.sh
 
 # set project-settings from build.env if exists
-if [ -e ./build.env ]
-then
+if [[ -e ./build.env ]]; then
   source ./build.env
 fi
 # check require vars from build.env
@@ -73,9 +72,9 @@ if [[ ${#SCHEMAS[@]} == ${#ALL_SCHEMAS[@]} ]]; then
   SCHEMAS=(${ALL_SCHEMAS[@]})
 fi
 
-MAINFOLDERS=( apex db reports rest )
+MAINFOLDERS=( apex db reports rest .hooks )
 
-MAINFOLDERS=( apex db reports rest )
+MAINFOLDERS=( apex db reports rest .hooks )
 
 ####
 if [[ ${do_exit} == "YES" ]]; then
@@ -85,8 +84,7 @@ fi
 
 
 # set target-env settings from file if exists
-if [ -e ./apply.env ]
-then
+if [[ -e ./apply.env ]]; then
   source ./apply.env
 fi
 
@@ -108,17 +106,17 @@ fi
 # validate parameters
 mode=${1:-""}
 
-if [ "${mode}" == "patch" ]; then
+if [[ "${mode}" == "patch" ]]; then
   # all params are required
-  if [ $# -ne 3 ]; then
+  if [[ $# -ne 3 ]]; then
     echo_error "missing parameter <from> and <version>"
     usage
   fi
   from=$2
   version=$3
 else
-  if [ "${mode}" == "init" ]; then
-    if [ $# -ne 2 ]; then
+  if [[ "${mode}" == "init" ]]; then
+    if [[ $# -ne 2 ]]; then
       echo_error "missing parameter <version>"
       usage
     fi
@@ -137,7 +135,7 @@ fi
 }
 
 # at INIT there is no pretreatment or an evaluation of the table_ddl
-if [ "${mode}" == "init" ]; then
+if [[ "${mode}" == "init" ]]; then
   array=( .hooks/pre sequences tables indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies sources/types sources/packages sources/functions sources/procedures views mviews sources/triggers jobs tests/packages ddl/init dml/base dml/init .hooks/post)
 else
   # building pre and post based on branches
@@ -148,6 +146,9 @@ else
   array+=( sequences tables tables_ddl indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies sources/types sources/packages sources/functions sources/procedures views mviews sources/triggers jobs tests/packages )
   array+=( ${post[@]} )
 fi
+
+# folders for REST
+rest_array=( access modules )
 
 # if table changes are inside release, we have to call special-functionalities
 table_changes="FALSE"
@@ -161,29 +162,38 @@ depotpath="$(pwd)/$DEPOT_PATH/$branch"
 targetpath=$depotpath/${mode}_${version}
 sourcepath="."
 
-echo -e "Building ${BWHITE}${mode}${NC} deployment version: ${BWHITE}${version}${NC}"
-echo -e "----------------------------------------"
-echo -e "project:       ${BWHITE}${PROJECT}${NC}"
-echo -e "branch:        ${BWHITE}${branch}${NC}"
-echo
-echo -e "app_schema:    ${BWHITE}${APP_SCHEMA}${NC}"
-echo -e "data_schema:   ${BWHITE}${DATA_SCHEMA}${NC}"
-echo -e "logic_schema:  ${BWHITE}${LOGIC_SCHEMA}${NC}"
-echo -e "schemas:      (${BWHITE}${SCHEMAS[@]}${NC})"
-echo
-echo -e "depotpath:     ${BWHITE}${depotpath}${NC}"
-echo -e "targetpath:    ${BWHITE}${targetpath}${NC}"
-echo -e "sourcepath:    ${BWHITE}${sourcepath}${NC}"
-echo -e "----------------------------------------"
+MDATE=`date "+%Y%m%d%H%M%S"`
+log_file="${MDATE}_bld_${mode}_${version}.log"
+
+touch $log_file
+full_log_file="$( cd "$( dirname "${log_file}" )" >/dev/null 2>&1 && pwd )/${log_file}"
+
+
+echo -e "Building ${BWHITE}${mode}${NC} deployment version: ${BWHITE}${version}${NC}" | write_log
+echo -e "----------------------------------------------------------" | write_log
+echo -e "project:       ${BWHITE}${PROJECT}${NC}" | write_log
+echo -e "branch:        ${BWHITE}${branch}${NC}" | write_log
+echo -e "----------------------------------------------------------" | write_log
+echo -e "app_schema:    ${BWHITE}${APP_SCHEMA}${NC}" | write_log
+echo -e "data_schema:   ${BWHITE}${DATA_SCHEMA}${NC}" | write_log
+echo -e "logic_schema:  ${BWHITE}${LOGIC_SCHEMA}${NC}" | write_log
+echo -e "schemas:      (${BWHITE}${SCHEMAS[@]}${NC})" | write_log
+echo -e "----------------------------------------------------------" | write_log
+echo -e "depotpath:     ${BWHITE}${depotpath}${NC}"  | write_log
+echo -e "targetpath:    ${BWHITE}${targetpath}${NC}" | write_log
+echo -e "sourcepath:    ${BWHITE}${sourcepath}${NC}" | write_log
+echo -e "----------------------------------------------------------" | write_log
+echo -e "----------------------------------------------------------" | write_log
+echo -e "----------------------------------------------------------" | write_log
 
 
 # getting updated files, and
 # copy (and overwrite forcefully) in exact directory structure as in git repo
-if [ "${mode}" == "init" ]; then
-  echo "Creating directory $targetpath"
+if [[ "${mode}" == "init" ]]; then
+  echo "Creating directory $targetpath" | write_log
   mkdir -p $targetpath
 
-  echo "Copy files ..."
+  echo "Copy files ..." | write_log
   for folder in "${MAINFOLDERS[@]}"
   do
     if [[ -d ${folder} ]]; then
@@ -202,17 +212,17 @@ else
 
     if [[ $num_changes > 0 ]]; then
 
-      echo "Creating directory $targetpath"
+      echo "Creating directory $targetpath" | write_log
       mkdir -p $targetpath
 
-      echo "Copy files ..."
-      if [ $(uname) == "Darwin" ]; then
+      echo "Copy files ..." | write_log
+      if [[ $(uname) == "Darwin" ]]; then
         rsync -R `git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB -- ${folder}` ${targetpath}
       else
         cp --parents -Rf `git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB -- ${folder}` ${targetpath}
       fi
     else
-      echo_warning "No changes in folder: ${folder}"
+      echo_warning "No changes in folder: ${folder}" | write_log
     fi
 
   done
@@ -233,16 +243,16 @@ else
         # check if there is any file like viewfile_*.sql
         myfile=${file//./"_*."}
         for f in ${sourcepath}/db/$schema/sources/triggers/${myfile}; do
-          if [ -e "$f" ];
+          if [[ -e "$f" ]];
           then
               # yes, so copy it...
-              if [ $(uname) == "Darwin" ]; then
+              if [[ $(uname) == "Darwin" ]]; then
                 rsync -R $f $targetpath
               else
                 yes | cp --parents -rf $f $targetpath
               fi
 
-              echo "Additionaly add $f"
+              echo "Additionaly add $f" | write_log
           fi
         done
       done
@@ -253,17 +263,23 @@ else
   for schema in "${SCHEMAS[@]}"
   do
     # yes, so copy it...
-    if [ $(uname) == "Darwin" ]; then
+    if [[ $(uname) == "Darwin" ]]; then
       rsync -R ${sourcepath}/db/$schema/.hooks $targetpath
     else
       yes | cp --parents -rf ${sourcepath}/db/$schema/.hooks $targetpath
     fi
   done
 
+
+  if [[ $(uname) == "Darwin" ]]; then
+    rsync -R ${sourcepath}/.hooks $targetpath
+  else
+    yes | cp --parents -rf ${sourcepath}/.hooks $targetpath
+  fi
 fi
 
 # if patch mode we remove unnecessary files
-if [ "${mode}" == "patch" ]; then
+if [[ "${mode}" == "patch" ]]; then
   target_drop_file="$targetpath"/remove_files_$version.lst
 
   for folder in "${MAINFOLDERS[@]}"
@@ -273,14 +289,14 @@ if [ "${mode}" == "patch" ]; then
     num_changes=`git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=D -- ${folder} | wc -l | xargs`
 
     if [[ $num_changes > 0 ]]; then
-      echo "echo removing dead-files"
+      echo "echo removing dead-files" | write_log
 
       for line in `git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=D -- ${folder}`
       do
         echo "${line}" >> $target_drop_file
       done
     else
-      echo_warning "No deleted files in folder: ${folder}"
+      echo_warning "No deleted files in folder: ${folder}" | write_log
     fi
   done
 fi
@@ -288,13 +304,16 @@ fi
 # loop through schemas
 for schema in "${SCHEMAS[@]}"
 do
-  if [[ -d "$targetpath"/db/$schema ]]
-  then
-    echo "writing schema: ${schema}"
+  if [[ -d "$targetpath"/db/$schema ]]; then
+    echo "writing schema: ${schema}" | write_log
+
     # file to write to
     target_install_base=${mode}_${schema}_${version}.sql
     target_install_file="$targetpath"/db/$schema/$target_install_base
-    echo ">>>>>> /db/$schema/$target_install_base"
+
+    echo "" | write_log
+    echo " ==== /db/$schema/$target_install_base ====" | write_log
+    echo "" | write_log
 
     # write some infos
     echo "set define '^'" > "$target_install_file"
@@ -303,11 +322,11 @@ do
     echo "set verify off" >> "$target_install_file"
     echo "WHENEVER SQLERROR EXIT SQL.SQLCODE" >> "$target_install_file"
 
-     # define spooling
     echo "" >> "$target_install_file"
-    echo "define LOGFILE = '^1'" >> "$target_install_file"
-    echo "define VERSION = '^2'" >> "$target_install_file"
-    echo "define MODE = '^3'" >> "$target_install_file"
+
+    echo "define VERSION = '^1'" >> "$target_install_file"
+    echo "define MODE = '^2'" >> "$target_install_file"
+
     echo "set timing on" >> "$target_install_file"
     echo "set trim off" >> "$target_install_file"
     echo "set linesize 2000" >> "$target_install_file"
@@ -315,18 +334,19 @@ do
     echo "set tab off" >> "$target_install_file"
     echo "set pagesize 9999" >> "$target_install_file"
     echo "set trimspool off" >> "$target_install_file"
-    echo "SPOOL ^LOGFILE append;" >> "$target_install_file"
     echo "" >> "$target_install_file"
 
     echo "Prompt .............................................................................. " >> "$target_install_file"
     echo "Prompt .............................................................................. " >> "$target_install_file"
     echo "Prompt .. Start Installation for schema: $schema " >> "$target_install_file"
-    echo "Prompt ..                       Version: ^VERSION " >> "$target_install_file"
+    echo "Prompt ..                       Version: $mode $version " >> "$target_install_file"
     echo "Prompt .............................................................................. " >> "$target_install_file"
+    # echo "set scan off" >> "$target_install_file"
+    # echo "set define off" >> "$target_install_file"
     echo "set serveroutput on" >> "$target_install_file"
     echo "" >> "$target_install_file"
 
-    if [ "${mode}" == "patch" ]; then
+    if [[ "${mode}" == "patch" ]]; then
       echo "Prompt .. Commit-History to install: " >> "$target_install_file"
       git log --pretty=format:'Prompt ..   %h %s <%an>' ${from_commit}...${until_commit} -- db/$schema >> "$target_install_file"
       echo " " >> "$target_install_file"
@@ -342,10 +362,8 @@ do
     # check every path in given order
     for path in "${array[@]}"
     do
-      if [[ -d "$targetpath"/db/$schema/$path ]]
-      then
-
-        echo "Writing calls for $path"
+      if [[ -d "$targetpath"/db/$schema/$path ]]; then
+        echo "Writing calls for $path" | write_log
         echo "Prompt Installing $path ..." >> "$target_install_file"
 
         # pre hook
@@ -353,25 +371,22 @@ do
           for file in $(ls "${targetpath}/db/${schema}/.hooks/pre/${path}" | sort )
           do
             if [[ -f "${targetpath}/db/${schema}/.hooks/pre/${path}/${file}" ]]; then
-              echo "Prompt >>> ${path}/$file" >> "$target_install_file"
-              echo "@@.hooks/pre/${path}/$file ^LOGFILE ^VERSION ^MODE" >> "$target_install_file"
+              echo "Prompt >>> db/${schema}/.hooks/pre/${path}/${file}" >> "$target_install_file"
+              echo "@@.hooks/pre/${path}/$file" >> "$target_install_file"
+              echo "Prompt <<< db/${schema}/.hooks/pre/${path}/${file}" >> "$target_install_file"
             fi
           done
         fi
-        echo "set scan off" >> "$target_install_file"
-        echo "set define off" >> "$target_install_file"
 
         echo "Prompt" >> "$target_install_file"
 
-        if [ "$path" == "ddl/pre" ] || [ "$path" == "ddl/pre_tst" ] || [ "$path" == "ddl/pre_uat" ] || [ "$path" == "views" ]
-        then
+        if [[ "$path" == "ddl/pre" ]] || [[ "$path" == "ddl/pre_tst" ]] || [[ "$path" == "ddl/pre_uat" ]] || [[ "$path" == "views" ]]; then
           echo "WHENEVER SQLERROR CONTINUE" >> "$target_install_file"
         fi
 
         # if packages then sort descending
         sortdirection=""
-        if [ "$path" == "sources/packages" ] || [ "$path" == "tests/packages" ]
-        then
+        if [[ "$path" == "sources/packages" ]] || [[ "$path" == "tests/packages" ]]; then
           sortdirection="-r"
         fi
 
@@ -380,55 +395,50 @@ do
           if [[ -f "${targetpath}/db/${schema}/${path}/${file}" ]]; then
             # if tables_ddl, this is only written in install if there is no
             # matching table in the branch
-            if [ "$path" == "tables" ]
-            then
+            if [[ "$path" == "tables" ]]; then
               skipfile="FALSE"
               table_changes="TRUE"
 
-              if [ "${mode}" == "patch" ]; then
-                if [ -d "${targetpath}/db/$schema/tables_ddl" ]
-                then
-
+              if [[ "${mode}" == "patch" ]]; then
+                if [[ -d "${targetpath}/db/$schema/tables_ddl" ]]; then
                   for f in ${targetpath}/db/$schema/tables_ddl/${file%%.*}.*; do
-                    if [ -e "$f" ];
-                    then
-                        skipfile="TRUE"
+                    if [[ -e "$f" ]]; then
+                      skipfile="TRUE"
                     fi
                   done
                 fi
               fi
 
-
-              if [ "$skipfile" == "TRUE" ]
-              then
+              if [[ "$skipfile" == "TRUE" ]]; then
                 echo "Skipping $file"
                 echo "Prompt ... skipped $file" >> "$target_install_file"
               else
-                echo "Prompt ... $file" >> "$target_install_file"
+                echo "Prompt >>> db/${schema}/${path}/${file}" >> "$target_install_file"
                 echo "@@$path/$file" >> "$target_install_file"
+                echo "Prompt <<< db/${schema}/${path}/${file}" >> "$target_install_file"
               fi
             else
-              echo "Prompt ... $file" >> "$target_install_file"
-              if [ "$path" == "ddl/pre_tst" ] && [ "${mode}" == "patch" ]
-              then
+              echo "Prompt >>> db/${schema}/${path}/${file}" >> "$target_install_file"
+              if [[ "$path" == "ddl/pre_tst" ]] && [[ "${mode}" == "patch" ]]; then
                 echo "--tst@@$path/$file" >> "$target_install_file"
-              elif [ "$path" == "ddl/pre_uat" ] && [ "${mode}" == "patch" ]
-              then
+              elif [[ "$path" == "ddl/pre_uat" ]] && [[ "${mode}" == "patch" ]]; then
                 echo "--uat@@$path/$file" >> "$target_install_file"
               else
                 echo "@@$path/$file" >> "$target_install_file"
+                if [[ "$path" != ".hooks/pre" ]] && [[ "$path" != ".hooks/post" ]]; then
+                  echo "Prompt <<< db/${schema}/${path}/${file}" >> "$target_install_file"
+                fi
               fi
             fi
           fi
         done
 
-        if [ "$path" == "ddl/pre" ] || [ "$path" == "ddl/pre_tst" ] || [ "$path" == "ddl/pre_uat" ] || [ "$path" == "views" ]
+        if [[ "$path" == "ddl/pre" ]] || [[ "$path" == "ddl/pre_tst" ]] || [[ "$path" == "ddl/pre_uat" ]]|| [[ "$path" == "views" ]]
         then
           echo "WHENEVER SQLERROR EXIT SQL.SQLCODE" >> "$target_install_file"
         fi
 
-        echo "set scan on" >> "$target_install_file"
-        echo "set define on" >> "$target_install_file"
+
 
         # post hook
         echo "Prompt" >> "$target_install_file"
@@ -436,8 +446,9 @@ do
           for file in $(ls "${targetpath}/db/${schema}/.hooks/post/${path}" | sort )
           do
             if [[ -f "${targetpath}/db/${schema}/.hooks/post/${path}/${file}" ]]; then
-              echo "Prompt <<< ${path}/$file" >> "$target_install_file"
-              echo "@@.hooks/post/${path}/$file ^LOGFILE ^VERSION ^MODE" >> "$target_install_file"
+              echo "Prompt >>> db/${schema}/.hooks/post/${path}/${file}" >> "$target_install_file"
+              echo "@@.hooks/post/${path}/$file" >> "$target_install_file"
+              echo "Prompt <<< db/${schema}/.hooks/post/${path}/${file}" >> "$target_install_file"
             fi
           done
         fi
@@ -461,21 +472,101 @@ done
 
 
 # loop through applications
-if [[ -d "apex" ]]; then
+if [[ -d "$targetpath"/apex ]]; then
+# file to write to
   target_apex_file="$targetpath"/apex_files_$version.lst
   [ -f $target_apex_file ] && rm $target_apex_file
 
   for appid in apex/*/ ; do
     if [[ -d "$appid" ]]; then
       echo "${appid%/}" >> $target_apex_file
+      echo "Application ${appid%/} will be installed " | write_log
     fi
   done
 fi
 
+
+# check rest
+if [[ -d "$targetpath"/rest ]]; then
+
+  # file to write to
+  target_install_base=rest_${mode}_${version}.sql
+  target_install_file="$targetpath"/rest/$target_install_base
+  [ -f $target_install_file ] && rm $target_install_file
+
+  # write some infos
+    echo "Prompt .............................................................................. " >> "$target_install_file"
+    echo "Prompt .............................................................................. " >> "$target_install_file"
+    echo "Prompt .. Start REST installation " >> "$target_install_file"
+    echo "Prompt .. Version: $mode $version " >> "$target_install_file"
+    echo "Prompt .............................................................................. " >> "$target_install_file"
+    # echo "set scan off" >> "$target_install_file"
+    # echo "set define off" >> "$target_install_file"
+    echo "set serveroutput on" >> "$target_install_file"
+    echo "" >> "$target_install_file"
+
+
+  # check every path in given order
+  for path in "${rest_array[@]}"
+  do
+    if [[ -d "$targetpath"/rest/$path ]]; then
+      for directory in $(ls -d -- "$targetpath"/rest/$path/*/ | sort )
+      do
+        dir="$path/"$(basename $directory)
+        echo "Writing calls for $dir" | write_log
+        echo "Prompt Installing $dir ..." >> "$target_install_file"
+
+        for file in $(ls "$directory" | sort )
+        do
+
+          if [[ "${file}" == *".sql" ]] && [[ "${file}" != *".condition.sql" ]]; then
+
+            echo "Prompt ... $file" >> "$target_install_file"
+
+            if [[ -f $directory${file/.sql/.condition.sql} ]]; then
+              echo "begin" >> "$target_install_file"
+              echo "  if" >> "$target_install_file"
+              echo "  @@$dir/${file/.sql/.condition.sql}" >> "$target_install_file"
+              echo "  then" >> "$target_install_file"
+              echo "    @@$dir/$file" >> "$target_install_file"
+              echo "  else" >> "$target_install_file"
+              echo "    dbms_output.put_line('!!! ${file} not installed cause condition did not match');" >> "$target_install_file"
+              echo "  end if;" >> "$target_install_file"
+              echo "end;" >> "$target_install_file"
+            else
+              echo "@@$dir/$file" >> "$target_install_file"
+            fi
+            echo "/" >> "$target_install_file"
+          fi
+        done
+      done
+
+      echo "Prompt" >> "$target_install_file"
+      echo "Prompt" >> "$target_install_file"
+      echo "" >> "$target_install_file"
+
+    fi
+  done
+fi
+
+
+
+
+echo "List files ... "  | write_log
+find $targetpath | sed -e 's/[^-][^\/]*\//--/g;s/--/ |-/' >> ${full_log_file}
+
+echo "All files are placed in $depotpath" | write_log
+echo "Done" | write_log
+
+
+cat ${full_log_file} | sed -r "s/\x1B\[([0-9]{1,3}((;[0-9]{1,3})*)?)?[m|K]//g" > ${full_log_file}.colorless
+rm ${full_log_file}
+mv ${full_log_file}.colorless ${full_log_file}
 if [[ -d $targetpath ]]; then
   # pack directoy
-  tar -C $targetpath -czvf $targetpath.tar.gz .
-  #rm -rf $targetpath
+  mv ${full_log_file} $targetpath/
+  tar -C $targetpath -czf $targetpath.tar.gz .
+  rm -rf $targetpath
 else
   echo_error "Nothing to release, aborting"
   exit 1
@@ -497,8 +588,7 @@ function check_push_to_depot() {
 
   cd $depotpath
 
-  if [ -d ".git" ]
-  then
+  if [[ -d ".git" ]]; then
     if [[ "$force_push" == "FALSE" ]]; then
       echo
       echo "Do you wish to push changes to depot remote?"
@@ -530,14 +620,12 @@ function check_push_to_depot() {
   cd $current_path
 }
 
-if [ $branch != "master" ] && [ $version != "install" ]
-then
+if [[ $branch != "master" ]] && [[ $version != "install" ]]; then
   check_push_to_depot
 fi
 
 # on branch master ask if we should tag current version and conmmit
-if [ $branch == "masterX" ]
-then
+if [[ $branch == "masterX" ]]; then
   echo
   echo "Do you wish to commit, tag and push the new version to origin"
   echo "  Y - current version will be commited, tagged and pushed"
@@ -557,13 +645,10 @@ then
   esac
 fi
 
-echo "All files are placed in $depotpath"
 
-if [ $version == "install" ]
-then
+
+if [[ $version == "install" ]]; then
   echo "calling apply"
 
   .dbFlow/apply.sh ${mode} ${version}
 fi
-
-echo "Done"

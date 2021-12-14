@@ -28,9 +28,9 @@ exception
 end;
 /
 
-prompt create user ^data_schema identified by ^db_app_pwd default tablespace ^deftablespace
+prompt create user ^data_schema identified by "^db_app_pwd" default tablespace ^deftablespace
 create user ^data_schema
-  identified by ^db_app_pwd
+  identified by "^db_app_pwd"
   default tablespace ^deftablespace
   temporary tablespace temp
   profile default

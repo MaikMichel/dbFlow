@@ -2,11 +2,9 @@ set define '^'
 set concat on
 set concat .
 set verify off
-define SPOOLFILE = '^1'
-define VERSION = '^2'
+define VERSION = '^1'
 set timing on;
 set serveroutput on;
-spool ^SPOOLFILE append;
 prompt ............................................................................
 prompt ............................................................................
 prompt ..                                                                        ..

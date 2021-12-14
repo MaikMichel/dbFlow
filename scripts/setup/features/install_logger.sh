@@ -24,8 +24,7 @@ curl -OL "https://github.com/OraOpenSource/Logger/raw/master/releases/logger_${t
 unzip logger_${tag_name}.zip -d logger
 rm logger_${tag_name}.zip
 
-if [ -z "$DB_ADMINUSER" ]
-then
+if [[ -z "$DB_ADMINUSER" ]]; then
   read -p "Enter username of admin user (admin, sys, ...) [sys]: " DB_ADMINUSER
   DB_ADMINUSER=${DB_ADMINUSER:-"sys"}
 fi
@@ -35,8 +34,7 @@ if [[ $(toLowerCase $DB_ADMINUSER) != "sys" ]]; then
   logger_tspace="data" # no users tablespace when using autonomous db
 fi
 
-if [ -z "$DB_PASSWORD" ]
-then
+if [[ -z "$DB_PASSWORD" ]]; then
   ask4pwd "Enter password für user ${DB_ADMINUSER}: "
   DB_PASSWORD=${pass}
 fi
@@ -57,14 +55,14 @@ is_logger_installed () {
 LOGGER_INSTALLED=$(is_logger_installed)
 if [[ "${LOGGER_INSTALLED}" == *"true"* ]]
 then
-  if [ $yes == "YES" ]; then
+  if [[ $yes == "YES" ]]; then
     reinstall="Y"
   else
     read -p "$(echo -e ${BWHITE}"Logger is allready installed. Would you like to reinstall? (Y/N) [Y]: "${NC})" reinstall
     reinstall=${reinstall:-"Y"}
   fi
 
-  if [ $(toLowerCase $reinstall) == "y" ]; then
+  if [[ $(toLowerCase $reinstall) == "y" ]]; then
     ${SQLCLI} -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
   Prompt ${logger_schema} droppen
   drop user ${logger_schema} cascade;

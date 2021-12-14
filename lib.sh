@@ -47,7 +47,7 @@ function ask4pwd() {
       fi
       # Backspace
       if [[ $CHAR == $'\177' ]] ; then
-          if [ $CHARCOUNT -gt 0 ] ; then
+          if [[ $CHARCOUNT -gt 0 ]] ; then
               CHARCOUNT=$((CHARCOUNT-1))
               PROMPT=$'\b \b'
               pass="${pass%?}"
@@ -92,8 +92,7 @@ DBA_OPTION=" as sysdba"
 get_connect_string() {
   local arg1=$1
 
-  if [ ${#SCHEMAS[@]} -gt 1 ]
-  then
+  if [[ ${#SCHEMAS[@]} -gt 1 ]]; then
     echo "$DB_APP_USER[$arg1]/$DB_APP_PWD@$DB_TNS"
   else
     echo "$DB_APP_USER/$DB_APP_PWD@$DB_TNS"
@@ -115,3 +114,43 @@ mingw64_nt-10*)
   chcp.com 65001
 ;;
 esac
+
+
+## Logging
+
+failure="failure"
+success="success"
+warning="warning"
+
+write_log() {
+  local type=${1:-""}
+  case "$type" in
+    ${failure})
+      color=${RED}
+      reset=${NC}
+      ;;
+    ${success})
+      color=${GREEN}
+      reset=${NC}
+      ;;
+    ${warning})
+      color=${YELLOW}
+      reset=${NC}
+      ;;
+    *)
+      color=""
+      reset=""
+  esac
+
+
+  while read text
+  do
+    LOGTIME=`date "+%Y-%m-%d %H:%M:%S"`
+    # If log file is not defined, just echo the output
+    if [[ "$full_log_file" == "" ]]; then
+      echo -e $LOGTIME": ${color}${text}${reset}";
+    else
+      echo -e $LOGTIME": ${color}${text}${reset}" | tee -a $full_log_file;
+    fi
+  done
+}

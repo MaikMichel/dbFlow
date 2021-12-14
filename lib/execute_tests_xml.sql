@@ -33,6 +33,3 @@ exception
 end;
 /
 spool off
-
-
-

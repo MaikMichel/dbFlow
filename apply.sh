@@ -35,14 +35,12 @@ usage() {
 source ./.dbFlow/lib.sh
 
 # set project-settings from build.env if exists
-if [ -e ./build.env ]
-then
+if [[ -e ./build.env ]]; then
   source ./build.env
 fi
 
 # set target-env settings from file if exists
-if [ -e ./apply.env ]
-then
+if [[ -e ./apply.env ]]; then
   source ./apply.env
 fi
 
@@ -63,7 +61,7 @@ SQLCLI=${SQLCLI:-sqlplus}
 do_exit="NO"
 
 # at least 2 params are required
-if [ $# -lt 2 ]; then
+if [[ $# -lt 2 ]]; then
   echo_error "not enough parameters"
   do_exit="YES"
 fi
@@ -71,6 +69,23 @@ fi
 mode=${1:-""}
 patch=${2:-""}
 must_extract=${3:-""}
+oldlogfile=${4:-""}
+
+# when 3 params, then logfile may be given
+if [[ -z ${must_extract} ]]; then
+  echo "must_extract undefined"
+else
+  if [[ -z ${oldlogfile} ]]; then
+    if [[ ${must_extract} != "notar" ]] && [[ -f ${must_extract} ]]; then
+      oldlogfile=${must_extract}
+      must_extract=""
+    fi
+  fi
+fi
+# echo "must_extract = ${must_extract}"
+# echo "oldlogfile = ${oldlogfile}"
+
+
 basepath=$(pwd)
 runfile=""
 
@@ -80,26 +95,22 @@ if [[ ! "$mode" =~ ^(init|patch)$ ]]; then
 fi
 
 
-if [ -z ${DEPOT_PATH:-} ]
-then
+if [[ -z ${DEPOT_PATH:-} ]]; then
   echo_error "Depotpath not defined"
   do_exit="YES"
 fi
 
-if [ -z ${STAGE:-} ]
-then
+if [[ -z ${STAGE:-} ]]; then
   echo_error  "Stage not defined"
   do_exit="YES"
 fi
 
-if [ -z ${DB_APP_USER:-} ]
-then
+if [[ -z ${DB_APP_USER:-} ]]; then
   echo "App-User not defined"
   do_exit="YES"
 fi
 
-if [ -z $DB_TNS ]
-then
+if [[ -z $DB_TNS ]]; then
   echo "TNS not defined"
   do_exit="YES"
 fi
@@ -111,8 +122,7 @@ if [[ ${#SCHEMAS[@]} == ${#ALL_SCHEMAS[@]} ]]; then
   SCHEMAS=(${ALL_SCHEMAS[@]})
 fi
 
-if [ -d $DEPOT_PATH/$STAGE ]
-then
+if [[ -d $DEPOT_PATH/$STAGE ]]; then
   echo "Targetstage used: $STAGE"
   patch_source_path=${basepath}/$DEPOT_PATH/$STAGE
 else
@@ -129,6 +139,7 @@ fi
 
 # Defing some vars
 app_install_file=apex_files_${patch}.lst
+rest_install_file=rest_${mode}_${patch}.sql
 remove_old_files=remove_files_${patch}.lst
 
 patch_target_path=.
@@ -136,48 +147,10 @@ patch_source_file=$patch_source_path/${mode}_${patch}.tar.gz
 patch_target_file=$patch_target_path/${mode}_${patch}.tar.gz
 
 MDATE=`date "+%Y%m%d%H%M%S"`
-log_file="${MDATE}_${mode}_${patch}.log"
+log_file="${MDATE}_dpl_${mode}_${patch}.log"
 
 touch $log_file
 full_log_file="$( cd "$( dirname "${log_file}" )" >/dev/null 2>&1 && pwd )/${log_file}"
-
-
-failure="failure"
-success="success"
-warning="warning"
-
-write_log() {
-  local type=${1:-""}
-  case "$type" in
-    ${failure})
-      color=${RED}
-      reset=${NC}
-      ;;
-    ${success})
-      color=${GREEN}
-      reset=${NC}
-      ;;
-    ${warning})
-      color=${YELLOW}
-      reset=${NC}
-      ;;
-    *)
-      color=""
-      reset=""
-  esac
-
-
-  while read text
-  do
-    LOGTIME=`date "+%Y-%m-%d %H:%M:%S"`
-    # If log file is not defined, just echo the output
-    if [ "$full_log_file" == "" ]; then
-      echo -e $LOGTIME": ${color}${text}${reset}";
-    else
-      echo -e $LOGTIME": ${color}${text}${reset}" | tee -a $full_log_file;
-    fi
-  done
-}
 
 
 print_info()
@@ -207,18 +180,15 @@ print_info()
 
 extract_patchfile()
 {
-  if [ -z "$must_extract" ]
-  then
+  if [[ -z "$must_extract" ]]; then
     # check if patch exists
-    if [ -e $patch_source_file ]
-    then
+    if [[ -e $patch_source_file ]]; then
       echo "$patch_source_file exists" | write_log
 
       # copy patch to _installed
       cp $patch_source_file $patch_target_path/
     else
-      if [ -e $patch_target_file ]
-      then
+      if [[ -e $patch_target_file ]]; then
         echo "$patch_target_file allready copied" | write_log
       else
         echo_error "$patch_target_file not found, nothing to install" | write_log $failure
@@ -230,8 +200,7 @@ extract_patchfile()
     echo "extracting file $patch_target_file" | write_log
     tar -zxf $patch_target_file
   else
-    if [ $must_extract == "notar" ]
-    then
+    if [[ $must_extract == "notar" ]]; then
       echo "notar option choosen" | write_log
     else
       echo_error "unknown option notar" | write_log
@@ -240,11 +209,51 @@ extract_patchfile()
   fi
 }
 
+prepare_redo(){
+  if [[ -f ${oldlogfile} ]]; then
+    redo_file="redo_${MDATE}_${mode}_${patch}.log"
+    grep '^<<< ' ${oldlogfile} > ${redo_file}
+    sed -i 's/^<<< //' ${redo_file}
+
+    # backup install files
+    for schema in "${SCHEMAS[@]}"
+    do
+      db_install_file=./db/$schema/${mode}_${schema}_${patch}.sql
+      if [[ -f $db_install_file ]]; then
+        mv ${db_install_file} ${db_install_file}.org
+      fi
+    done # schema
+
+    declare -A map
+    while IFS= read -r line; do
+      echo "fetch $line"
+      map[$line]=$line
+    done < ${redo_file}
+
+    for schema in "${SCHEMAS[@]}"
+    do
+      old_install_file=./db/$schema/${mode}_${schema}_${patch}.sql.org
+      db_install_file=./db/$schema/${mode}_${schema}_${patch}.sql
+
+      while IFS= read -r line; do
+        key=${line/@@/db/$schema/}
+        # key2=${key/" ^LOGFILE ^VERSION ^MODE"/}
+        # echo "$key"
+        if [[ -v map[${key}] ]]; then
+            line="Prompt skipped redo: $line"
+        # elif [[ -v map[${key2}] ]]; then
+        #     line="Prompt skipped redo: $line"
+        fi
+        echo "$line"
+      done < ${old_install_file} > ${db_install_file}
+    done # schema
+
+  fi
+}
 
 read_db_pass()
 {
-  if [ -z "$DB_APP_PWD" ]
-  then
+  if [[ -z "$DB_APP_PWD" ]]; then
     ask4pwd "Enter Password for deployment user ${DB_APP_USER} on ${DB_TNS}: "
     exp_pwd=${pass}
   else
@@ -257,8 +266,7 @@ read_db_pass()
 remove_dropped_files()
 {
   echo "Check if any file should be removed ..." | write_log
-  if [ -e $remove_old_files ]
-  then
+  if [[ -e $remove_old_files ]]; then
     # loop throug content
     while IFS= read -r line; do
       echo "Removing file $line" | write_log
@@ -273,30 +281,89 @@ execute_global_hook_scripts() {
   local entrypath=$1    # pre or post
   local targetschema=""
 
-  if [[ -d ".hooks/${entrypath}" ]]
-  then
+  if [[ -d ".hooks/${entrypath}" ]]; then
     for file in $(ls .hooks/${entrypath} | sort )
     do
-      case ${file} in
-        *"${DATA_SCHEMA}"*)
-          targetschema=${DATA_SCHEMA}
-          ;;
-        *"${LOGIC_SCHEMA}"*)
-          targetschema=${LOGIC_SCHEMA}
-          ;;
-        *"${APP_SCHEMA}"*)
-          targetschema=${APP_SCHEMA}
-          ;;
-      esac
-      runfile=".hooks/${entrypath}/${file}"
-      echo "executing hook file ${runfile}" | write_log
-      exit | $SQLCLI -S "$(get_connect_string $targetschema)" @${runfile} ${full_log_file} ${patch} ${mode}
-      runfile=""
+      if [[ -f .hooks/${entrypath}/${file} ]]; then
+        case ${file} in
+          *"${DATA_SCHEMA}"*)
+            targetschema=${DATA_SCHEMA}
+            ;;
+          *"${LOGIC_SCHEMA}"*)
+            targetschema=${LOGIC_SCHEMA}
+            ;;
+          *"${APP_SCHEMA}"*)
+            targetschema=${APP_SCHEMA}
+            ;;
+        esac
+        runfile=".hooks/${entrypath}/${file}"
+
+        echo "executing hook file ${runfile}" | write_log
+        $SQLCLI -S "$(get_connect_string $targetschema)" <<! | tee -a ${full_log_file}
+          define VERSION="${patch}"
+          define MODE="${mode}"
+
+          set define '^'
+          set concat on
+          set concat .
+          set verify off
+
+          Prompt calling file ${runfile}
+          @${runfile}
+!
+
+
+        runfile=""
+      fi
     done
 
 
-    if [ $? -ne 0 ]
-    then
+    if [[ $? -ne 0 ]]; then
+      echo "ERROR when executing .hooks/${entrypath}/${file}" | write_log $failure
+      manage_result "failure"
+    fi
+  fi
+
+  ### mode specific
+
+  if [[ -d ".hooks/${entrypath}/${mode}" ]]
+  then
+    for file in $(ls .hooks/${entrypath}/${mode} | sort )
+    do
+      if [[ .hooks/${entrypath}/${mode}/${file} ]]; then
+        case ${file} in
+          *"${DATA_SCHEMA}"*)
+            targetschema=${DATA_SCHEMA}
+            ;;
+          *"${LOGIC_SCHEMA}"*)
+            targetschema=${LOGIC_SCHEMA}
+            ;;
+          *"${APP_SCHEMA}"*)
+            targetschema=${APP_SCHEMA}
+            ;;
+        esac
+        runfile=".hooks/${entrypath}/${mode}/${file}"
+        echo "executing hook file ${runfile}" | write_log
+
+        $SQLCLI -S "$(get_connect_string $targetschema)" <<! | tee -a ${full_log_file}
+          define VERSION="${patch}"
+          define MODE="${mode}"
+
+          set define '^'
+          set concat on
+          set concat .
+          set verify off
+
+          Prompt calling file ${runfile}
+          @${runfile}
+!
+
+        runfile=""
+      fi
+    done
+
+
+    if [[ $? -ne 0 ]]; then
       echo "ERROR when executing .hooks/${entrypath}/${file}" | write_log $failure
       manage_result "failure"
     fi
@@ -304,14 +371,14 @@ execute_global_hook_scripts() {
 }
 
 clear_db_schemas_on_init() {
-  if [ "${mode}" == "init" ]; then
+  if [[ "${mode}" == "init" ]]; then
     echo "INIT - Mode, Schemas will be cleared" | write_log
-    # loop through schemas
-    for schema in "${SCHEMAS[@]}"
-    do
+    # loop through schemas reverse
+    for (( idx=${#SCHEMAS[@]}-1 ; idx>=0 ; idx-- )) ; do
+      local schema=${SCHEMAS[idx]}
       # On init mode schema content will be dropped
-        echo "DROPING ALL OBJECTS on schema $schema" | write_log
-        exit | $SQLCLI -S "$(get_connect_string $schema)" @.dbFlow/lib/drop_all.sql ${full_log_file} ${patch} ${mode}
+      echo "DROPING ALL OBJECTS on schema $schema" | write_log
+       exit | $SQLCLI -S "$(get_connect_string $schema)" @.dbFlow/lib/drop_all.sql ${full_log_file} ${patch} ${mode} | tee -a ${full_log_file}
     done
   fi
 }
@@ -327,26 +394,23 @@ install_db_schemas()
   # loop through schemas
   for schema in "${SCHEMAS[@]}"
   do
-    if [ -d $schema ]
-    then
+    if [[ -d $schema ]]; then
       cd $schema
 
       # now executing main installation file if exists
       db_install_file=${mode}_${schema}_${patch}.sql
       # exists db install file
-      if [ -e $db_install_file ]
-      then
+      if [[ -e $db_install_file ]]; then
         echo "Installing schema $schema to ${DB_APP_USER} on ${DB_TNS}"  | write_log
 
         # uncomment cleaning scripts specific to this stage/branch ex:--test or --acceptance
         sed -i -E "s:--$STAGE:Prompt uncommented cleanup for stage $STAGE\n:g" $db_install_file
 
         runfile=$db_install_file
-        $SQLCLI -S "$(get_connect_string $schema)" @$db_install_file ${full_log_file} ${patch} ${mode}
+        $SQLCLI -S "$(get_connect_string $schema)" @$db_install_file ${patch} ${mode} | tee -a ${full_log_file}
         runfile=""
 
-        if [ $? -ne 0 ]
-        then
+        if [[ $? -ne 0 ]]; then
           echo "ERROR when executing db/$schema/$db_install_file" | write_log $failure
           manage_result "failure"
         fi
@@ -360,7 +424,7 @@ install_db_schemas()
   done
 
   # execute all files in global post path
-  execute_global_hook_scripts "post" "/"
+  execute_global_hook_scripts "post"
 
   cd ..
 }
@@ -374,11 +438,9 @@ set_rest_unavailable() {
       if [[ -d "$module" ]]; then
 
         echo "disabling REST module $module ..." | write_log
-        $SQLCLI -S "$(get_connect_string $APP_SCHEMA)" <<!
+        $SQLCLI -S "$(get_connect_string $APP_SCHEMA)" <<! | tee -a ${full_log_file}
         set define off;
-        prompt logging to ${log_file}
         set serveroutput on;
-        spool ${log_file} append;
         Begin
           ords.publish_module(p_module_name  => '${module}',
                               p_status       => 'NOT_PUBLISHED');
@@ -407,11 +469,9 @@ set_rest_available() {
       if [[ -d "$module" ]]; then
 
         echo "enabling REST module $module ..." | write_log
-        $SQLCLI -S "$(get_connect_string $APP_SCHEMA)" <<!
+        $SQLCLI -S "$(get_connect_string $APP_SCHEMA)" <<! | tee -a ${full_log_file}
         set define off;
-        prompt logging to ${log_file}
         set serveroutput on;
-        spool ${log_file} append;
         Begin
           ords.publish_module(p_module_name  => '${module}',
                               p_status       => 'PUBLISHED');
@@ -441,12 +501,10 @@ set_apps_unavailable() {
       if [[ -d "$appid" ]]; then
 
         echo "disabling APEX-App $appid ..." | write_log
-        $SQLCLI -S "$(get_connect_string $APP_SCHEMA)" <<!
+        $SQLCLI -S "$(get_connect_string $APP_SCHEMA)" <<! | tee -a ${full_log_file}
         set serveroutput on;
         set escchar @
-        prompt logging to ${log_file}
         set define off;
-        spool ${log_file} append;
         Declare
           v_application_id  apex_application_build_options.application_id%type := ${appid/apex\/f} + ${APP_OFFSET};
           v_workspace_id    apex_workspaces.workspace_id%type;
@@ -492,11 +550,9 @@ set_apps_available() {
     for appid in apex/* ; do
       if [[ -d "$appid" ]]; then
         echo "enabling APEX-App $appid ..." | write_log
-        $SQLCLI -S "$(get_connect_string $APP_SCHEMA)" <<!
+        $SQLCLI -S "$(get_connect_string $APP_SCHEMA)" <<! | tee -a ${full_log_file}
         set serveroutput on;
-        prompt logging to ${log_file}
         set define off;
-        spool ${log_file} append;
         Declare
           v_application_id  apex_application_build_options.application_id%type := ${appid/apex\/f} + ${APP_OFFSET};
           v_workspace_id    apex_workspaces.workspace_id%type;
@@ -547,17 +603,22 @@ set_apps_available() {
 install_apps() {
   # app install
   # exists app_install_file
-  if [ -e $app_install_file ]
-  then
+  if [[ -e $app_install_file ]]; then
     echo "Installing APEX-Apps ..." | write_log
     # loop throug content
     while IFS= read -r line; do
-      if [ -e $line/install.sql ]
-      then
+      if [[ -e $line/install.sql ]]; then
         echo "Installing $line Num: ${line/apex\/f} Workspace: ${WORKSPACE}" | write_log
         cd $line
-        $SQLCLI -S "$(get_connect_string $APP_SCHEMA)" <<!
-          spool ../../${log_file} append;
+        $SQLCLI -S "$(get_connect_string $APP_SCHEMA)" <<! | tee -a ${full_log_file}
+          define VERSION="${patch}"
+          define MODE="${mode}"
+
+          set define '^'
+          set concat on
+          set concat .
+          set verify off
+
           Prompt Workspace: ${WORKSPACE}
           Prompt Application: ${line/apex\/f}
           declare
@@ -579,13 +640,12 @@ install_apps() {
           end;
           /
 
-          @@install.sql ${full_log_file} ${patch} ${mode}
+          @@install.sql
 !
 
 
-        if [ $? -ne 0 ]
-        then
-          echo "ERROR when executing $line" | write_log
+        if [[ $? -ne 0 ]]; then
+          echo "ERROR when executing $line" | write_log $failure
           manage_result "failure"
         fi
 
@@ -599,26 +659,68 @@ install_apps() {
 }
 
 
+# Function to install REST-Services
+#######################################
+
+install_rest() {
+  cd ${basepath}
+
+  if [[ -d rest ]]; then
+    cd rest
+
+    # exists rest_install_file
+    if [ -e $rest_install_file ]
+    then
+      echo "Installing REST-Services ..." | write_log
+      $SQLCLI -s "$(get_connect_string $APP_SCHEMA)" <<! | tee -a ${full_log_file}
+
+      define VERSION="${patch}"
+      define MODE="${mode}"
+
+      set define '^'
+      set concat on
+      set concat .
+      set verify off
+
+      Prompt calling file ${rest_install_file}
+      @@${rest_install_file}
+!
+
+      if [ $? -ne 0 ]
+      then
+        echo "ERROR when executing $line" | write_log $failure
+        exit 1
+      fi
+    else
+      echo "File $rest_install_file does not exist" | write_log $warning
+    fi
+
+  else
+    echo "Directory rest does not exist" | write_log
+  fi
+
+
+}
+
+
+
 exec_final_unit_tests()
 {
-  if [ -e .dbFlow/lib/execute_tests.sql ]
-  then
+  if [[ -e .dbFlow/lib/execute_tests.sql ]]; then
   echo "Start testing with utplsql" | write_log
 
     # loop through schemas
     for schema in "${SCHEMAS[@]}"
     do
       echo "Executing unit tests for schema $schema " | write_log
-      exit | $SQLCLI -S "$(get_connect_string $schema)" @.dbFlow/lib/execute_tests.sql ${full_log_file} ${patch} ${mode}
-      if [ $? -ne 0 ]
-      then
+      exit | $SQLCLI -S "$(get_connect_string $schema)" @.dbFlow/lib/execute_tests.sql ${patch} ${mode}
+      if [[ $? -ne 0 ]]; then
         echo "ERROR when executing .dbFlow/lib/execute_tests.sql" | write_log $failure
         manage_result "failure"
       fi
     done
   fi
 }
-
 
 manage_result()
 {
@@ -639,17 +741,15 @@ manage_result()
 
   # move all
   mv *${patch}* ${target_finalize_path}
+  mv rest/*${patch}* ${target_finalize_path}
 
   # loop through schemas
   for schema in "${SCHEMAS[@]}"
   do
 
     db_install_file=${mode}_${schema}_${patch}.sql
-    # exists db install file
-    if [ -e db/$schema/$db_install_file ]
-    then
-      mv db/$schema/$db_install_file ${target_finalize_path} | write_log ${target_move}
-    fi
+    mv db/$schema/$db_install_file* ${target_finalize_path} | write_log ${target_move}
+
   done
 
   # write Info to markdown-table
@@ -697,6 +797,7 @@ print_info
 # extract patchfile and read passwords
 extract_patchfile
 read_db_pass
+prepare_redo
 
 # files to be removed
 remove_dropped_files
@@ -713,10 +814,10 @@ clear_db_schemas_on_init
 # execute pre hooks in root folder
 execute_global_hook_scripts "pre"
 
-
-# install db and apps
+# install product
 install_db_schemas
 install_apps
+install_rest
 
 # execute post hooks in root folder
 execute_global_hook_scripts "post"

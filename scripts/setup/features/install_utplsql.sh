@@ -26,8 +26,7 @@ rm utPLSQL.zip
 
 cd utplsql/utPLSQL/source
 
-if [ -z "$DB_ADMINUSER" ]
-then
+if [[ -z "$DB_ADMINUSER" ]]; then
   read -p "Enter username of admin user (admin, sys, ...) [sys]: " DB_ADMINUSER
   DB_ADMINUSER=${DB_ADMINUSER:-"sys"}
 fi
@@ -37,8 +36,7 @@ if [[ $(toLowerCase $DB_ADMINUSER) != "sys" ]]; then
   utplsql_tspace="data" # no users tablespace when using autonomous db
 fi
 
-if [ -z "$DB_PASSWORD" ]
-then
+if [[ -z "$DB_PASSWORD" ]]; then
   ask4pwd "Enter password für user ${DB_ADMINUSER}: "
   DB_PASSWORD=${pass}
 fi
@@ -59,14 +57,14 @@ is_utplsql_installed () {
 UTPLSQL_INSTALLED=$(is_utplsql_installed)
 if [[ "${UTPLSQL_INSTALLED}" == *"true"* ]]
 then
-  if [ $yes == "YES" ]; then
+  if [[ $yes == "YES" ]]; then
     reinstall="Y"
   else
     read -p "$(echo -e ${BWHITE}"UTPLSQL is allready installed. Would you like to reinstall? (Y/N) [Y]: "${NC})" reinstall
     reinstall=${reinstall:-"Y"}
   fi
 
-  if [ $(toLowerCase $reinstall) == "y" ]; then
+  if [[ $(toLowerCase $reinstall) == "y" ]]; then
     ${SQLCLI} -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} @uninstall.sql ${utplsql_schema}
 
     ${SQLCLI} -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
