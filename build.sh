@@ -311,14 +311,12 @@ function write_install_schemas(){
   for schema in "${SCHEMAS[@]}"
   do
     if [[ -d "$targetpath"/db/$schema ]]; then
-      echo "writing schema: ${schema}" | write_log
-
       # file to write to
       target_install_base=${mode}_${schema}_${version}.sql
       target_install_file="$targetpath"/db/$schema/$target_install_base
 
       echo "" | write_log
-      echo " ==== /db/$schema/$target_install_base ====" | write_log
+      echo " ==== Schema: ${schema} - /db/$schema/$target_install_base ====" | write_log
       echo "" | write_log
 
       # write some infos
@@ -480,14 +478,18 @@ function write_install_schemas(){
 function write_install_apps() {
   # loop through applications
   if [[ -d "$targetpath"/apex ]]; then
-  # file to write to
+    echo "" | write_log
+    echo " ==== Checking APEX Applications ====" | write_log
+    echo "" | write_log
+
+    # file to write to
     target_apex_file="$targetpath"/apex_files_$version.lst
     [ -f $target_apex_file ] && rm $target_apex_file
 
     for appid in apex/*/ ; do
       if [[ -d "$appid" ]]; then
         echo "${appid%/}" >> $target_apex_file
-        echo "Application ${appid%/} will be installed " | write_log
+        echo "Writing call to install APP: ${appid%/} " | write_log
       fi
     done
   fi
@@ -496,11 +498,15 @@ function write_install_apps() {
 function write_install_rest() {
   # check rest
   if [[ -d "$targetpath"/rest ]]; then
+    echo "" | write_log
+    echo " ==== Checking REST Modules ====" | write_log
+    echo "" | write_log
 
     # file to write to
     target_install_base=rest_${mode}_${version}.sql
     target_install_file="$targetpath"/rest/$target_install_base
     [ -f $target_install_file ] && rm $target_install_file
+    rest_to_install="FALSE"
 
     # write some infos
       echo "Prompt .............................................................................. " >> "$target_install_file"
@@ -518,10 +524,11 @@ function write_install_rest() {
     for path in "${rest_array[@]}"
     do
       if [[ -d "$targetpath"/rest/$path ]]; then
-        for directory in $(ls -d -- "$targetpath"/rest/$path/*/ | sort )
+        for directory in $(ls -d -- "$targetpath"/rest/$path/*/ 2> /dev/null | sort )
         do
+          rest_to_install="TRUE"
           dir="$path/"$(basename $directory)
-          echo "Writing calls for $dir" | write_log
+          echo "Writing call to install to install $dir" | write_log
           echo "Prompt Installing $dir ..." >> "$target_install_file"
 
           for file in $(ls "$directory" | sort )
@@ -555,16 +562,23 @@ function write_install_rest() {
 
       fi
     done
+
+    # nothing to install, just remove empty file
+    if [[ ${rest_to_install} == "FALSE" ]]; then
+      rm $target_install_file
+    fi
   fi
 }
 
 
 function manage_artifact () {
-  echo "List files ... "  | write_log
+  # Output files to logfile
   find $targetpath | sed -e 's/[^-][^\/]*\//--/g;s/--/ |-/' >> ${full_log_file}
 
+  echo_success
+  echo_success "==== .......... .......... .......... ==== " | write_log
   echo "All files are placed in $depotpath" | write_log
-  echo "Done" | write_log
+  echo_success "==== ..........    DONE    .......... ==== " | write_log
 
   # remove colorcodes from logfile
   cat ${full_log_file} | sed -r "s/\x1B\[([0-9]{1,3}((;[0-9]{1,3})*)?)?[m|K]//g" > ${full_log_file}.colorless
