@@ -186,7 +186,7 @@ extract_patchfile()
       echo "$patch_source_file exists" | write_log
 
       # copy patch to _installed
-      cp $patch_source_file $patch_target_path/
+      mv $patch_source_file $patch_target_path/
     else
       if [[ -e $patch_target_file ]]; then
         echo "$patch_target_file allready copied" | write_log
@@ -280,6 +280,8 @@ remove_dropped_files()
 execute_global_hook_scripts() {
   local entrypath=$1    # pre or post
   local targetschema=""
+
+  echo "checking hook .hooks/${entrypath}" | write_log
 
   if [[ -d ".hooks/${entrypath}" ]]; then
     for file in $(ls .hooks/${entrypath} | sort )
@@ -385,8 +387,9 @@ clear_db_schemas_on_init() {
 
 install_db_schemas()
 {
-
+  cd ${basepath}
   cd db
+
   # execute all files in global pre path
   execute_global_hook_scripts "pre"
 
@@ -601,6 +604,9 @@ set_apps_available() {
 }
 
 install_apps() {
+
+  cd ${basepath}
+
   # app install
   # exists app_install_file
   if [[ -e $app_install_file ]]; then
@@ -656,6 +662,7 @@ install_apps() {
     echo "File $app_install_file does not exist" | write_log $warning
   fi
 
+  cd ${basepath}
 }
 
 
@@ -699,7 +706,7 @@ install_rest() {
     echo "Directory rest does not exist" | write_log
   fi
 
-
+  cd ${basepath}
 }
 
 
@@ -741,7 +748,7 @@ manage_result()
 
   # move all
   mv *${patch}* ${target_finalize_path}
-  mv rest/*${patch}* ${target_finalize_path}
+  [[ -f rest/rest_${mode}_${patch}.sql ]] && mv rest/rest_${mode}_${patch}.sql ${target_finalize_path}
 
   # loop through schemas
   for schema in "${SCHEMAS[@]}"
