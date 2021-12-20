@@ -575,7 +575,7 @@ function manage_artifact () {
   # Output files to logfile
   find $targetpath | sed -e 's/[^-][^\/]*\//--/g;s/--/ |-/' >> ${full_log_file}
 
-  echo_success
+  echo "" | write_log
   echo_success "==== .......... .......... .......... ==== " | write_log
   echo "All files are placed in $depotpath" | write_log
   echo_success "==== ..........    DONE    .......... ==== " | write_log
