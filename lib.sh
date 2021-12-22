@@ -83,6 +83,12 @@ function echo_warning() {
   echo -e "${YELLOW}$prompt_text${NC}"
 }
 
+function echo_debug() {
+  local prompt_text=$1
+
+  echo -e "${CYAN}$prompt_text${NC}"
+}
+
 # used when admin user is sys
 DBA_OPTION=" as sysdba"
 
