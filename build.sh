@@ -251,7 +251,7 @@ function copy_files {
                 if [[ $(uname) == "Darwin" ]]; then
                   rsync -R $f $targetpath
                 else
-                  yes | cp --parents -rf $f $targetpath
+                  cp --parents -Rf $f $targetpath
                 fi
 
                 echo "Additionaly add $f" | write_log
@@ -268,7 +268,7 @@ function copy_files {
       if [[ $(uname) == "Darwin" ]]; then
         rsync -R ${sourcepath}/db/$schema/.hooks $targetpath
       else
-        yes | cp --parents -rf ${sourcepath}/db/$schema/.hooks $targetpath
+        cp --parents -Rf ${sourcepath}/db/$schema/.hooks $targetpath
       fi
     done
 
@@ -276,7 +276,7 @@ function copy_files {
     if [[ $(uname) == "Darwin" ]]; then
       rsync -R ${sourcepath}/.hooks $targetpath
     else
-      yes | cp --parents -rf ${sourcepath}/.hooks $targetpath
+      cp --parents -Rf ${sourcepath}/.hooks $targetpath
     fi
   fi
 }
