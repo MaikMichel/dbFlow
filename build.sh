@@ -268,7 +268,9 @@ function copy_files {
       if [[ $(uname) == "Darwin" ]]; then
         rsync -R ${sourcepath}/db/$schema/.hooks $targetpath
       else
-        cp --parents -Rf ${sourcepath}/db/$schema/.hooks $targetpath
+        if [[ -d ${sourcepath}/db/$schema/.hooks ]]; then
+          cp --parents -Rf ${sourcepath}/db/$schema/.hooks $targetpath
+        fi
       fi
     done
 
@@ -276,7 +278,9 @@ function copy_files {
     if [[ $(uname) == "Darwin" ]]; then
       rsync -R ${sourcepath}/.hooks $targetpath
     else
-      cp --parents -Rf ${sourcepath}/.hooks $targetpath
+      if [[ -d ${sourcepath}/.hooks ]]; then
+        cp --parents -Rf ${sourcepath}/.hooks $targetpath
+      fi
     fi
   fi
 }
@@ -677,6 +681,8 @@ function call_apply_on_install() {
     echo "calling apply"
 
     .dbFlow/apply.sh ${mode} ${version}
+  else
+    echo -e "just call ${BWHITE}.dbFlow/apply.sh ${mode} ${version}${NC} inside your instance folder"
   fi
 }
 
