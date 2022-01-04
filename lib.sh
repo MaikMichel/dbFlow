@@ -160,3 +160,36 @@ write_log() {
     fi
   done
 }
+
+function check_admin_connection() {
+  sql_output=`${SQLCLI} -S "${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION}" <<EOF
+  select 'connected as '||user t from dual;
+  exit
+EOF
+` || true
+
+  if [[ $sql_output == *"connected as"* ]]; then
+    echo_success "Connection as ${DB_ADMINUSER} is working"
+  else
+    echo_error "Error to connect as ${DB_ADMINUSER}"
+    echo_error "${sql_output}"
+    exit 2
+  fi
+}
+
+function check_connection() {
+  local CONN_STR=get_connect_string $1
+  sql_output=`${SQLCLI} -S "${CONN_STR}" <<EOF
+  select 'connected to schema '||user t from dual;
+  exit
+EOF
+` || true
+
+  if [[ $sql_output == *"connected to"* ]]; then
+    echo_success "Connection to schema ${1} is working"
+  else
+    echo_error "Error to connect to schema ${1}"
+    echo_error "${sql_output}"
+    exit 2
+  fi
+}

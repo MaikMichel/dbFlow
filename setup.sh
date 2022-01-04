@@ -118,9 +118,11 @@ install() {
     DB_APP_PWD=${pass}
   fi
 
+  # validate connection and exit when not working
+  check_admin_connection
+
   PROJECT_INSTALLED=$(is_any_schema_installed)
-  if [[ "${PROJECT_INSTALLED}" == *"true"* ]] && [[ ${yes} == "NO" ]]
-  then
+  if [[ "${PROJECT_INSTALLED}" == *"true"* ]] && [[ ${yes} == "NO" ]]; then
     echo_error "Project allready installed and option force not recoginized. \nTry option -f to force overwrite (drop + create)"
 
     exit 1
