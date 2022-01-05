@@ -72,9 +72,7 @@ must_extract=${3:-""}
 oldlogfile=${4:-""}
 
 # when 3 params, then logfile may be given
-if [[ -z ${must_extract} ]]; then
-  echo "must_extract undefined"
-else
+if [[ -n ${must_extract} ]]; then
   if [[ -z ${oldlogfile} ]]; then
     if [[ ${must_extract} != "notar" ]] && [[ -f ${must_extract} ]]; then
       oldlogfile=${must_extract}
@@ -82,15 +80,13 @@ else
     fi
   fi
 fi
-# echo "must_extract = ${must_extract}"
-# echo "oldlogfile = ${oldlogfile}"
 
 
 basepath=$(pwd)
 runfile=""
 
 if [[ ! "$mode" =~ ^(init|patch)$ ]]; then
-    echo "unknown mode: $mode"
+    echo_error "unknown mode: $mode"
     do_exit="YES"
 fi
 
@@ -106,12 +102,12 @@ if [[ -z ${STAGE:-} ]]; then
 fi
 
 if [[ -z ${DB_APP_USER:-} ]]; then
-  echo "App-User not defined"
+  echo_error "App-User not defined"
   do_exit="YES"
 fi
 
 if [[ -z $DB_TNS ]]; then
-  echo "TNS not defined"
+  echo_error "TNS not defined"
   do_exit="YES"
 fi
 
@@ -123,10 +119,9 @@ if [[ ${#SCHEMAS[@]} == ${#ALL_SCHEMAS[@]} ]]; then
 fi
 
 if [[ -d $DEPOT_PATH/$STAGE ]]; then
-  echo "Targetstage used: $STAGE"
   patch_source_path=${basepath}/$DEPOT_PATH/$STAGE
 else
-  echo "Targetstage $STAGE inside $DEPOT_PATH is unknown"
+  echo_error "Targetstage $STAGE inside $DEPOT_PATH is unknown"
   do_exit="YES"
 fi
 
@@ -383,6 +378,15 @@ clear_db_schemas_on_init() {
        exit | $SQLCLI -S "$(get_connect_string $schema)" @.dbFlow/lib/drop_all.sql ${full_log_file} ${patch} ${mode} | tee -a ${full_log_file}
     done
   fi
+}
+
+validate_connections(){
+  # loop through schemas
+  for schema in "${SCHEMAS[@]}"
+  do
+    check_connection ${schema}
+  done
+
 }
 
 install_db_schemas()
@@ -801,9 +805,10 @@ trap 'rc=$?; notify $rc; exit $rc' EXIT
 # print some global vars to output
 print_info
 
-# extract patchfile and read passwords
-extract_patchfile
+# preparation and validation
 read_db_pass
+validate_connections
+extract_patchfile
 prepare_redo
 
 # files to be removed
