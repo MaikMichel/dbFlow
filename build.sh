@@ -90,27 +90,116 @@ function check_vars() {
 }
 
 function check_params() {
-  # validate parameters
-  mode=${1:-""}
+  ! getopt --test > /dev/null
+  if [[ ${PIPESTATUS[0]} -ne 4 ]]; then
+      echo 'I’m sorry, `getopt --test` failed in this environment.'
+      exit 1
+  fi
 
-  if [[ "${mode}" == "patch" ]]; then
-    # all params are required
-    if [[ $# -ne 3 ]]; then
-      echo_error "missing parameter <from> and <version>"
-      usage
-    fi
-    from=$2
-    version=$3
-  else
-    if [[ "${mode}" == "init" ]]; then
-      if [[ $# -ne 2 ]]; then
-        echo_error "missing parameter <version>"
-        usage
-      fi
-      version=$2
+  OPTIONS=dipv:s:e:
+  LONGOPTS=debug,init,patch,version:,startcommit:,endcommit:
+
+  # -regarding ! and PIPESTATUS see above
+  # -temporarily store output to be able to check for errors
+  # -activate quoting/enhanced mode (e.g. by writing out “--options”)
+  # -pass arguments only via   -- "$@"   to separate them correctly
+  ! PARSED=$(getopt --options=$OPTIONS --longoptions=$LONGOPTS --name "$0" -- "$@")
+  if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
+      # e.g. return value is 1
+      #  then getopt has complained about wrong arguments to stdout
+      exit 2
+  fi
+
+  # read getopt’s output this way to handle the quoting right:
+  eval set -- "$PARSED"
+
+  debug="n" init="n" patch="n" version="-" startcommit=HEAD endcommit=ORIG_HEAD
+
+  # now enjoy the options in order and nicely split until we see --
+  while true; do
+      case "$1" in
+          -d|--debug)
+              d=y
+              shift
+              ;;
+          -i|--init)
+              i=y
+              shift
+              ;;
+          -p|--patch)
+              p=y
+              shift
+              ;;
+          -v|--version)
+              version="$2"
+              shift 2
+              ;;
+          -s|--startcommit)
+              startcommit="$2"
+              shift 2
+              ;;
+          -e|--endcommit)
+              endcommit="$2"
+              shift 2
+              ;;
+          --)
+              shift
+              break
+              ;;
+          *)
+              echo "Programming error"
+              exit 3
+              ;;
+      esac
+  done
+
+  # handle non-option arguments
+  # if [[ $# -ne 1 ]]; then
+  #     echo "$0: A single input file is required."
+  #     exit 4
+  # fi
+
+
+  echo "debug: $d, init: $i, patch: $p, version: $version, startcommit: $startcommit, endcommit: $endcommit"
+
+  # Rule 1: init or patch
+  if [[ -z $i ]] && [[ -z $p ]]; then
+    echo_error "Missing build mode, init or patch using flags -i or -p"
+    usage
+  fi
+
+  if [[ $i == "y" ]] && [[ $p == "y" ]]; then
+    echo_error "Build mode can only be init or patch, not both"
+    usage
+  fi
+
+  # Rule 2: we always need a version
+  if [[ -z $version ]] || [[ $version == "-" ]]; then
+    echo_error "Missing version"
+    usage
+  fi
+
+  # now check dependent params
+  if [[ $i == "y" ]]; then
+    mode="init"
+  elif [[ $p == "y" ]]; then
+    mode="patch"
+  fi
+
+    # Rule 3: When patch, we need git tags or hashes to build the diff
+  if [[ $mode == "patch" ]]; then
+    if git cat-file -e $startcommit 2> /dev/null; then
+      a="a"
     else
-      echo_error "unkown mode ${mode}"
-      usage
+      echo_error "Start Commit or Tag $startcommit not found"
+      exit 1
+    fi
+
+    if git cat-file -e $endcommit 2> /dev/null; then
+      a="a"
+    else
+      echo_error "End Commit or Tag $endcommit not found"
+      exit 1
     fi
   fi
 }
@@ -138,7 +227,7 @@ function setup_env() {
 
   # at INIT there is no pretreatment or an evaluation of the table_ddl
   if [[ "${mode}" == "init" ]]; then
-    array=( .hooks/pre sequences tables indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies sources/types sources/packages sources/functions sources/procedures views mviews sources/triggers jobs tests/packages ddl/init dml/base dml/init .hooks/post)
+    array=( .hooks/pre sequences tables indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies sources/types sources/packages sources/functions sources/procedures views mviews sources/triggers jobs tests/packages ddl/init dml/init dml/base .hooks/post)
   else
     # building pre and post based on branches
     pres=( .hooks/pre ddl/pre_${branch} dml/pre_${branch} ddl/pre dml/pre )
@@ -414,7 +503,6 @@ function write_install_schemas(){
                 fi
 
                 if [[ "$skipfile" == "TRUE" ]]; then
-                  echo "Skipping $file"
                   echo "Prompt ... skipped $file" >> "$target_install_file"
                 else
                   echo "Prompt >>> db/${schema}/${path}/${file}" >> "$target_install_file"
@@ -650,7 +738,7 @@ function check_push_to_depot() {
 
 function check_make_new_version() {
   # on branch master ask if we should tag current version and conmmit
-  if [[ $branch == "masterX" ]]; then
+  if [[ $branch == "master" ]]; then
     echo
     echo "Do you wish to commit, tag and push the new version to origin"
     echo "  Y - current version will be commited, tagged and pushed"
