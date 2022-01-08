@@ -125,7 +125,7 @@ export CUSTOM_JDBC="-XX:+TieredCompilation -XX:TieredStopAtLevel=1 -Xverify:none
 export LANG="de_DE.utf8"
 case $(uname | tr '[:upper:]' '[:lower:]') in
 mingw64_nt-10*)
-  chcp.com 65001
+  chcp.com 65001 > /dev/null 2>&1
 ;;
 esac
 
