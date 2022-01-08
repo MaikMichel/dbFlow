@@ -2,35 +2,32 @@
 # echo "Your script args ($#) are: $@"
 
 usage() {
-  echo -e "${BYELLOW}build [dbFlow]${NC} - build a patch with eiter all or only with changed files"
-  echo -e "-----------------------------------------------------------------------------"
-  echo -e "  If mode is init a build file from the current directory is build and placed "
-  echo -e "  inside the depot directory. If mode is patch then only the files which differ"
-  echo -e "  to the HEAD are taken into the build"
-  echo
-  echo -e "${BWHITE}USAGE${NC}"
-  echo -e "\t$0 <MODE>"
-  echo
-  echo -e "${BWHITE}MODE${NC}"
-  echo -e "\tinit <version>           creates an inital build from current project "
-  echo -e "\t                         ${PURPLE}all objects in target-schemas will be dropped before install${NC}"
-  echo -e "\t     <version>           label of new version the build is named"
-  echo -e "\t                         if version is \"install\" apply script will be called directy after build is finished"
-  echo
-  echo -e "\tpatch <from> <version>   creates an patch build from git diff by tag/commit with current index"
-  echo -e "\t      <from>             tag or commit hash or any other Git hash ex. ORIG_HEAD"
-  echo -e "\t      <version>          label of new version the build is named"
-  echo -e "\t                         if current branch is \"master\" you a tag is created"
-  echo
-  echo
+  echo -e "${BYELLOW}.dbFlow/build.sh${NC} - build an installable artifact with eiter"
+  echo -e "                   all (${CYAN}init${NC}) or only with changed (${CYAN}patch${NC}) files"
+  echo ""
+  echo -e "${BYELLOW}Usage:${NC}"
+  echo -e "  $0 --init --version <label>"
+  echo -e "  $0 --patch --version <label> [--startcommit <hash|tag>] [--endcommit <hash|tag>]"
+  echo ""
+  echo -e "${BYELLOW}Options:${NC}"
+  echo -e "  -h | --help             - Show this screen"
+  echo -e "  -d | --debug            - Show additionaly output messages"
+  echo -e "  -i | --init             - Flag to build a full installable artifact "
+  echo -e "                            this will delete all objects in target schemas upon install"
+  echo -e "  -p | --patch            - Flag to build an update/patch as artifact "
+  echo -e "                            This will apply on top of the target schemas and consists"
+  echo -e "                            of the difference between the starthash/tag and endhash/tag"
+  echo -e "  -v | --version <label>  - Required label of version this artifact represents"
+  echo -e "  -s | --start <hash|tag> - Optional hash or tag to determine the difference to the end, defaults to ORIG_HEAD"
+  echo -e "  -e | --end <hash|tag>   - Optional hash or tag to determine the difference to the start, defaults to HEAD"
+  echo ""
+  echo -e "${BYELLOW}Examples:${NC}"
+  echo -e "  $0 --init --version 1.0.0"
+  echo -e "  $0 --patch --version 1.1.0"
+  echo -e "  $0 --patch --version 1.2.0 --start 1.0.0"
+  echo -e "  $0 --patch --version 1.3.0 --start 71563f65 --end ba12010a"
+  echo -e "  $0 --patch --version 1.4.0 --start ORIG_HEAD --end HEAD"
 
-  echo -e "${BWHITE}EXAMPLE${NC}"
-  echo -e "  $0 init 1.0.0"
-  echo -e "  $0 init install"
-  echo -e "  $0 patch 1.0.0 1.0.1"
-  echo -e "  $0 patch ORIG_HEAD 1.0.1"
-  echo
-  echo
   exit 1
 }
 
@@ -92,12 +89,12 @@ function check_vars() {
 function check_params() {
   ! getopt --test > /dev/null
   if [[ ${PIPESTATUS[0]} -ne 4 ]]; then
-      echo 'I’m sorry, `getopt --test` failed in this environment.'
+      echo_fatal 'I’m sorry, `getopt --test` failed in this environment.'
       exit 1
   fi
 
-  OPTIONS=dipv:s:e:
-  LONGOPTS=debug,init,patch,version:,startcommit:,endcommit:
+  OPTIONS=dhipv:s:e:
+  LONGOPTS=debug,help,init,patch,version:,start:,end:
 
   # -regarding ! and PIPESTATUS see above
   # -temporarily store output to be able to check for errors
@@ -113,13 +110,17 @@ function check_params() {
   # read getopt’s output this way to handle the quoting right:
   eval set -- "$PARSED"
 
-  debug="n" init="n" patch="n" version="-" startcommit=HEAD endcommit=ORIG_HEAD
+  debug="n" help="h" init="n" patch="n" version="-" start=ORIG_HEAD end=HEAD
 
   # now enjoy the options in order and nicely split until we see --
   while true; do
       case "$1" in
           -d|--debug)
               d=y
+              shift
+              ;;
+          -h|--help)
+              h=y
               shift
               ;;
           -i|--init)
@@ -134,12 +135,12 @@ function check_params() {
               version="$2"
               shift 2
               ;;
-          -s|--startcommit)
-              startcommit="$2"
+          -s|--start)
+              start="$2"
               shift 2
               ;;
-          -e|--endcommit)
-              endcommit="$2"
+          -e|--end)
+              end="$2"
               shift 2
               ;;
           --)
@@ -147,7 +148,7 @@ function check_params() {
               break
               ;;
           *)
-              echo "Programming error"
+              echo_fatal "Programming error"
               exit 3
               ;;
       esac
@@ -160,23 +161,30 @@ function check_params() {
   # fi
 
 
-  echo "debug: $d, init: $i, patch: $p, version: $version, startcommit: $startcommit, endcommit: $endcommit"
+  #echo_debug "debug: $d, help: $h, init: $i, patch: $p, version: $version, startcommit: $startcommit, endcommit: $endcommit"
+  # help first
+  if [[ -n $h ]] && [[ $h == "y" ]]; then
+    usage
+  fi
 
   # Rule 1: init or patch
   if [[ -z $i ]] && [[ -z $p ]]; then
     echo_error "Missing build mode, init or patch using flags -i or -p"
-    usage
+    echo_error "type $0 --help for more informations"
+    exit 1
   fi
 
   if [[ $i == "y" ]] && [[ $p == "y" ]]; then
     echo_error "Build mode can only be init or patch, not both"
-    usage
+    echo_error "type $0 --help for more informations"
+    exit 1
   fi
 
   # Rule 2: we always need a version
   if [[ -z $version ]] || [[ $version == "-" ]]; then
     echo_error "Missing version"
-    usage
+    echo_error "type $0 --help for more informations"
+    exit 1
   fi
 
   # now check dependent params
@@ -188,17 +196,17 @@ function check_params() {
 
     # Rule 3: When patch, we need git tags or hashes to build the diff
   if [[ $mode == "patch" ]]; then
-    if git cat-file -e $startcommit 2> /dev/null; then
-      a="a"
+    if git cat-file -e $start 2> /dev/null; then
+      from_commit=$start
     else
-      echo_error "Start Commit or Tag $startcommit not found"
+      echo_error "Start Commit or Tag $start not found"
       exit 1
     fi
 
-    if git cat-file -e $endcommit 2> /dev/null; then
-      a="a"
+    if git cat-file -e $end 2> /dev/null; then
+      until_commit=$end
     else
-      echo_error "End Commit or Tag $endcommit not found"
+      echo_error "End Commit or Tag $end not found"
       exit 1
     fi
   fi
@@ -242,10 +250,6 @@ function setup_env() {
   # if table changes are inside release, we have to call special-functionalities
   table_changes="FALSE"
 
-  # define diff indexes
-  from_commit=${from:-""} #ORIG_HEAD #61485daabff5f71fb0334b64dc54e65dd0cae9c9
-  until_commit=HEAD
-
   # folder outside git repo
   depotpath="$(pwd)/$DEPOT_PATH/$branch"
   targetpath=$depotpath/${mode}_${version}
@@ -263,6 +267,10 @@ function setup_env() {
   echo -e "----------------------------------------------------------" | write_log
   echo -e "project:       ${BWHITE}${PROJECT}${NC}" | write_log
   echo -e "branch:        ${BWHITE}${branch}${NC}" | write_log
+  if [[ $mode == "patch" ]];then
+    echo -e "from:          ${BWHITE}${from_commit}${NC}" | write_log
+    echo -e "until:         ${BWHITE}${until_commit}${NC}" | write_log
+  fi
   echo -e "----------------------------------------------------------" | write_log
   echo -e "app_schema:    ${BWHITE}${APP_SCHEMA}${NC}" | write_log
   echo -e "data_schema:   ${BWHITE}${DATA_SCHEMA}${NC}" | write_log
@@ -386,7 +394,7 @@ function list_files_to_remove() {
       num_changes=`git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=D -- ${folder} | wc -l | xargs`
 
       if [[ $num_changes > 0 ]]; then
-        echo "echo removing dead-files" | write_log
+        echo "removing dead-files" | write_log
 
         for line in `git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=D -- ${folder}`
         do
@@ -770,7 +778,7 @@ function call_apply_on_install() {
 
     .dbFlow/apply.sh ${mode} ${version}
   else
-    echo -e "just call ${BWHITE}.dbFlow/apply.sh ${mode} ${version}${NC} inside your instance folder"
+    echo -e "${LWHITE}just call ${NC}${BWHITE}.dbFlow/apply.sh ${mode} ${version}${NC} ${LWHITE}inside your instance folder${NC}"
   fi
 }
 
