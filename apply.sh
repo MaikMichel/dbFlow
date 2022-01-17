@@ -1,33 +1,31 @@
 #!/bin/bash
-# echo "Your script args ($#) are: $@"
+echo "Your script args ($#) are: $@"
 
 usage() {
-  echo -e "${BYELLOW}apply [dbFlow]${NC} - applies the given build to target database"
-  echo -e "------------------------------------------------------------------------------"
-  echo -e " Looks in defined depot directory for a build-artifact and applies it to "
-  echo -e " specified database connection. All build propterties ard define in build.env."
-  echo -e " All deployment properties are define in apply.env"
-  echo -e " Please do ${PURPLE}NOT${NC} commit any password specific properties to your scm."
+  echo -e "${BYELLOW}.dbFlow/apply.sh${NC} - applies the given build to target database from"
+  echo -e "                   depot path, defined in environment. "
+  echo ""
+  echo -e "${BYELLOW}Usage:${NC}"
+  echo -e "  $0 --init --version <label>"
+  echo -e "  $0 --patch --version <label> [--noextract] [--redolog <old-logfile>]"
   echo
-  echo -e "${BWHITE}USAGE${NC}"
-  echo -e "\t$0 <MODE>"
-  echo
-  echo -e "${BWHITE}MODE${NC}"
-  echo -e "\tinit <version> [notar]  deploys an initial build with given version label to target database"
-  echo -e "\t                        ${PURPLE}all objects in target-schemas will be dropped before install${NC}"
-  echo -e "\t                        if [notar] option is passed, no build file is unzipped from depot directory"
-  echo
-  echo -e "\tpatch <version> [notar] deploys an update/patch build with given version label to target database"
-  echo -e "\t                        if [notar] option is passed, no build file is unzipped from depot directory"
-  echo
-  echo
-
- 	echo -e "${BWHITE}EXAMPLE${NC}"
-  echo "  $0 init 1.0.0"
-  echo "  $0 init 1.0.0 notar"
-  echo "  $0 patch 1.0.1"
-  echo "  $0 patch 1.0.1 notar"
-  echo
+    echo -e "${BYELLOW}Options:${NC}"
+  echo -e "  -h | --help             - Show this screen"
+  echo -e "  -d | --debug            - Show additionaly output messages"
+  echo -e "  -i | --init             - Flag to install a full installable artifact "
+  echo -e "                            this will delete all objects in target schemas upon install"
+  echo -e "  -p | --patch            - Flag to install an update/patch as artifact "
+  echo -e "                            This will apply on top of the target schemas and consists"
+  echo -e "                            of the difference defined during build"
+  echo -e "  -v | --version <label>  - Required label of version this artifact represents"
+  echo -e "  -n | --noextract        - Optional do not move and extract artifact from depot "
+  echo -e "                            Can be used to extract files manually or use a allready extracted build"
+  echo -e "  -r | --redolog          - Optional to redo an installation and skip installation-step allready run"
+  echo ""
+ 	echo -e "${BYELLOW}Examples:${NC}"
+  echo -e "  $0 --init --version 1.0.0"
+  echo -e "  $0 --patch --version 1.1.0"
+  echo -e "  $0 --patch --version 1.1.0 --noextract --redolog ../depot/master/old_logfile.log"
   echo
   exit 1
 }
@@ -52,109 +50,204 @@ else
 fi
 maintence="<span />${maintence}"
 
-
-
+# choose CLI to call
 SQLCLI=${SQLCLI:-sqlplus}
-
-
-# validate parameters
-do_exit="NO"
-
-# at least 2 params are required
-if [[ $# -lt 2 ]]; then
-  echo_error "not enough parameters"
-  do_exit="YES"
-fi
-
-mode=${1:-""}
-patch=${2:-""}
-must_extract=${3:-""}
-oldlogfile=${4:-""}
-
-# when 3 params, then logfile may be given
-if [[ -n ${must_extract} ]]; then
-  if [[ -z ${oldlogfile} ]]; then
-    if [[ ${must_extract} != "notar" ]] && [[ -f ${must_extract} ]]; then
-      oldlogfile=${must_extract}
-      must_extract=""
-    fi
-  fi
-fi
-
 
 basepath=$(pwd)
 runfile=""
 
-if [[ ! "$mode" =~ ^(init|patch)$ ]]; then
-    echo_error "unknown mode: $mode"
+function check_vars() {
+  # validate parameters
+  do_exit="NO"
+
+  if [[ -z ${DEPOT_PATH:-} ]]; then
+    echo_error "Depotpath not defined"
     do_exit="YES"
-fi
+  fi
+
+  if [[ -z ${STAGE:-} ]]; then
+    echo_error  "Stage not defined"
+    do_exit="YES"
+  fi
+
+  if [[ -z ${DB_APP_USER:-} ]]; then
+    echo_error "App-User not defined"
+    do_exit="YES"
+  fi
+
+  if [[ -z $DB_TNS ]]; then
+    echo_error "TNS not defined"
+    do_exit="YES"
+  fi
+
+  if [[ -d $DEPOT_PATH/$STAGE ]]; then
+    install_source_path=${basepath}/$DEPOT_PATH/$STAGE
+  else
+    echo_error "Targetstage $STAGE inside $DEPOT_PATH is unknown"
+    do_exit="YES"
+  fi
+
+  # get distinct values of array
+  ALL_SCHEMAS=( ${DATA_SCHEMA} ${LOGIC_SCHEMA} ${APP_SCHEMA} )
+  SCHEMAS=($(printf "%s\n" "${ALL_SCHEMAS[@]}" | sort -u))
+  # if length is equal than ALL_SCHEMAS, otherwise distinct
+  if [[ ${#SCHEMAS[@]} == ${#ALL_SCHEMAS[@]} ]]; then
+    SCHEMAS=(${ALL_SCHEMAS[@]})
+  fi
 
 
-if [[ -z ${DEPOT_PATH:-} ]]; then
-  echo_error "Depotpath not defined"
-  do_exit="YES"
-fi
+  ####
+  if [[ ${do_exit} == "YES" ]]; then
+    echo_warning "aborting"
+    exit 1;
+  fi
 
-if [[ -z ${STAGE:-} ]]; then
-  echo_error  "Stage not defined"
-  do_exit="YES"
-fi
+}
 
-if [[ -z ${DB_APP_USER:-} ]]; then
-  echo_error "App-User not defined"
-  do_exit="YES"
-fi
+function check_params() {
+  ! getopt --test > /dev/null
+  if [[ ${PIPESTATUS[0]} -ne 4 ]]; then
+      echo_fatal 'I’m sorry, `getopt --test` failed in this environment.'
+      exit 1
+  fi
 
-if [[ -z $DB_TNS ]]; then
-  echo_error "TNS not defined"
-  do_exit="YES"
-fi
+  OPTIONS=dhipv:nr:
+  LONGOPTS=debug,help,init,patch,version:,noextract,redolog:
 
-ALL_SCHEMAS=( ${DATA_SCHEMA} ${LOGIC_SCHEMA} ${APP_SCHEMA} )
-SCHEMAS=($(printf "%s\n" "${ALL_SCHEMAS[@]}" | sort -u))
-# if length is equal than ALL_SCHEMAS, otherwise distinct
-if [[ ${#SCHEMAS[@]} == ${#ALL_SCHEMAS[@]} ]]; then
-  SCHEMAS=(${ALL_SCHEMAS[@]})
-fi
+  # -regarding ! and PIPESTATUS see above
+  # -temporarily store output to be able to check for errors
+  # -activate quoting/enhanced mode (e.g. by writing out “--options”)
+  # -pass arguments only via   -- "$@"   to separate them correctly
+  ! PARSED=$(getopt --options=$OPTIONS --longoptions=$LONGOPTS --name "$0" -- "$@")
+  if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
+      # e.g. return value is 1
+      #  then getopt has complained about wrong arguments to stdout
+      exit 2
+  fi
 
-if [[ -d $DEPOT_PATH/$STAGE ]]; then
-  patch_source_path=${basepath}/$DEPOT_PATH/$STAGE
-else
-  echo_error "Targetstage $STAGE inside $DEPOT_PATH is unknown"
-  do_exit="YES"
-fi
+  # read getopt’s output this way to handle the quoting right:
+  eval set -- "$PARSED"
 
+  debug="n" help="h" init="n" patch="n" version="-" noextract="n"  redolog=""
 
-####
-if [[ ${do_exit} == "YES" ]]; then
-  echo_warning "aborting"
-  usage;
-fi
+  # now enjoy the options in order and nicely split until we see --
+  while true; do
+      case "$1" in
+          -d|--debug)
+              d=y
+              shift
+              ;;
+          -h|--help)
+              h=y
+              shift
+              ;;
+          -i|--init)
+              i=y
+              shift
+              ;;
+          -p|--patch)
+              p=y
+              shift
+              ;;
+          -v|--version)
+              version="$2"
+              shift 2
+              ;;
+          -n|--noextract)
+              noextract=y
+              shift
+              ;;
+          -r|--redolog)
+              redolog="$2"
+              shift 2
+              ;;
+          --)
+              shift
+              break
+              ;;
+          *)
+              echo_fatal "Programming error $1"
+              exit 3
+              ;;
+      esac
+  done
 
-# Defing some vars
-app_install_file=apex_files_${patch}.lst
-rest_install_file=rest_${mode}_${patch}.sql
-remove_old_files=remove_files_${patch}.lst
+  # handle non-option arguments
+  # if [[ $# -ne 1 ]]; then
+  #     echo "$0: A single input file is required."
+  #     exit 4
+  # fi
 
-patch_target_path=.
-patch_source_file=$patch_source_path/${mode}_${patch}.tar.gz
-patch_target_file=$patch_target_path/${mode}_${patch}.tar.gz
+  # help first
+  if [[ -n $h ]] && [[ $h == "y" ]]; then
+    usage
+  fi
 
-MDATE=`date "+%Y%m%d%H%M%S"`
-log_file="${MDATE}_dpl_${mode}_${patch}.log"
+  # Rule 1: init or patch
+  if [[ -z $i ]] && [[ -z $p ]]; then
+    echo_error "Missing apply mode, init or patch using flags -i or -p"
+    echo_error "type $0 --help for more informations"
+    exit 1
+  fi
 
-touch $log_file
-full_log_file="$( cd "$( dirname "${log_file}" )" >/dev/null 2>&1 && pwd )/${log_file}"
+  if [[ $i == "y" ]] && [[ $p == "y" ]]; then
+    echo_error "Build mode can only be init or patch, not both"
+    echo_error "type $0 --help for more informations"
+    exit 1
+  fi
+
+  # Rule 2: we always need a version
+  if [[ -z $version ]] || [[ $version == "-" ]]; then
+    echo_error "Missing version, use flag -v x.x.x"
+    echo_error "type $0 --help for more informations"
+    exit 1
+  fi
+
+  # now check dependent params
+  if [[ $i == "y" ]]; then
+    mode="init"
+  elif [[ $p == "y" ]]; then
+    mode="patch"
+  fi
+
+  # now check dependent params
+  if [[ $noextract == "y" ]]; then
+    must_extract="FALSE"
+  else
+    must_extract="TRUE"
+  fi
+
+  oldlogfile=$redolog
+
+  # Defing some vars
+  app_install_file=apex_files_${version}.lst
+  rest_install_file=rest_${mode}_${version}.sql
+  remove_old_files=remove_files_${version}.lst
+
+  install_target_path=.
+  install_source_file=$install_source_path/${mode}_${version}.tar.gz
+  install_target_file=$install_target_path/${mode}_${version}.tar.gz
+
+  MDATE=`date "+%Y%m%d%H%M%S"`
+  log_file="${MDATE}_dpl_${mode}_${version}.log"
+
+  touch $log_file
+  full_log_file="$( cd "$( dirname "${log_file}" )" >/dev/null 2>&1 && pwd )/${log_file}"
+}
+
 
 
 print_info()
 {
-  echo -e "Installing    ${BWHITE}${mode} ${patch}${NC}" | write_log
+  echo -e "Installing    ${BWHITE}${mode} ${version}${NC}" | write_log
   echo -e "----------------------------------------------------------" | write_log
   echo -e "mode:         ${BWHITE}$mode${NC}" | write_log
-  echo -e "version:      ${BWHITE}$patch${NC}" | write_log
+  echo -e "version:      ${BWHITE}${version}${NC}" | write_log
   echo -e "log_file:     ${BWHITE}$log_file${NC}" | write_log
+  echo -e "extract:      ${BWHITE}$must_extract${NC}" | write_log
+  if [[ $oldlogfile != "" ]]; then
+    echo -e "redolog:      ${BWHITE}$oldlogfile${NC}" | write_log
+  fi
   echo -e "----------------------------------------------------------" | write_log
   echo -e "project:      ${BWHITE}${PROJECT}${NC}" | write_log
   echo -e "app_schema:   ${BWHITE}${APP_SCHEMA}${NC}" | write_log
@@ -175,45 +268,40 @@ print_info()
 
 extract_patchfile()
 {
-  if [[ -z "$must_extract" ]]; then
+  if [[ $must_extract == "TRUE" ]]; then
     # check if patch exists
-    if [[ -e $patch_source_file ]]; then
-      echo "$patch_source_file exists" | write_log
+    if [[ -e $install_source_file ]]; then
+      echo "$install_source_file exists" | write_log
 
       # copy patch to _installed
-      mv $patch_source_file $patch_target_path/
+      mv $install_source_file $install_target_path/
     else
-      if [[ -e $patch_target_file ]]; then
-        echo "$patch_target_file allready copied" | write_log
+      if [[ -e $install_target_file ]]; then
+        echo "$install_target_file allready copied" | write_log
       else
-        echo_error "$patch_target_file not found, nothing to install" | write_log $failure
+        echo_error "$install_target_file not found, nothing to install" | write_log $failure
         manage_result "failure"
       fi
     fi
 
     # extract file
-    echo "extracting file $patch_target_file" | write_log
-    tar -zxf $patch_target_file
+    echo "extracting file $install_target_file" | write_log
+    tar -zxf $install_target_file
   else
-    if [[ $must_extract == "notar" ]]; then
-      echo "notar option choosen" | write_log
-    else
-      echo_error "unknown option notar" | write_log
-      manage_result "failure"
-    fi
+    echo "artifact will not be extracted from depot" | write_log
   fi
 }
 
 prepare_redo(){
   if [[ -f ${oldlogfile} ]]; then
-    redo_file="redo_${MDATE}_${mode}_${patch}.log"
+    redo_file="redo_${MDATE}_${mode}_${version}.log"
     grep '^<<< ' ${oldlogfile} > ${redo_file}
     sed -i 's/^<<< //' ${redo_file}
 
     # backup install files
     for schema in "${SCHEMAS[@]}"
     do
-      db_install_file=./db/$schema/${mode}_${schema}_${patch}.sql
+      db_install_file=./db/$schema/${mode}_${schema}_${version}.sql
       if [[ -f $db_install_file ]]; then
         mv ${db_install_file} ${db_install_file}.org
       fi
@@ -227,17 +315,15 @@ prepare_redo(){
 
     for schema in "${SCHEMAS[@]}"
     do
-      old_install_file=./db/$schema/${mode}_${schema}_${patch}.sql.org
-      db_install_file=./db/$schema/${mode}_${schema}_${patch}.sql
+      old_install_file=./db/$schema/${mode}_${schema}_${version}.sql.org
+      db_install_file=./db/$schema/${mode}_${schema}_${version}.sql
 
       while IFS= read -r line; do
         key=${line/@@/db/$schema/}
-        # key2=${key/" ^LOGFILE ^VERSION ^MODE"/}
-        # echo "$key"
-        if [[ -v map[${key}] ]]; then
+
+        # on macos double bracket lead to failure
+        if [ -v map[${key}] ]; then
             line="Prompt skipped redo: $line"
-        # elif [[ -v map[${key2}] ]]; then
-        #     line="Prompt skipped redo: $line"
         fi
         echo "$line"
       done < ${old_install_file} > ${db_install_file}
@@ -297,7 +383,7 @@ execute_global_hook_scripts() {
 
         echo "executing hook file ${runfile}" | write_log
         $SQLCLI -S "$(get_connect_string $targetschema)" <<! | tee -a ${full_log_file}
-          define VERSION="${patch}"
+          define VERSION="${version}"
           define MODE="${mode}"
 
           set define '^'
@@ -343,7 +429,7 @@ execute_global_hook_scripts() {
         echo "executing hook file ${runfile}" | write_log
 
         $SQLCLI -S "$(get_connect_string $targetschema)" <<! | tee -a ${full_log_file}
-          define VERSION="${patch}"
+          define VERSION="${version}"
           define MODE="${mode}"
 
           set define '^'
@@ -375,7 +461,7 @@ clear_db_schemas_on_init() {
       local schema=${SCHEMAS[idx]}
       # On init mode schema content will be dropped
       echo "DROPING ALL OBJECTS on schema $schema" | write_log
-       exit | $SQLCLI -S "$(get_connect_string $schema)" @.dbFlow/lib/drop_all.sql ${full_log_file} ${patch} ${mode} | tee -a ${full_log_file}
+       exit | $SQLCLI -S "$(get_connect_string $schema)" @.dbFlow/lib/drop_all.sql ${full_log_file} ${version} ${mode} | tee -a ${full_log_file}
     done
   fi
 }
@@ -405,7 +491,7 @@ install_db_schemas()
       cd $schema
 
       # now executing main installation file if exists
-      db_install_file=${mode}_${schema}_${patch}.sql
+      db_install_file=${mode}_${schema}_${version}.sql
       # exists db install file
       if [[ -e $db_install_file ]]; then
         echo "Installing schema $schema to ${DB_APP_USER} on ${DB_TNS}"  | write_log
@@ -414,7 +500,7 @@ install_db_schemas()
         sed -i -E "s:--$STAGE:Prompt uncommented cleanup for stage $STAGE\n:g" $db_install_file
 
         runfile=$db_install_file
-        $SQLCLI -S "$(get_connect_string $schema)" @$db_install_file ${patch} ${mode} | tee -a ${full_log_file}
+        $SQLCLI -S "$(get_connect_string $schema)" @$db_install_file ${version} ${mode} | tee -a ${full_log_file}
         runfile=""
 
         if [[ $? -ne 0 ]]; then
@@ -621,7 +707,7 @@ install_apps() {
         echo "Installing $line Num: ${line/apex\/f} Workspace: ${WORKSPACE}" | write_log
         cd $line
         $SQLCLI -S "$(get_connect_string $APP_SCHEMA)" <<! | tee -a ${full_log_file}
-          define VERSION="${patch}"
+          define VERSION="${version}"
           define MODE="${mode}"
 
           set define '^'
@@ -685,7 +771,7 @@ install_rest() {
       echo "Installing REST-Services ..." | write_log
       $SQLCLI -s "$(get_connect_string $APP_SCHEMA)" <<! | tee -a ${full_log_file}
 
-      define VERSION="${patch}"
+      define VERSION="${version}"
       define MODE="${mode}"
 
       set define '^'
@@ -724,7 +810,7 @@ exec_final_unit_tests()
     for schema in "${SCHEMAS[@]}"
     do
       echo "Executing unit tests for schema $schema " | write_log
-      exit | $SQLCLI -S "$(get_connect_string $schema)" @.dbFlow/lib/execute_tests.sql ${patch} ${mode}
+      exit | $SQLCLI -S "$(get_connect_string $schema)" @.dbFlow/lib/execute_tests.sql ${version} ${mode}
       if [[ $? -ne 0 ]]; then
         echo "ERROR when executing .dbFlow/lib/execute_tests.sql" | write_log $failure
         manage_result "failure"
@@ -736,14 +822,14 @@ exec_final_unit_tests()
 manage_result()
 {
   local target_move=$1
-  target_finalize_path=${patch_source_path}/${target_move}/${patch}
+  target_finalize_path=${install_source_path}/${target_move}/${version}
 
   cd ${basepath}
 
   # create path if not exists
   [ -d ${target_finalize_path} ] || mkdir -p ${target_finalize_path}
 
-  echo "${mode} ${patch} moved to ${target_finalize_path}" | write_log ${target_move}
+  echo "${mode} ${version} moved to ${target_finalize_path}" | write_log ${target_move}
   echo "Done with ${target_move}" | write_log ${target_move}
 
   cat ${full_log_file} | sed -r "s/\x1B\[([0-9]{1,3}((;[0-9]{1,3})*)?)?[m|K]//g" > ${full_log_file}.colorless
@@ -751,15 +837,15 @@ manage_result()
   mv ${full_log_file}.colorless ${full_log_file}
 
   # move all
-  mv *${patch}* ${target_finalize_path}
-  [[ -f rest/rest_${mode}_${patch}.sql ]] && mv rest/rest_${mode}_${patch}.sql ${target_finalize_path}
+  mv *${version}* ${target_finalize_path}
+  [[ -f rest/rest_${mode}_${version}.sql ]] && mv rest/rest_${mode}_${version}.sql ${target_finalize_path}
 
   # loop through schemas
   for schema in "${SCHEMAS[@]}"
   do
 
-    db_install_file=${mode}_${schema}_${patch}.sql
-    mv db/$schema/$db_install_file* ${target_finalize_path} | write_log ${target_move}
+    db_install_file=${mode}_${schema}_${version}.sql
+    [[ -f db/$schema/$db_install_file ]] && mv db/$schema/$db_install_file* ${target_finalize_path} | write_log ${target_move}
 
   done
 
@@ -767,7 +853,7 @@ manage_result()
   deployed_at=`date +"%Y-%m-%d %T"`
   deployed_by=$(whoami)
 
-  version=`printf '%-10s' "V$patch"`
+  version=`printf '%-10s' "V${version}"`
   deployed_at=`printf '%-19s' "$deployed_at"`
   deployed_by=`printf '%-11s' "$deployed_by"`
   result=`printf '%-11s' "$target_move"`
@@ -801,6 +887,12 @@ notify() {
 trap '(exit 130)' INT
 trap '(exit 143)' TERM
 trap 'rc=$?; notify $rc; exit $rc' EXIT
+
+# validate and check existence of vars defined in apply.env and build.env
+check_vars
+
+# validate params this script was called with
+check_params "$@"
 
 # print some global vars to output
 print_info

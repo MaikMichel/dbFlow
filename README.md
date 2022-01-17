@@ -53,7 +53,7 @@ First of all you need a database. If you set up the project from scratch, you wi
 
 - [ ] Finalize documentation
 - [ ] Create some tutorials
-- [ ] Create son blogposts
+- [ ] Create some blogposts
 
 
 ## Frequently Asked Question

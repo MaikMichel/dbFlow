@@ -7,7 +7,7 @@ usage() {
   echo ""
   echo -e "${BYELLOW}Usage:${NC}"
   echo -e "  $0 --init --version <label>"
-  echo -e "  $0 --patch --version <label> [--startcommit <hash|tag>] [--endcommit <hash|tag>]"
+  echo -e "  $0 --patch --version <label> [--start <hash|tag>] [--end <hash|tag>]"
   echo ""
   echo -e "${BYELLOW}Options:${NC}"
   echo -e "  -h | --help             - Show this screen"
@@ -20,6 +20,9 @@ usage() {
   echo -e "  -v | --version <label>  - Required label of version this artifact represents"
   echo -e "  -s | --start <hash|tag> - Optional hash or tag to determine the difference to the end, defaults to ORIG_HEAD"
   echo -e "  -e | --end <hash|tag>   - Optional hash or tag to determine the difference to the start, defaults to HEAD"
+  echo ""
+  echo -e "  -a | --shipall          - Optional ship all folders [mode=patch]"
+  echo -e "  -k | --keepfolder       - Optional keep buildfolder inside depot"
   echo ""
   echo -e "${BYELLOW}Examples:${NC}"
   echo -e "  $0 --init --version 1.0.0"
@@ -46,6 +49,7 @@ fi
 if [[ -e ./apply.env ]]; then
   source ./apply.env
 fi
+
 
 
 function check_vars() {
@@ -93,8 +97,8 @@ function check_params() {
       exit 1
   fi
 
-  OPTIONS=dhipv:s:e:
-  LONGOPTS=debug,help,init,patch,version:,start:,end:
+  OPTIONS=dhipv:s:e:ka
+  LONGOPTS=debug,help,init,patch,version:,start:,end:,keepfolder,shipall
 
   # -regarding ! and PIPESTATUS see above
   # -temporarily store output to be able to check for errors
@@ -110,7 +114,7 @@ function check_params() {
   # read getopt’s output this way to handle the quoting right:
   eval set -- "$PARSED"
 
-  debug="n" help="h" init="n" patch="n" version="-" start=ORIG_HEAD end=HEAD
+  debug="n" help="n" init="n" patch="n" version="-" start=ORIG_HEAD end=HEAD k="n" a="n"
 
   # now enjoy the options in order and nicely split until we see --
   while true; do
@@ -143,6 +147,14 @@ function check_params() {
               end="$2"
               shift 2
               ;;
+          -k|--keepfolder)
+              k=y
+              shift
+              ;;
+          -a|--shipall)
+              a=y
+              shift
+              ;;
           --)
               shift
               break
@@ -161,7 +173,6 @@ function check_params() {
   # fi
 
 
-  #echo_debug "debug: $d, help: $h, init: $i, patch: $p, version: $version, startcommit: $startcommit, endcommit: $endcommit"
   # help first
   if [[ -n $h ]] && [[ $h == "y" ]]; then
     usage
@@ -210,6 +221,20 @@ function check_params() {
       exit 1
     fi
   fi
+
+  # now check keep folder
+  if [[ $k == "y" ]]; then
+    KEEP_FOLDER="TRUE"
+  elif [[ $p == "y" ]]; then
+    KEEP_FOLDER="FALSE"
+  fi
+
+  # now check keep folder
+  if [[ $a == "y" ]]; then
+    SHIP_ALL="TRUE"
+  elif [[ $p == "y" ]]; then
+    SHIP_ALL="FALSE"
+  fi
 }
 
 function setup_env() {
@@ -241,7 +266,7 @@ function setup_env() {
     pres=( .hooks/pre ddl/pre_${branch} dml/pre_${branch} ddl/pre dml/pre )
     post=( ddl/post_${branch} dml/post_${branch} ddl/post dml/base dml/post .hooks/post )
 
-    array=${pres[@]}
+    array=( ${pres[@]} )
     array+=( sequences tables tables_ddl indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies sources/types sources/packages sources/functions sources/procedures views mviews sources/triggers jobs tests/packages )
     array+=( ${post[@]} )
   fi
@@ -268,9 +293,13 @@ function setup_env() {
   echo -e "project:       ${BWHITE}${PROJECT}${NC}" | write_log
   echo -e "branch:        ${BWHITE}${branch}${NC}" | write_log
   if [[ $mode == "patch" ]];then
-    echo -e "from:          ${BWHITE}${from_commit}${NC}" | write_log
-    echo -e "until:         ${BWHITE}${until_commit}${NC}" | write_log
+    display_from=`git rev-parse --short ${from_commit}`
+    display_until=`git rev-parse --short ${until_commit}`
+    echo -e "from:          ${BWHITE}${from_commit} (${display_from})${NC}" | write_log
+    echo -e "until:         ${BWHITE}${until_commit} (${display_until})${NC}" | write_log
+    echo -e "shipall:       ${BWHITE}${SHIP_ALL}${NC}" | write_log
   fi
+  echo -e "keepfolder:    ${BWHITE}${KEEP_FOLDER}${NC}" | write_log
   echo -e "----------------------------------------------------------" | write_log
   echo -e "app_schema:    ${BWHITE}${APP_SCHEMA}${NC}" | write_log
   echo -e "data_schema:   ${BWHITE}${DATA_SCHEMA}${NC}" | write_log
@@ -285,6 +314,19 @@ function setup_env() {
   echo -e "----------------------------------------------------------" | write_log
 }
 
+function copy_all_files() {
+  echo "Copy files ..." | write_log
+  for folder in "${MAINFOLDERS[@]}"
+  do
+    if [[ -d ${folder} ]]; then
+      cp -R ${folder} $targetpath
+    fi
+  done
+
+  [ ! -f build.env ] || cp build.env $targetpath
+  [ ! -f .gitignore ] || cp .gitignore $targetpath
+}
+
 function copy_files {
   # getting updated files, and
   # copy (and overwrite forcefully) in exact directory structure as in git repo
@@ -292,18 +334,9 @@ function copy_files {
     echo "Creating directory $targetpath" | write_log
     mkdir -p $targetpath
 
-    echo "Copy files ..." | write_log
-    for folder in "${MAINFOLDERS[@]}"
-    do
-      if [[ -d ${folder} ]]; then
-        cp -R ${folder} $targetpath
-      fi
-    done
-
-    [ ! -f build.env ] || cp build.env $targetpath
-    [ ! -f .gitignore ] || cp .gitignore $targetpath
+    copy_all_files
   else
-
+    # Patch
     for folder in "${MAINFOLDERS[@]}"
     do
 
@@ -670,6 +703,11 @@ function write_install_rest() {
   fi
 }
 
+function copy_all_when_defined_on_patch() {
+  if [[ ${mode} == "patch" ]] && [[ ${SHIP_ALL} == "TRUE" ]]; then
+    copy_all_files
+  fi
+}
 
 function manage_artifact () {
   # Output files to logfile
@@ -690,7 +728,10 @@ function manage_artifact () {
     # pack directoy
     mv ${full_log_file} $targetpath/
     tar -C $targetpath -czf $targetpath.tar.gz .
-    rm -rf $targetpath
+
+    if [[ ${KEEP_FOLDER} != "TRUE" ]]; then
+      rm -rf $targetpath
+    fi
   else
     echo_error "Nothing to release, aborting"
     exit 1
@@ -776,9 +817,9 @@ function call_apply_on_install() {
   if [[ $version == "install" ]]; then
     echo "calling apply"
 
-    .dbFlow/apply.sh ${mode} ${version}
+    .dbFlow/apply.sh --${mode} --version ${version}
   else
-    echo -e "${LWHITE}just call ${NC}${BWHITE}.dbFlow/apply.sh ${mode} ${version}${NC} ${LWHITE}inside your instance folder${NC}"
+    echo -e "${LWHITE}just call ${NC}${BWHITE}.dbFlow/apply.sh --${mode} --version ${version}${NC} ${LWHITE}inside your instance folder${NC}"
   fi
 }
 
@@ -801,6 +842,9 @@ list_files_to_remove
 write_install_schemas
 write_install_apps
 write_install_rest
+
+# if all files should be included
+copy_all_when_defined_on_patch
 
 # zip files and clear logs
 manage_artifact
