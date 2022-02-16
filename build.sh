@@ -263,8 +263,8 @@ function setup_env() {
     array=( .hooks/pre sequences tables indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies sources/types sources/packages sources/functions sources/procedures views mviews sources/triggers jobs tests/packages ddl/init dml/init dml/base .hooks/post)
   else
     # building pre and post based on branches
-    pres=( .hooks/pre ddl/pre_${branch} dml/pre_${branch} ddl/pre dml/pre )
-    post=( ddl/post_${branch} dml/post_${branch} ddl/post dml/base dml/post .hooks/post )
+    pres=( .hooks/pre ddl/patch/pre_${branch} dml/patch/pre_${branch} ddl/patch/pre dml/patch/pre )
+    post=( ddl/patch/post_${branch} dml/patch/post_${branch} ddl/patch/post dml/base dml/patch/post .hooks/post )
 
     array=( ${pres[@]} )
     array+=( sequences tables tables_ddl indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies sources/types sources/packages sources/functions sources/procedures views mviews sources/triggers jobs tests/packages )
