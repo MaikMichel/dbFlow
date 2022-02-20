@@ -267,7 +267,7 @@ function setup_env() {
     post=( ddl/patch/post_${branch} dml/patch/post_${branch} ddl/patch/post dml/base dml/patch/post .hooks/post )
 
     array=( ${pres[@]} )
-    array+=( sequences tables tables_ddl indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies sources/types sources/packages sources/functions sources/procedures views mviews sources/triggers jobs tests/packages )
+    array+=( sequences tables tables/tables_ddl indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies sources/types sources/packages sources/functions sources/procedures views mviews sources/triggers jobs tests/packages )
     array+=( ${post[@]} )
   fi
 
@@ -518,7 +518,7 @@ function write_install_schemas(){
 
           echo "Prompt" >> "$target_install_file"
 
-          if [[ "$path" == "ddl/pre" ]] || [[ "$path" == "ddl/pre_tst" ]] || [[ "$path" == "ddl/pre_uat" ]] || [[ "$path" == "views" ]]; then
+          if [[ "$path" == "ddl/patch/pre" ]] || [[ "$path" == "ddl/patch/pre_tst" ]] || [[ "$path" == "ddl/patch/pre_uat" ]] || [[ "$path" == "views" ]]; then
             echo "WHENEVER SQLERROR CONTINUE" >> "$target_install_file"
           fi
 
@@ -538,8 +538,8 @@ function write_install_schemas(){
                 table_changes="TRUE"
 
                 if [[ "${mode}" == "patch" ]]; then
-                  if [[ -d "${targetpath}/db/$schema/tables_ddl" ]]; then
-                    for f in ${targetpath}/db/$schema/tables_ddl/${file%%.*}.*; do
+                  if [[ -d "${targetpath}/db/$schema/tables/tables_ddl" ]]; then
+                    for f in ${targetpath}/db/$schema/tables/tables_ddl/${file%%.*}.*; do
                       if [[ -e "$f" ]]; then
                         skipfile="TRUE"
                       fi
@@ -570,7 +570,7 @@ function write_install_schemas(){
             fi
           done
 
-          if [[ "$path" == "ddl/pre" ]] || [[ "$path" == "ddl/pre_tst" ]] || [[ "$path" == "ddl/pre_uat" ]]|| [[ "$path" == "views" ]]
+          if [[ "$path" == "ddl/patch/pre" ]] || [[ "$path" == "ddl/patch/pre_tst" ]] || [[ "$path" == "ddl/patch/pre_uat" ]]|| [[ "$path" == "views" ]]
           then
             echo "WHENEVER SQLERROR EXIT SQL.SQLCODE" >> "$target_install_file"
           fi
