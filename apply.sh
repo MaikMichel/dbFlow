@@ -338,7 +338,7 @@ read_db_pass()
     ask4pwd "Enter Password for deployment user ${DB_APP_USER} on ${DB_TNS}: "
     exp_pwd=${pass}
   else
-    echo "Password has allrady been set" | write_log
+    echo "Password has already been set" | write_log
   fi
 }
 
