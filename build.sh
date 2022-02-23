@@ -263,11 +263,11 @@ function setup_env() {
     array=( .hooks/pre sequences tables indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies sources/types sources/packages sources/functions sources/procedures views mviews sources/triggers jobs tests/packages ddl/init dml/init dml/base .hooks/post)
   else
     # building pre and post based on branches
-    pres=( .hooks/pre ddl/pre_${branch} dml/pre_${branch} ddl/pre dml/pre )
-    post=( ddl/post_${branch} dml/post_${branch} ddl/post dml/base dml/post .hooks/post )
+    pres=( .hooks/pre ddl/patch/pre_${branch} dml/patch/pre_${branch} ddl/patch/pre dml/patch/pre )
+    post=( ddl/patch/post_${branch} dml/patch/post_${branch} ddl/patch/post dml/base dml/patch/post .hooks/post )
 
     array=( ${pres[@]} )
-    array+=( sequences tables tables_ddl indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies sources/types sources/packages sources/functions sources/procedures views mviews sources/triggers jobs tests/packages )
+    array+=( sequences tables tables/tables_ddl indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies sources/types sources/packages sources/functions sources/procedures views mviews sources/triggers jobs tests/packages )
     array+=( ${post[@]} )
   fi
 
@@ -336,6 +336,13 @@ function copy_files {
 
     copy_all_files
   else
+    # Changes on configs?
+    if [[ $(uname) == "Darwin" ]]; then
+      rsync -R `git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB -- build.env .gitignore` ${targetpath}
+    else
+      cp --parents -Rf `git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB -- build.env .gitignore` ${targetpath}
+    fi
+
     # Patch
     for folder in "${MAINFOLDERS[@]}"
     do
@@ -518,7 +525,7 @@ function write_install_schemas(){
 
           echo "Prompt" >> "$target_install_file"
 
-          if [[ "$path" == "ddl/pre" ]] || [[ "$path" == "ddl/pre_tst" ]] || [[ "$path" == "ddl/pre_uat" ]] || [[ "$path" == "views" ]]; then
+          if [[ "$path" == "ddl/patch/pre" ]] || [[ "$path" == "ddl/patch/pre_tst" ]] || [[ "$path" == "ddl/patch/pre_uat" ]] || [[ "$path" == "views" ]]; then
             echo "WHENEVER SQLERROR CONTINUE" >> "$target_install_file"
           fi
 
@@ -538,8 +545,8 @@ function write_install_schemas(){
                 table_changes="TRUE"
 
                 if [[ "${mode}" == "patch" ]]; then
-                  if [[ -d "${targetpath}/db/$schema/tables_ddl" ]]; then
-                    for f in ${targetpath}/db/$schema/tables_ddl/${file%%.*}.*; do
+                  if [[ -d "${targetpath}/db/$schema/tables/tables_ddl" ]]; then
+                    for f in ${targetpath}/db/$schema/tables/tables_ddl/${file%%.*}.*; do
                       if [[ -e "$f" ]]; then
                         skipfile="TRUE"
                       fi
@@ -570,7 +577,7 @@ function write_install_schemas(){
             fi
           done
 
-          if [[ "$path" == "ddl/pre" ]] || [[ "$path" == "ddl/pre_tst" ]] || [[ "$path" == "ddl/pre_uat" ]]|| [[ "$path" == "views" ]]
+          if [[ "$path" == "ddl/patch/pre" ]] || [[ "$path" == "ddl/patch/pre_tst" ]] || [[ "$path" == "ddl/patch/pre_uat" ]]|| [[ "$path" == "views" ]]
           then
             echo "WHENEVER SQLERROR EXIT SQL.SQLCODE" >> "$target_install_file"
           fi

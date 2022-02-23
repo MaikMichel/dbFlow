@@ -24,5 +24,6 @@ begin
                                                                      ,granted            => true
                                                                      ,principal_name     => c1.schema
                                                                      ,principal_type     => XS_ACL.PTYPE_DB));
+  end loop;
 end;
 /

@@ -336,7 +336,7 @@ read_db_pass()
 {
   if [[ -z "$DB_APP_PWD" ]]; then
     ask4pwd "Enter Password for deployment user ${DB_APP_USER} on ${DB_TNS}: "
-    exp_pwd=${pass}
+    DB_APP_PWD=${pass}
   else
     echo "Password has already been set" | write_log
   fi
@@ -898,9 +898,9 @@ check_params "$@"
 print_info
 
 # preparation and validation
+extract_patchfile
 read_db_pass
 validate_connections
-extract_patchfile
 prepare_redo
 
 # files to be removed
