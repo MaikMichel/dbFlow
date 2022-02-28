@@ -246,7 +246,7 @@ function setup_env() {
   SCHEMAS=()
 
   if [[ ${FLEX_MODE} == TRUE ]]; then
-    SCHEMAS=(${DBSCHEMAS[@]})
+    SCHEMAS=(${DBFOLDERS[@]})
   else
     ALL_SCHEMAS=( ${DATA_SCHEMA} ${LOGIC_SCHEMA} ${APP_SCHEMA} )
     SCHEMAS=($(printf "%s\n" "${ALL_SCHEMAS[@]}" | sort -u))
@@ -326,7 +326,7 @@ function setup_env() {
 }
 
 function copy_all_files() {
-  echo "Copy files ..." | write_log
+  echo "Copy all files ..." | write_log
   for folder in "${MAINFOLDERS[@]}"
   do
     if [[ -d ${folder} ]]; then
@@ -339,6 +339,8 @@ function copy_all_files() {
 }
 
 function copy_files {
+  echo " ==== Checking Files and Folders ====" | write_log
+  echo " " | write_log
   # getting updated files, and
   # copy (and overwrite forcefully) in exact directory structure as in git repo
   if [[ "${mode}" == "init" ]]; then
@@ -441,6 +443,8 @@ function copy_files {
       fi
     fi
   fi
+
+  echo " " | write_log
 }
 
 function list_files_to_remove() {
@@ -469,171 +473,181 @@ function list_files_to_remove() {
 }
 
 function write_install_schemas(){
-  # loop through schemas
-  for schema in "${SCHEMAS[@]}"
-  do
-    if [[ -d "$targetpath"/db/$schema ]]; then
-      # file to write to
-      target_install_base=${mode}_${schema}_${version}.sql
-      target_install_file="$targetpath"/db/$schema/$target_install_base
+  if [[ -d "$targetpath"/db ]]; then
+    echo " ==== Checking Schemas ${SCHEMAS[@]} ====" | write_log
+    echo "" | write_log
 
-      echo "" | write_log
-      echo " ==== Schema: ${schema} - /db/$schema/$target_install_base ====" | write_log
-      echo "" | write_log
+    # loop through schemas
+    for schema in "${SCHEMAS[@]}"
+    do
+      if [[ -d "$targetpath"/db/$schema ]]; then
+        # file to write to
+        target_install_base=${mode}_${schema}_${version}.sql
+        target_install_file="$targetpath"/db/$schema/$target_install_base
 
-      # write some infos
-      echo "set define '^'" > "$target_install_file"
-      echo "set concat on" >> "$target_install_file"
-      echo "set concat ." >> "$target_install_file"
-      echo "set verify off" >> "$target_install_file"
-      echo "WHENEVER SQLERROR EXIT SQL.SQLCODE" >> "$target_install_file"
+        echo "" | write_log
+        echo " ==== Schema: ${schema} - /db/$schema/$target_install_base ====" | write_log
+        echo "" | write_log
 
-      echo "" >> "$target_install_file"
+        # write some infos
+        echo "set define '^'" > "$target_install_file"
+        echo "set concat on" >> "$target_install_file"
+        echo "set concat ." >> "$target_install_file"
+        echo "set verify off" >> "$target_install_file"
+        echo "WHENEVER SQLERROR EXIT SQL.SQLCODE" >> "$target_install_file"
 
-      echo "define VERSION = '^1'" >> "$target_install_file"
-      echo "define MODE = '^2'" >> "$target_install_file"
+        echo "" >> "$target_install_file"
 
-      echo "set timing on" >> "$target_install_file"
-      echo "set trim off" >> "$target_install_file"
-      echo "set linesize 2000" >> "$target_install_file"
-      #echo "set sqlblanklines on" >> "$target_install_file"
-      echo "set tab off" >> "$target_install_file"
-      echo "set pagesize 9999" >> "$target_install_file"
-      echo "set trimspool off" >> "$target_install_file"
-      echo "" >> "$target_install_file"
+        echo "define VERSION = '^1'" >> "$target_install_file"
+        echo "define MODE = '^2'" >> "$target_install_file"
 
-      echo "Prompt .............................................................................. " >> "$target_install_file"
-      echo "Prompt .............................................................................. " >> "$target_install_file"
-      echo "Prompt .. Start Installation for schema: $schema " >> "$target_install_file"
-      echo "Prompt ..                       Version: $mode $version " >> "$target_install_file"
-      echo "Prompt .............................................................................. " >> "$target_install_file"
-      # echo "set scan off" >> "$target_install_file"
-      # echo "set define off" >> "$target_install_file"
-      echo "set serveroutput on" >> "$target_install_file"
-      echo "" >> "$target_install_file"
+        echo "set timing on" >> "$target_install_file"
+        echo "set trim off" >> "$target_install_file"
+        echo "set linesize 2000" >> "$target_install_file"
+        #echo "set sqlblanklines on" >> "$target_install_file"
+        echo "set tab off" >> "$target_install_file"
+        echo "set pagesize 9999" >> "$target_install_file"
+        echo "set trimspool off" >> "$target_install_file"
+        echo "" >> "$target_install_file"
 
-      if [[ "${mode}" == "patch" ]]; then
-        echo "Prompt .. Commit-History to install: " >> "$target_install_file"
-        git log --pretty=format:'Prompt ..   %h %s <%an>' ${from_commit}...${until_commit} -- db/$schema >> "$target_install_file"
-        echo " " >> "$target_install_file"
-        echo "Prompt .. " >> "$target_install_file"
-      # echo "Prompt " >> "$target_install_file"
         echo "Prompt .............................................................................. " >> "$target_install_file"
+        echo "Prompt .............................................................................. " >> "$target_install_file"
+        echo "Prompt .. Start Installation for schema: $schema " >> "$target_install_file"
+        echo "Prompt ..                       Version: $mode $version " >> "$target_install_file"
+        echo "Prompt .............................................................................. " >> "$target_install_file"
+        # echo "set scan off" >> "$target_install_file"
+        # echo "set define off" >> "$target_install_file"
+        echo "set serveroutput on" >> "$target_install_file"
+        echo "" >> "$target_install_file"
 
-        echo "Prompt " >> "$target_install_file"
-        echo "Prompt " >> "$target_install_file"
-      fi
+        if [[ "${mode}" == "patch" ]]; then
+          echo "Prompt .. Commit-History to install: " >> "$target_install_file"
+          git log --pretty=format:'Prompt ..   %h %s <%an>' ${from_commit}...${until_commit} -- db/$schema >> "$target_install_file"
+          echo " " >> "$target_install_file"
+          echo "Prompt .. " >> "$target_install_file"
+        # echo "Prompt " >> "$target_install_file"
+          echo "Prompt .............................................................................. " >> "$target_install_file"
+
+          echo "Prompt " >> "$target_install_file"
+          echo "Prompt " >> "$target_install_file"
+        fi
 
 
-      # check every path in given order
-      for path in "${array[@]}"
-      do
-        if [[ -d "$targetpath"/db/$schema/$path ]]; then
-          echo "Writing calls for $path" | write_log
-          echo "Prompt Installing $path ..." >> "$target_install_file"
+        # check every path in given order
+        for path in "${array[@]}"
+        do
+          if [[ -d "$targetpath"/db/$schema/$path ]]; then
+            echo "Writing calls for $path" | write_log
+            echo "Prompt Installing $path ..." >> "$target_install_file"
 
-          # pre hook
-          if [[ -d "${targetpath}/db/${schema}/.hooks/pre/${path}" ]]; then
-            for file in $(ls "${targetpath}/db/${schema}/.hooks/pre/${path}" | sort )
+            # pre hook
+            if [[ -d "${targetpath}/db/${schema}/.hooks/pre/${path}" ]]; then
+              for file in $(ls "${targetpath}/db/${schema}/.hooks/pre/${path}" | sort )
+              do
+                if [[ -f "${targetpath}/db/${schema}/.hooks/pre/${path}/${file}" ]]; then
+                  echo "Prompt >>> db/${schema}/.hooks/pre/${path}/${file}" >> "$target_install_file"
+                  echo "@@.hooks/pre/${path}/$file" >> "$target_install_file"
+                  echo "Prompt <<< db/${schema}/.hooks/pre/${path}/${file}" >> "$target_install_file"
+                fi
+              done
+            fi
+
+            echo "Prompt" >> "$target_install_file"
+
+            if [[ "$path" == "ddl/patch/pre" ]] || [[ "$path" == "ddl/patch/pre_tst" ]] || [[ "$path" == "ddl/patch/pre_uat" ]] || [[ "$path" == "views" ]]; then
+              echo "WHENEVER SQLERROR CONTINUE" >> "$target_install_file"
+            fi
+
+            # if packages then sort descending
+            sortdirection=""
+            if [[ "$path" == "sources/packages" ]] || [[ "$path" == "tests/packages" ]]; then
+              sortdirection="-r"
+            fi
+
+            for file in $(ls "$targetpath"/db/$schema/$path | sort $sortdirection )
             do
-              if [[ -f "${targetpath}/db/${schema}/.hooks/pre/${path}/${file}" ]]; then
-                echo "Prompt >>> db/${schema}/.hooks/pre/${path}/${file}" >> "$target_install_file"
-                echo "@@.hooks/pre/${path}/$file" >> "$target_install_file"
-                echo "Prompt <<< db/${schema}/.hooks/pre/${path}/${file}" >> "$target_install_file"
-              fi
-            done
-          fi
+              if [[ -f "${targetpath}/db/${schema}/${path}/${file}" ]]; then
+                # if tables_ddl, this is only written in install if there is no
+                # matching table in the branch
+                if [[ "$path" == "tables" ]]; then
+                  skipfile="FALSE"
+                  table_changes="TRUE"
 
-          echo "Prompt" >> "$target_install_file"
-
-          if [[ "$path" == "ddl/patch/pre" ]] || [[ "$path" == "ddl/patch/pre_tst" ]] || [[ "$path" == "ddl/patch/pre_uat" ]] || [[ "$path" == "views" ]]; then
-            echo "WHENEVER SQLERROR CONTINUE" >> "$target_install_file"
-          fi
-
-          # if packages then sort descending
-          sortdirection=""
-          if [[ "$path" == "sources/packages" ]] || [[ "$path" == "tests/packages" ]]; then
-            sortdirection="-r"
-          fi
-
-          for file in $(ls "$targetpath"/db/$schema/$path | sort $sortdirection )
-          do
-            if [[ -f "${targetpath}/db/${schema}/${path}/${file}" ]]; then
-              # if tables_ddl, this is only written in install if there is no
-              # matching table in the branch
-              if [[ "$path" == "tables" ]]; then
-                skipfile="FALSE"
-                table_changes="TRUE"
-
-                if [[ "${mode}" == "patch" ]]; then
-                  if [[ -d "${targetpath}/db/$schema/tables/tables_ddl" ]]; then
-                    for f in ${targetpath}/db/$schema/tables/tables_ddl/${file%%.*}.*; do
-                      if [[ -e "$f" ]]; then
-                        skipfile="TRUE"
-                      fi
-                    done
+                  if [[ "${mode}" == "patch" ]]; then
+                    if [[ -d "${targetpath}/db/$schema/tables/tables_ddl" ]]; then
+                      for f in ${targetpath}/db/$schema/tables/tables_ddl/${file%%.*}.*; do
+                        if [[ -e "$f" ]]; then
+                          skipfile="TRUE"
+                        fi
+                      done
+                    fi
                   fi
-                fi
 
-                if [[ "$skipfile" == "TRUE" ]]; then
-                  echo "Prompt ... skipped $file" >> "$target_install_file"
-                else
-                  echo "Prompt >>> db/${schema}/${path}/${file}" >> "$target_install_file"
-                  echo "@@$path/$file" >> "$target_install_file"
-                  echo "Prompt <<< db/${schema}/${path}/${file}" >> "$target_install_file"
-                fi
-              else
-                echo "Prompt >>> db/${schema}/${path}/${file}" >> "$target_install_file"
-                if [[ "$path" == "ddl/pre_tst" ]] && [[ "${mode}" == "patch" ]]; then
-                  echo "--tst@@$path/$file" >> "$target_install_file"
-                elif [[ "$path" == "ddl/pre_uat" ]] && [[ "${mode}" == "patch" ]]; then
-                  echo "--uat@@$path/$file" >> "$target_install_file"
-                else
-                  echo "@@$path/$file" >> "$target_install_file"
-                  if [[ "$path" != ".hooks/pre" ]] && [[ "$path" != ".hooks/post" ]]; then
+                  if [[ "$skipfile" == "TRUE" ]]; then
+                    echo "Prompt ... skipped $file" >> "$target_install_file"
+                  else
+                    echo "Prompt >>> db/${schema}/${path}/${file}" >> "$target_install_file"
+                    echo "@@$path/$file" >> "$target_install_file"
                     echo "Prompt <<< db/${schema}/${path}/${file}" >> "$target_install_file"
                   fi
+                else
+                  echo "Prompt >>> db/${schema}/${path}/${file}" >> "$target_install_file"
+                  if [[ "$path" == "ddl/pre_tst" ]] && [[ "${mode}" == "patch" ]]; then
+                    echo "--tst@@$path/$file" >> "$target_install_file"
+                  elif [[ "$path" == "ddl/pre_uat" ]] && [[ "${mode}" == "patch" ]]; then
+                    echo "--uat@@$path/$file" >> "$target_install_file"
+                  else
+                    echo "@@$path/$file" >> "$target_install_file"
+                    if [[ "$path" != ".hooks/pre" ]] && [[ "$path" != ".hooks/post" ]]; then
+                      echo "Prompt <<< db/${schema}/${path}/${file}" >> "$target_install_file"
+                    fi
+                  fi
                 fi
               fi
-            fi
-          done
-
-          if [[ "$path" == "ddl/patch/pre" ]] || [[ "$path" == "ddl/patch/pre_tst" ]] || [[ "$path" == "ddl/patch/pre_uat" ]]|| [[ "$path" == "views" ]]
-          then
-            echo "WHENEVER SQLERROR EXIT SQL.SQLCODE" >> "$target_install_file"
-          fi
-
-
-
-          # post hook
-          echo "Prompt" >> "$target_install_file"
-          if [[ -d "${targetpath}/db/${schema}/.hooks/post/${path}" ]]; then
-            for file in $(ls "${targetpath}/db/${schema}/.hooks/post/${path}" | sort )
-            do
-              if [[ -f "${targetpath}/db/${schema}/.hooks/post/${path}/${file}" ]]; then
-                echo "Prompt >>> db/${schema}/.hooks/post/${path}/${file}" >> "$target_install_file"
-                echo "@@.hooks/post/${path}/$file" >> "$target_install_file"
-                echo "Prompt <<< db/${schema}/.hooks/post/${path}/${file}" >> "$target_install_file"
-              fi
             done
+
+            if [[ "$path" == "ddl/patch/pre" ]] || [[ "$path" == "ddl/patch/pre_tst" ]] || [[ "$path" == "ddl/patch/pre_uat" ]]|| [[ "$path" == "views" ]]
+            then
+              echo "WHENEVER SQLERROR EXIT SQL.SQLCODE" >> "$target_install_file"
+            fi
+
+
+
+            # post hook
+            echo "Prompt" >> "$target_install_file"
+            if [[ -d "${targetpath}/db/${schema}/.hooks/post/${path}" ]]; then
+              for file in $(ls "${targetpath}/db/${schema}/.hooks/post/${path}" | sort )
+              do
+                if [[ -f "${targetpath}/db/${schema}/.hooks/post/${path}/${file}" ]]; then
+                  echo "Prompt >>> db/${schema}/.hooks/post/${path}/${file}" >> "$target_install_file"
+                  echo "@@.hooks/post/${path}/$file" >> "$target_install_file"
+                  echo "Prompt <<< db/${schema}/.hooks/post/${path}/${file}" >> "$target_install_file"
+                fi
+              done
+            fi
+
+            echo "Prompt" >> "$target_install_file"
+            echo "Prompt" >> "$target_install_file"
+            echo "" >> "$target_install_file"
           fi
+        done #path
 
-          echo "Prompt" >> "$target_install_file"
-          echo "Prompt" >> "$target_install_file"
-          echo "" >> "$target_install_file"
-        fi
-      done #path
+        echo "prompt compiling schema" >> "$target_install_file"
+        echo "exec dbms_utility.compile_schema(schema => USER);" >> "$target_install_file"
+        echo "exec dbms_session.reset_package" >> "$target_install_file"
 
-      echo "prompt compiling schema" >> "$target_install_file"
-      echo "exec dbms_utility.compile_schema(schema => USER);" >> "$target_install_file"
-      echo "exec dbms_session.reset_package" >> "$target_install_file"
+        echo "Prompt" >> "$target_install_file"
+        echo "Prompt" >> "$target_install_file"
+        echo "exit" >> "$target_install_file"
 
-      echo "Prompt" >> "$target_install_file"
-      echo "Prompt" >> "$target_install_file"
-      echo "exit" >> "$target_install_file"
 
-    fi
-  done
+      else
+        echo "  .. db/$schema does not exists in $targetpath"
+      fi
+    done
+  else
+    echo " ... no db folder" | write_log
+  fi
 }
 
 function write_install_apps() {
