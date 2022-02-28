@@ -335,8 +335,9 @@ generate() {
   do
       mkdir -p rest/modules/"$restMOD"
   done
-  mkdir -p rest/privileges
-  mkdir -p rest/roles
+  mkdir -p rest/access/privileges
+  mkdir -p rest/access/roles
+  mkdir -p rest/access/mapping
 
   mkdir -p reports
   mkdir -p .hooks/{pre,post}
