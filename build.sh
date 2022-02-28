@@ -337,10 +337,13 @@ function copy_files {
     copy_all_files
   else
     # Changes on configs?
-    if [[ $(uname) == "Darwin" ]]; then
-      rsync -R `git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB -- build.env .gitignore` ${targetpath}
-    else
-      cp --parents -Rf `git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB -- build.env .gitignore` ${targetpath}
+    num_changes=`git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB  -- build.env .gitignore | wc -l | xargs`
+    if [[ $num_changes > 0 ]]; then
+      if [[ $(uname) == "Darwin" ]]; then
+        rsync -R `git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB -- build.env .gitignore` ${targetpath}
+      else
+        cp --parents -Rf `git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB -- build.env .gitignore` ${targetpath}
+      fi
     fi
 
     # Patch
