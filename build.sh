@@ -2,14 +2,14 @@
 # echo "Your script args ($#) are: $@"
 
 usage() {
-  echo -e "${BYELLOW}.dbFlow/build.sh${NC} - build an installable artifact with eiter"
-  echo -e "                   all (${CYAN}init${NC}) or only with changed (${CYAN}patch${NC}) files"
+  echo -e "${BWHITE}.dbFlow/build.sh${NC} - build an installable artifact with eiter"
+  echo -e "                   all (${BYELLOW}init${NC}) or only with changed (${BYELLOW}patch${NC}) files"
   echo ""
-  echo -e "${BYELLOW}Usage:${NC}"
+  echo -e "${BWHITE}Usage:${NC}"
   echo -e "  $0 --init --version <label>"
   echo -e "  $0 --patch --version <label> [--start <hash|tag>] [--end <hash|tag>]"
   echo ""
-  echo -e "${BYELLOW}Options:${NC}"
+  echo -e "${BWHITE}Options:${NC}"
   echo -e "  -h | --help             - Show this screen"
   echo -e "  -d | --debug            - Show additionaly output messages"
   echo -e "  -i | --init             - Flag to build a full installable artifact "
@@ -24,7 +24,7 @@ usage() {
   echo -e "  -a | --shipall          - Optional ship all folders [mode=patch]"
   echo -e "  -k | --keepfolder       - Optional keep buildfolder inside depot"
   echo ""
-  echo -e "${BYELLOW}Examples:${NC}"
+  echo -e "${BWHITE}Examples:${NC}"
   echo -e "  $0 --init --version 1.0.0"
   echo -e "  $0 --patch --version 1.1.0"
   echo -e "  $0 --patch --version 1.2.0 --start 1.0.0"
@@ -181,20 +181,20 @@ function check_params() {
   # Rule 1: init or patch
   if [[ -z $i ]] && [[ -z $p ]]; then
     echo_error "Missing build mode, init or patch using flags -i or -p"
-    echo_error "type $0 --help for more informations"
+    usage
     exit 1
   fi
 
   if [[ $i == "y" ]] && [[ $p == "y" ]]; then
     echo_error "Build mode can only be init or patch, not both"
-    echo_error "type $0 --help for more informations"
+    usage
     exit 1
   fi
 
   # Rule 2: we always need a version
   if [[ -z $version ]] || [[ $version == "-" ]]; then
     echo_error "Missing version"
-    echo_error "type $0 --help for more informations"
+    usage
     exit 1
   fi
 
@@ -339,6 +339,11 @@ function copy_files {
     # Changes on configs?
     num_changes=`git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB  -- build.env .gitignore | wc -l | xargs`
     if [[ $num_changes > 0 ]]; then
+      if [ ! -d "${targetpath}" ]; then
+        echo "Creating directory '${targetpath}'" | write_log
+        mkdir -p "${targetpath}"
+      fi
+
       if [[ $(uname) == "Darwin" ]]; then
         rsync -R `git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB -- build.env .gitignore` ${targetpath}
       else
@@ -354,8 +359,10 @@ function copy_files {
 
       if [[ $num_changes > 0 ]]; then
 
-        echo "Creating directory $targetpath" | write_log
-        mkdir -p $targetpath
+        if [ ! -d "${targetpath}" ]; then
+          echo "Creating directory '${targetpath}'" | write_log
+          mkdir -p "${targetpath}"
+        fi
 
         echo "Copy files ..." | write_log
         if [[ $(uname) == "Darwin" ]]; then
