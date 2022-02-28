@@ -87,12 +87,17 @@ function check_vars() {
     do_exit="YES"
   fi
 
-  # get distinct values of array
-  ALL_SCHEMAS=( ${DATA_SCHEMA} ${LOGIC_SCHEMA} ${APP_SCHEMA} )
-  SCHEMAS=($(printf "%s\n" "${ALL_SCHEMAS[@]}" | sort -u))
-  # if length is equal than ALL_SCHEMAS, otherwise distinct
-  if [[ ${#SCHEMAS[@]} == ${#ALL_SCHEMAS[@]} ]]; then
-    SCHEMAS=(${ALL_SCHEMAS[@]})
+  if [[ ${FLEX_MODE} == TRUE ]]; then
+    SCHEMAS=(${DBSCHEMAS[@]})
+  else
+    # get distinct values of array
+    ALL_SCHEMAS=( ${DATA_SCHEMA} ${LOGIC_SCHEMA} ${APP_SCHEMA} )
+    SCHEMAS=($(printf "%s\n" "${ALL_SCHEMAS[@]}" | sort -u))
+
+    # if length is equal than ALL_SCHEMAS, otherwise distinct
+    if [[ ${#SCHEMAS[@]} == ${#ALL_SCHEMAS[@]} ]]; then
+      SCHEMAS=(${ALL_SCHEMAS[@]})
+    fi
   fi
 
 
@@ -362,92 +367,40 @@ execute_global_hook_scripts() {
   local entrypath=$1    # pre or post
   local targetschema=""
 
-  echo "checking hook .hooks/${entrypath}" | write_log
+  echo "checking hook ${entrypath}" | write_log
 
-  if [[ -d ".hooks/${entrypath}" ]]; then
-    for file in $(ls .hooks/${entrypath} | sort )
+  if [[ -d "${entrypath}" ]]; then
+    for file in $(ls ${entrypath} | sort )
     do
-      if [[ -f .hooks/${entrypath}/${file} ]]; then
-        case ${file} in
-          *"${DATA_SCHEMA}"*)
-            targetschema=${DATA_SCHEMA}
-            ;;
-          *"${LOGIC_SCHEMA}"*)
-            targetschema=${LOGIC_SCHEMA}
-            ;;
-          *"${APP_SCHEMA}"*)
-            targetschema=${APP_SCHEMA}
-            ;;
-        esac
-        runfile=".hooks/${entrypath}/${file}"
+      if [[ -f ${entrypath}/${file} ]]; then
+        # determine target schema
+        targetschema=$(get_schema_from_file_name ${file})
+        runfile="${entrypath}/${file}"
 
-        echo "executing hook file ${runfile}" | write_log
-        $SQLCLI -S "$(get_connect_string $targetschema)" <<! | tee -a ${full_log_file}
-          define VERSION="${version}"
-          define MODE="${mode}"
+        if [[ ${targetschema} != "_" ]]; then
+          echo "executing hook file ${runfile} in ${targetschema}" | write_log
+          $SQLCLI -S "$(get_connect_string $targetschema)" <<! | tee -a ${full_log_file}
+            define VERSION="${version}"
+            define MODE="${mode}"
 
-          set define '^'
-          set concat on
-          set concat .
-          set verify off
+            set define '^'
+            set concat on
+            set concat .
+            set verify off
 
-          Prompt calling file ${runfile}
-          @${runfile}
+            Prompt calling file ${runfile}
+            @${runfile}
 !
 
-
-        runfile=""
+        else
+          echo_warning "no schema found to execute hook file ${runfile} target schema has to be a part of filename" | write_log
+        fi
       fi
     done
 
 
     if [[ $? -ne 0 ]]; then
-      echo "ERROR when executing .hooks/${entrypath}/${file}" | write_log $failure
-      manage_result "failure"
-    fi
-  fi
-
-  ### mode specific
-
-  if [[ -d ".hooks/${entrypath}/${mode}" ]]
-  then
-    for file in $(ls .hooks/${entrypath}/${mode} | sort )
-    do
-      if [[ .hooks/${entrypath}/${mode}/${file} ]]; then
-        case ${file} in
-          *"${DATA_SCHEMA}"*)
-            targetschema=${DATA_SCHEMA}
-            ;;
-          *"${LOGIC_SCHEMA}"*)
-            targetschema=${LOGIC_SCHEMA}
-            ;;
-          *"${APP_SCHEMA}"*)
-            targetschema=${APP_SCHEMA}
-            ;;
-        esac
-        runfile=".hooks/${entrypath}/${mode}/${file}"
-        echo "executing hook file ${runfile}" | write_log
-
-        $SQLCLI -S "$(get_connect_string $targetschema)" <<! | tee -a ${full_log_file}
-          define VERSION="${version}"
-          define MODE="${mode}"
-
-          set define '^'
-          set concat on
-          set concat .
-          set verify off
-
-          Prompt calling file ${runfile}
-          @${runfile}
-!
-
-        runfile=""
-      fi
-    done
-
-
-    if [[ $? -ne 0 ]]; then
-      echo "ERROR when executing .hooks/${entrypath}/${file}" | write_log $failure
+      echo_error "ERROR when executing ${entrypath}/${file}" | write_log $failure
       manage_result "failure"
     fi
   fi
@@ -478,14 +431,16 @@ validate_connections(){
 install_db_schemas()
 {
   cd ${basepath}
-  cd db
 
   # execute all files in global pre path
-  execute_global_hook_scripts "pre"
+  execute_global_hook_scripts "db/.hooks/pre"
+  execute_global_hook_scripts "db/.hooks/pre/${mode}"
+
+  cd db
 
   echo "Start installing schemas" | write_log
   # loop through schemas
-  for schema in "${SCHEMAS[@]}"
+  for schema in "${DBFOLDERS[@]}"
   do
     if [[ -d $schema ]]; then
       cd $schema
@@ -516,73 +471,74 @@ install_db_schemas()
     fi
   done
 
-  # execute all files in global post path
-  execute_global_hook_scripts "post"
-
   cd ..
+
+
+  # execute all files in global post path
+  execute_global_hook_scripts "db/.hooks/post"
+  execute_global_hook_scripts "db/.hooks/post/${mode}"
 }
 
-set_rest_unavailable() {
+set_rest_publish_state() {
   cd ${basepath}
+  local publish=$1
+  if [[ -d "rest" ]]; then
+    local appschema=${APP_SCHEMA}
 
-  if [[ -d "rest/modules" ]]; then
-    cd rest/modules
-    for module in *; do
-      if [[ -d "$module" ]]; then
+    folders=()
+    if [[ ${FLEX_MODE} == TRUE ]]; then
+      for d in $(find rest -maxdepth 1 -mindepth 1 -type d | sort -f)
+      do
+        folders+=( $(basename $d)/modules )
+      done
+    else
+      folders=( "modules" )
+    fi
 
-        echo "disabling REST module $module ..." | write_log
-        $SQLCLI -S "$(get_connect_string $APP_SCHEMA)" <<! | tee -a ${full_log_file}
+    for fldr in "${folders[@]}"
+    do
+      if [[ ${FLEX_MODE} == TRUE ]]; then
+        appschema=${fldr/\/modules/}
+      fi
+      modules=()
+      for mods in $(find rest/$fldr -maxdepth 1 -mindepth 1 -type d)
+      do
+        mbase=$(basename $mods)
+        echo "setting publish state to ${publish} for REST module ${mbase} for schema ${appschema}..." | write_log
+        modules+=( ${mbase} )
+      done
+
+      $SQLCLI -S "$(get_connect_string ${appschema})" <<! | tee -a ${full_log_file}
         set define off;
         set serveroutput on;
-        Begin
-          ords.publish_module(p_module_name  => '${module}',
-                              p_status       => 'NOT_PUBLISHED');
-        Exception
-          when no_data_found then
-            dbms_output.put_line((chr(27) || '[31m') || 'REST Module: ${module} not found!' || (chr(27) || '[0m'));
-        End;
-/
+        $(
+          for element in "${modules[@]}"
+          do
+            echo "Declare"
+            echo "  ex_schema_not_enabled exception;"
+            echo "  PRAGMA EXCEPTION_INIT(ex_schema_not_enabled, -20012);"
+            echo "Begin"
+            echo "  ords.publish_module(p_module_name  => '${element}',"
+            echo "                      p_status       => '${publish}');"
+            echo "Exception"
+            echo "  when ex_schema_not_enabled then"
+            echo "    dbms_output.put_line((chr(27) || '[31m') || sqlerrm || (chr(27) || '[0m'));"
+            echo "  when no_data_found then"
+            echo "    dbms_output.put_line((chr(27) || '[31m') || 'REST Modul: ${element} not found!' || (chr(27) || '[0m'));"
+            echo "End;"
+            echo "/"
+          done
+        )
+
 !
-      fi
+
     done
   else
-    echo "Directory rest/modules does not exist" | write_log $warning
+    echo "Directory rest does not exist" | write_log $warning
   fi
 
   cd ${basepath}
 }
-
-
-set_rest_available() {
-  cd ${basepath}
-
-  if [[ -d "rest/modules" ]]; then
-    cd rest/modules
-    for module in *; do
-      if [[ -d "$module" ]]; then
-
-        echo "enabling REST module $module ..." | write_log
-        $SQLCLI -S "$(get_connect_string $APP_SCHEMA)" <<! | tee -a ${full_log_file}
-        set define off;
-        set serveroutput on;
-        Begin
-          ords.publish_module(p_module_name  => '${module}',
-                              p_status       => 'PUBLISHED');
-        Exception
-          when no_data_found then
-            dbms_output.put_line((chr(27) || '[31m') || 'REST Modul: ${module} not found!' || (chr(27) || '[0m'));
-        End;
-/
-!
-      fi
-    done
-  else
-    echo "Directory rest/modules does not exist" | write_log $warning
-  fi
-
-  cd ${basepath}
-}
-
 
 
 
@@ -590,45 +546,62 @@ set_apps_unavailable() {
   cd ${basepath}
 
   if [[ -d "apex" ]]; then
-    for appid in apex/* ; do
-      if [[ -d "$appid" ]]; then
 
-        echo "disabling APEX-App $appid ..." | write_log
-        $SQLCLI -S "$(get_connect_string $APP_SCHEMA)" <<! | tee -a ${full_log_file}
-        set serveroutput on;
-        set escchar @
-        set define off;
-        Declare
-          v_application_id  apex_application_build_options.application_id%type := ${appid/apex\/f} + ${APP_OFFSET};
-          v_workspace_id    apex_workspaces.workspace_id%type;
-        Begin
-          select workspace_id
-            into v_workspace_id
-            from apex_workspaces
-           where workspace = upper('${WORKSPACE}');
+    depth=1
+    if [[ ${FLEX_MODE} == TRUE ]]; then
+      depth=3
+    fi
 
-          apex_application_install.set_workspace_id(v_workspace_id);
-          apex_util.set_security_group_id(p_security_group_id => apex_application_install.get_workspace_id);
+    for d in $(find apex -maxdepth ${depth} -mindepth ${depth} -type d)
+    do
+      local app_name=$(basename $d)
+      local app_id=${app_name/f}
 
-          begin
-            apex_util.set_application_status(p_application_id     => v_application_id,
-                                             p_application_status => 'UNAVAILABLE',
-                                             p_unavailable_value  => '${maintence}' );
-          exception
-            when others then
-              if sqlerrm like '%Application not found%' then
-                dbms_output.put_line((chr(27) || '[31m') || 'Application: '||upper(v_application_id)||' not found!' || (chr(27) || '[0m'));
-              else
-                raise;
-              end if;
-          end;
-        Exception
-          when no_data_found then
-            dbms_output.put_line((chr(27) || '[31m') || 'Workspace: '||upper('${WORKSPACE}')||' not found!' || (chr(27) || '[0m'));
-        End;
-/
-!
+      local workspace=${WORKSPACE}
+      local appschema=${APP_SCHEMA}
+
+      if [[ ${FLEX_MODE} == TRUE ]]; then
+        workspace=$(basename $(dirname ${d}))
+        appschema=$(basename $(dirname $(dirname ${d})))
       fi
+
+      echo "disabling APEX-App ${app_id} in workspace ${workspace} for schema ${appschema}..." | write_log
+      $SQLCLI -S "$(get_connect_string ${appschema})" <<! | tee -a ${full_log_file}
+      set serveroutput on;
+      set escchar @
+      set define off;
+      Declare
+        v_application_id  apex_application_build_options.application_id%type := ${app_id} + ${APP_OFFSET};
+        v_workspace_id    apex_workspaces.workspace_id%type;
+      Begin
+        select workspace_id
+          into v_workspace_id
+          from apex_workspaces
+          where workspace = upper('${workspace}');
+
+        apex_application_install.set_workspace_id(v_workspace_id);
+        apex_util.set_security_group_id(p_security_group_id => apex_application_install.get_workspace_id);
+
+        begin
+          apex_util.set_application_status(p_application_id     => v_application_id,
+                                            p_application_status => 'UNAVAILABLE',
+                                            p_unavailable_value  => '${maintence}' );
+        exception
+          when others then
+            if sqlerrm like '%Application not found%' then
+              dbms_output.put_line((chr(27) || '[31m') || 'Application: '||upper(v_application_id)||' not found!' || (chr(27) || '[0m'));
+            else
+              raise;
+            end if;
+        end;
+      Exception
+        when no_data_found then
+          dbms_output.put_line((chr(27) || '[31m') || 'Workspace: '||upper('${workspace}')||' not found!' || (chr(27) || '[0m'));
+End;
+/
+
+!
+
     done
   else
     echo "Directory apex does not exist" | write_log $warning
@@ -640,52 +613,70 @@ set_apps_available() {
   cd ${basepath}
 
   if [[ -d "apex" ]]; then
-    for appid in apex/* ; do
-      if [[ -d "$appid" ]]; then
-        echo "enabling APEX-App $appid ..." | write_log
-        $SQLCLI -S "$(get_connect_string $APP_SCHEMA)" <<! | tee -a ${full_log_file}
-        set serveroutput on;
-        set define off;
-        Declare
-          v_application_id  apex_application_build_options.application_id%type := ${appid/apex\/f} + ${APP_OFFSET};
-          v_workspace_id    apex_workspaces.workspace_id%type;
-          l_text            varchar2(100);
-        Begin
-          select workspace_id
-            into v_workspace_id
-            from apex_workspaces
-           where workspace = upper('${WORKSPACE}');
 
-          apex_application_install.set_workspace_id(v_workspace_id);
-          apex_util.set_security_group_id(p_security_group_id => apex_application_install.get_workspace_id);
+    depth=1
+    if [[ ${FLEX_MODE} == TRUE ]]; then
+      depth=3
+    fi
 
-          begin
-            select substr(unavailable_text, 1, 50)
-              into l_text
-              from apex_applications
-             where application_id = v_application_id;
+    for d in $(find apex -maxdepth ${depth} -mindepth ${depth} -type d)
+    do
+      local app_name=$(basename $d)
+      local app_id=${app_name/f}
 
-            if (apex_util.get_application_status(p_application_id => v_application_id) = 'UNAVAILABLE' and l_text like '<span />%') then
-              apex_util.set_application_status(p_application_id     => v_application_id,
-                                               p_application_status => 'AVAILABLE_W_EDIT_LINK');
-            end if;
-          exception
-            when no_data_found then
-              dbms_output.put_line((chr(27) || '[31m') || 'Application: '||upper(v_application_id)||' not found!' || (chr(27) || '[0m'));
-            when others then
-              if sqlerrm like '%Application not found%' then
-                dbms_output.put_line((chr(27) || '[31m') || 'Application: '||upper(v_application_id)||' not found!' || (chr(27) || '[0m'));
-              else
-                raise;
-              end if;
-          end;
-        Exception
+      local workspace=${WORKSPACE}
+      local appschema=${APP_SCHEMA}
+
+      if [[ ${FLEX_MODE} == TRUE ]]; then
+        workspace=$(basename $(dirname ${d}))
+        appschema=$(basename $(dirname $(dirname ${d})))
+      fi
+
+
+      echo "enabling APEX-App ${app_id} in workspace ${workspace} for schema ${appschema}..." | write_log
+      $SQLCLI -S "$(get_connect_string $appschema)" <<! | tee -a ${full_log_file}
+      set serveroutput on;
+      set define off;
+      Declare
+        v_application_id  apex_application_build_options.application_id%type := ${app_id} + ${APP_OFFSET};
+        v_workspace_id    apex_workspaces.workspace_id%type;
+        l_text            varchar2(100);
+      Begin
+        select workspace_id
+          into v_workspace_id
+          from apex_workspaces
+          where workspace = upper('${workspace}');
+
+        apex_application_install.set_workspace_id(v_workspace_id);
+        apex_util.set_security_group_id(p_security_group_id => apex_application_install.get_workspace_id);
+
+        begin
+          select substr(unavailable_text, 1, 50)
+            into l_text
+            from apex_applications
+            where application_id = v_application_id;
+
+          if (apex_util.get_application_status(p_application_id => v_application_id) = 'UNAVAILABLE' and l_text like '<span />%') then
+            apex_util.set_application_status(p_application_id     => v_application_id,
+                                              p_application_status => 'AVAILABLE_W_EDIT_LINK');
+          end if;
+        exception
           when no_data_found then
-            dbms_output.put_line((chr(27) || '[31m') || 'Workspace: '||upper('${WORKSPACE}')||' not found!' || (chr(27) || '[0m'));
-        End;
+            dbms_output.put_line((chr(27) || '[31m') || 'Application: '||upper(v_application_id)||' not found!' || (chr(27) || '[0m'));
+          when others then
+            if sqlerrm like '%Application not found%' then
+              dbms_output.put_line((chr(27) || '[31m') || 'Application: '||upper(v_application_id)||' not found!' || (chr(27) || '[0m'));
+            else
+              raise;
+            end if;
+        end;
+      Exception
+        when no_data_found then
+          dbms_output.put_line((chr(27) || '[31m') || 'Workspace: '||upper('${workspace}')||' not found!' || (chr(27) || '[0m'));
+      End;
 /
 !
-      fi
+
     done
   else
     echo "Directory apex does not exist" | write_log $warning
@@ -704,9 +695,19 @@ install_apps() {
     # loop throug content
     while IFS= read -r line; do
       if [[ -e $line/install.sql ]]; then
-        echo "Installing $line Num: ${line/apex\/f} Workspace: ${WORKSPACE}" | write_log
+        local app_name=$(basename $line)
+        local app_id=${app_name/f}
+
+        local workspace=${WORKSPACE}
+        local appschema=${APP_SCHEMA}
+        if [[ ${FLEX_MODE} == TRUE ]]; then
+          workspace=$(basename $(dirname $line))
+          appschema=$(basename $(dirname $(dirname ${line})))
+        fi
+
+        echo "Installing $line Num: ${app_id} Workspace: ${workspace} Schema: $appschema" | write_log
         cd $line
-        $SQLCLI -S "$(get_connect_string $APP_SCHEMA)" <<! | tee -a ${full_log_file}
+        $SQLCLI -S "$(get_connect_string $appschema)" <<! | tee -a ${full_log_file}
           define VERSION="${version}"
           define MODE="${mode}"
 
@@ -715,15 +716,15 @@ install_apps() {
           set concat .
           set verify off
 
-          Prompt Workspace: ${WORKSPACE}
-          Prompt Application: ${line/apex\/f}
+          Prompt Workspace: ${workspace}
+          Prompt Application: ${app_id}
           declare
             v_workspace_id	apex_workspaces.workspace_id%type;
           begin
             select workspace_id
               into v_workspace_id
               from apex_workspaces
-            where workspace = upper('${WORKSPACE}');
+            where workspace = upper('${workspace}');
 
             apex_application_install.set_workspace_id(v_workspace_id);
 
@@ -731,8 +732,11 @@ install_apps() {
               apex_application_install.generate_offset;
             end if;
 
-            apex_application_install.set_application_id(${line/apex\/f} + ${APP_OFFSET});
-            apex_application_install.set_schema(upper('${APP_SCHEMA}'));
+            apex_application_install.set_application_id(${app_id} + ${APP_OFFSET});
+            apex_application_install.set_schema(upper('${appschema}'));
+          Exception
+            when no_data_found then
+              dbms_output.put_line((chr(27) || '[31m') || 'Workspace: '||upper('${workspace}')||' not found!' || (chr(27) || '[0m'));
           end;
           /
 
@@ -841,7 +845,7 @@ manage_result()
   [[ -f rest/rest_${mode}_${version}.sql ]] && mv rest/rest_${mode}_${version}.sql ${target_finalize_path}
 
   # loop through schemas
-  for schema in "${SCHEMAS[@]}"
+  for schema in "${DBFOLDERS[@]}"
   do
 
     db_install_file=${mode}_${schema}_${version}.sql
@@ -908,7 +912,7 @@ remove_dropped_files
 
 # now disable all, so that during build noone can do anything
 set_apps_unavailable
-set_rest_unavailable
+set_rest_publish_state "NOT_PUBLISHED"
 
 # when in init mode, ALL schema objects will be
 # dropped
@@ -916,7 +920,8 @@ clear_db_schemas_on_init
 
 
 # execute pre hooks in root folder
-execute_global_hook_scripts "pre"
+execute_global_hook_scripts ".hooks/pre"
+execute_global_hook_scripts ".hooks/pre/${mode}"
 
 # install product
 install_db_schemas
@@ -924,11 +929,12 @@ install_apps
 install_rest
 
 # execute post hooks in root folder
-execute_global_hook_scripts "post"
+execute_global_hook_scripts ".hooks/post"
+execute_global_hook_scripts ".hooks/post/${mode}"
 
 # now enable all,
 set_apps_available
-set_rest_available
+set_rest_publish_state "PUBLISHED"
 
 
 # final works

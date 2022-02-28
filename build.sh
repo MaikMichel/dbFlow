@@ -60,22 +60,25 @@ function check_vars() {
     do_exit="YES"
   fi
 
-  if [[ -z ${APP_SCHEMA:-} ]]; then
-    echo_error "undefined var: APP_SCHEMA"
-    do_exit="YES"
-  fi
-  if [[ -z ${DATA_SCHEMA:-} ]]; then
-    echo_error "undefined var: DATA_SCHEMA"
-    do_exit="YES"
-  fi
-  if [[ -z ${LOGIC_SCHEMA:-} ]]; then
-    echo_error "undefined var: LOGIC_SCHEMA"
-    do_exit="YES"
-  fi
+  # when MultisSchema or SingleSchema, this vars are required
+  if [[ ${FLEX_MODE:FALSE} != TRUE ]]; then
+    if [[ -z ${APP_SCHEMA:-} ]]; then
+      echo_error "undefined var: APP_SCHEMA"
+      do_exit="YES"
+    fi
+    if [[ -z ${DATA_SCHEMA:-} ]]; then
+      echo_error "undefined var: DATA_SCHEMA"
+      do_exit="YES"
+    fi
+    if [[ -z ${LOGIC_SCHEMA:-} ]]; then
+      echo_error "undefined var: LOGIC_SCHEMA"
+      do_exit="YES"
+    fi
 
-  if [[ -z ${WORKSPACE:-} ]]; then
-    echo_error "undefined var: WORKSPACE"
-    do_exit="YES"
+    if [[ -z ${WORKSPACE:-} ]]; then
+      echo_error "undefined var: WORKSPACE"
+      do_exit="YES"
+    fi
   fi
 
   if [[ -z ${DEPOT_PATH+x} ]]; then
@@ -240,16 +243,22 @@ function check_params() {
 function setup_env() {
   MAINFOLDERS=( apex db reports rest .hooks )
 
-  ALL_SCHEMAS=( ${DATA_SCHEMA} ${LOGIC_SCHEMA} ${APP_SCHEMA} )
-  SCHEMAS=($(printf "%s\n" "${ALL_SCHEMAS[@]}" | sort -u))
+  SCHEMAS=()
 
-  # if length is equal than ALL_SCHEMAS, otherwise distinct
-  if [[ ${#SCHEMAS[@]} == ${#ALL_SCHEMAS[@]} ]]; then
-    SCHEMAS=(${ALL_SCHEMAS[@]})
+  if [[ ${FLEX_MODE} == TRUE ]]; then
+    SCHEMAS=(${DBSCHEMAS[@]})
+  else
+    ALL_SCHEMAS=( ${DATA_SCHEMA} ${LOGIC_SCHEMA} ${APP_SCHEMA} )
+    SCHEMAS=($(printf "%s\n" "${ALL_SCHEMAS[@]}" | sort -u))
+
+    # if length is equal than ALL_SCHEMAS, otherwise distinct
+    if [[ ${#SCHEMAS[@]} == ${#ALL_SCHEMAS[@]} ]]; then
+      SCHEMAS=(${ALL_SCHEMAS[@]})
+    fi
   fi
 
   # folders for REST
-  rest_array=( access modules )
+  rest_array=( access/roles access/privileges access/mapping modules )
 
   # get branch name
   { #try
@@ -301,9 +310,11 @@ function setup_env() {
   fi
   echo -e "keepfolder:    ${BWHITE}${KEEP_FOLDER}${NC}" | write_log
   echo -e "----------------------------------------------------------" | write_log
-  echo -e "app_schema:    ${BWHITE}${APP_SCHEMA}${NC}" | write_log
-  echo -e "data_schema:   ${BWHITE}${DATA_SCHEMA}${NC}" | write_log
-  echo -e "logic_schema:  ${BWHITE}${LOGIC_SCHEMA}${NC}" | write_log
+  if [[ ${FLEX_MODE} != TRUE ]]; then
+    echo -e "app_schema:    ${BWHITE}${APP_SCHEMA}${NC}" | write_log
+    echo -e "data_schema:   ${BWHITE}${DATA_SCHEMA}${NC}" | write_log
+    echo -e "logic_schema:  ${BWHITE}${LOGIC_SCHEMA}${NC}" | write_log
+  fi
   echo -e "schemas:      (${BWHITE}${SCHEMAS[@]}${NC})" | write_log
   echo -e "----------------------------------------------------------" | write_log
   echo -e "depotpath:     ${BWHITE}${depotpath}${NC}"  | write_log
@@ -626,11 +637,15 @@ function write_install_apps() {
     target_apex_file="$targetpath"/apex_files_$version.lst
     [ -f $target_apex_file ] && rm $target_apex_file
 
-    for appid in apex/*/ ; do
-      if [[ -d "$appid" ]]; then
-        echo "${appid%/}" >> $target_apex_file
-        echo "Writing call to install APP: ${appid%/} " | write_log
-      fi
+    depth=1
+    if [[ ${FLEX_MODE} == TRUE ]]; then
+      depth=3
+    fi
+
+    for d in $(find apex -maxdepth ${depth} -mindepth ${depth} -type d)
+    do
+      echo "${d}" >> $target_apex_file
+      echo "Writing call to install APP: ${d} " | write_log
     done
   fi
 }
@@ -642,71 +657,84 @@ function write_install_rest() {
     echo " ==== Checking REST Modules ====" | write_log
     echo "" | write_log
 
-    # file to write to
-    target_install_base=rest_${mode}_${version}.sql
-    target_install_file="$targetpath"/rest/$target_install_base
-    [ -f $target_install_file ] && rm $target_install_file
-    rest_to_install="FALSE"
+    folders=()
+    if [[ ${FLEX_MODE} == TRUE ]]; then
+      for d in $(find rest -maxdepth 1 -mindepth 1 -type d | sort -f)
+      do
+        folders+=( $(basename $d) )
+      done
+    else
+      folders=( . )
+    fi
 
-    # write some infos
+    for fldr in "${folders[@]}"
+    do
+      echo " -- Schema: $fldr" | write_log
+
+      # file to write to
+      target_install_base=rest_${mode}_${version}.sql
+      target_install_file="$targetpath"/rest/$fldr/$target_install_base
+      [ -f $target_install_file ] && rm $target_install_file
+      rest_to_install="FALSE"
+
+      # write some infos
       echo "Prompt .............................................................................. " >> "$target_install_file"
       echo "Prompt .............................................................................. " >> "$target_install_file"
       echo "Prompt .. Start REST installation " >> "$target_install_file"
       echo "Prompt .. Version: $mode $version " >> "$target_install_file"
+      echo "Prompt .. Folder:  $fldr " >> "$target_install_file"
       echo "Prompt .............................................................................. " >> "$target_install_file"
-      # echo "set scan off" >> "$target_install_file"
-      # echo "set define off" >> "$target_install_file"
       echo "set serveroutput on" >> "$target_install_file"
       echo "" >> "$target_install_file"
 
+      # check every path in given order
+      for path in "${rest_array[@]}"
+      do
+        if [[ -d "$targetpath"/rest/$fldr/$path ]]; then
+          depth=1
+          if [[ $path == "modules" ]]; then
+            depth=2
+          fi
 
-    # check every path in given order
-    for path in "${rest_array[@]}"
-    do
-      if [[ -d "$targetpath"/rest/$path ]]; then
-        for directory in $(ls -d -- "$targetpath"/rest/$path/*/ 2> /dev/null | sort )
-        do
-          rest_to_install="TRUE"
-          dir="$path/"$(basename $directory)
-          echo "Writing call to install to install $dir" | write_log
-          echo "Prompt Installing $dir ..." >> "$target_install_file"
-
-          for file in $(ls "$directory" | sort )
+          for file in $(find "$targetpath"/rest/$fldr/$path/ -maxdepth $depth -mindepth $depth -type f | sort )
           do
+            rest_to_install="TRUE"
+            base=$targetpath/rest/$fldr/
+            part=${file#$base}
 
-            if [[ "${file}" == *".sql" ]] && [[ "${file}" != *".condition.sql" ]]; then
+            if [[ "${part}" == *".sql" ]] && [[ "${part}" != *".condition.sql" ]]; then
+              echo "Prompt ... $part" >> "$target_install_file"
 
-              echo "Prompt ... $file" >> "$target_install_file"
-
-              if [[ -f $directory${file/.sql/.condition.sql} ]]; then
+              if [[ -f ${file/.sql/.condition.sql} ]]; then
                 echo "begin" >> "$target_install_file"
                 echo "  if" >> "$target_install_file"
-                echo "  @@$dir/${file/.sql/.condition.sql}" >> "$target_install_file"
+                echo "  @@${part/.sql/.condition.sql}" >> "$target_install_file"
                 echo "  then" >> "$target_install_file"
-                echo "    @@$dir/$file" >> "$target_install_file"
+                echo "    @@${part}" >> "$target_install_file"
                 echo "  else" >> "$target_install_file"
-                echo "    dbms_output.put_line('!!! ${file} not installed cause condition did not match');" >> "$target_install_file"
+                echo "    dbms_output.put_line('!!! ${part} not installed cause condition did not match');" >> "$target_install_file"
                 echo "  end if;" >> "$target_install_file"
                 echo "end;" >> "$target_install_file"
               else
-                echo "@@$dir/$file" >> "$target_install_file"
+                echo "@@${part}" >> "$target_install_file"
               fi
               echo "/" >> "$target_install_file"
             fi
           done
-        done
 
-        echo "Prompt" >> "$target_install_file"
-        echo "Prompt" >> "$target_install_file"
-        echo "" >> "$target_install_file"
+          echo "Prompt" >> "$target_install_file"
+          echo "Prompt" >> "$target_install_file"
+          echo "" >> "$target_install_file"
 
+        fi
+      done
+
+      # nothing to install, just remove empty file
+      if [[ ${rest_to_install} == "FALSE" ]]; then
+        rm $target_install_file
+        echo " ... nothing found " | write_log
       fi
     done
-
-    # nothing to install, just remove empty file
-    if [[ ${rest_to_install} == "FALSE" ]]; then
-      rm $target_install_file
-    fi
   fi
 }
 
@@ -722,7 +750,7 @@ function manage_artifact () {
 
   echo "" | write_log
   echo_success "==== .......... .......... .......... ==== " | write_log
-  echo "All files are placed in $depotpath" | write_log
+  echo "All files are placed in $DEPOT_PATH/$branch" | write_log
   echo_success "==== ..........    DONE    .......... ==== " | write_log
 
   # remove colorcodes from logfile
@@ -798,7 +826,7 @@ function check_push_to_depot() {
 
 function check_make_new_version() {
   # on branch master ask if we should tag current version and conmmit
-  if [[ $branch == "master" ]]; then
+  if [[ $branch == "master" ]] && [[ $version != "install" ]]; then
     echo
     echo "Do you wish to commit, tag and push the new version to origin"
     echo "  Y - current version will be commited, tagged and pushed"

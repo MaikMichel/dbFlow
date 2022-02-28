@@ -23,6 +23,7 @@ BLUE="\033[0;34m"         # Blue
 PURPLE="\033[0;35m"       # Purple
 CYAN="\033[0;36m"         # Cyan
 BWHITE="\033[1;97m"       # White
+WHITE="\033[0;97m"        # White
 LWHITE="\033[1;30m"       # White
 BYELLOW="\033[1;33m"      # Yellow
 
@@ -104,10 +105,19 @@ DBA_OPTION=" as sysdba"
 # Function return connect string
 #########################################
 get_connect_string() {
-  local arg1=$1
+  local dbfolder=$1
+  local dbschema=$dbfolder
+  local firstpart=${dbfolder%%_*}
 
-  if [[ ${#SCHEMAS[@]} -gt 1 ]]; then
-    echo "$DB_APP_USER[$arg1]/$DB_APP_PWD@$DB_TNS"
+  # when dbfolder starts with a number and underscore
+  # then remove it, cause this is for sorting
+  if [[ $firstpart == ?(-)+([0-9]) ]]; then
+    dbschema=${dbfolder/$firstpart"_"/""}
+  fi
+
+  # when connection user != target schema then use proxy
+  if [[ $DB_APP_USER != $dbschema ]]; then
+    echo "$DB_APP_USER[$dbschema]/$DB_APP_PWD@$DB_TNS"
   else
     echo "$DB_APP_USER/$DB_APP_PWD@$DB_TNS"
   fi
@@ -121,7 +131,6 @@ function toLowerCase() {
 export NLS_LANG="GERMAN_GERMANY.AL32UTF8"
 export NLS_DATE_FORMAT="DD.MM.YYYY HH24:MI:SS"
 export JAVA_TOOL_OPTIONS="-Duser.language=en -Duser.region=US -Dfile.encoding=UTF-8"
-export CUSTOM_JDBC="-XX:+TieredCompilation -XX:TieredStopAtLevel=1 -Xverify:none"
 export LANG="de_DE.utf8"
 case $(uname | tr '[:upper:]' '[:lower:]') in
 mingw64_nt-10*)
@@ -152,7 +161,7 @@ write_log() {
       reset=${NC}
       ;;
     *)
-      color=${BWHITE}
+      color=${WHITE}
       reset=${NC}
   esac
 
@@ -200,4 +209,48 @@ EOF
     echo_error "${sql_output}"
     exit 2
   fi
+}
+
+function get_schema_from_folder_name() {
+  local dbfolder=$1
+  local dbschema=$dbfolder
+  local firstpart=${dbfolder%%_*}
+
+  # when dbfolder starts with a number and underscore
+  # then remove it, cause this is for sorting
+  if [[ $firstpart == ?(-)+([0-9]) ]]; then
+    dbschema=${dbfolder/$firstpart"_"/""}
+  fi
+
+  echo $dbschema
+}
+
+function get_schema_from_file_name() {
+  local fname=$1
+  local schema="_"
+  # loof through dbschemas and check if file contains schema
+  for s in "${DBSCHEMAS[@]}"
+  do
+    if [[ ${fname} == *${s}* ]]; then
+      schema=$s
+      break
+    fi
+  done
+  echo $schema
+}
+
+
+# fill dbschema and dbfolder
+DBFOLDERS=()
+DBSCHEMAS=()
+
+{
+  for d in $(find db -maxdepth 1 -mindepth 1 -type d | sort -f)
+  do
+    folder=$(basename $d)
+    if [[ ${folder} != "_setup" ]] && [[ ${folder} != ".hooks" ]]; then
+      DBFOLDERS+=( ${folder} )
+      DBSCHEMAS+=( $(get_schema_from_folder_name ${folder}) )
+    fi
+  done
 }
