@@ -693,7 +693,7 @@ function write_install_rest() {
 
     for fldr in "${folders[@]}"
     do
-      echo " -- Schema: $fldr" | write_log
+      echo " == Schema: $fldr" | write_log
 
       # file to write to
       target_install_base=rest_${mode}_${version}.sql
@@ -725,6 +725,8 @@ function write_install_rest() {
             rest_to_install="TRUE"
             base=$targetpath/rest/$fldr/
             part=${file#$base}
+
+            echo "Writing call to install RESTModul: ${part} " | write_log
 
             if [[ "${part}" == *".sql" ]] && [[ "${part}" != *".condition.sql" ]]; then
               echo "Prompt ... $part" >> "$target_install_file"
