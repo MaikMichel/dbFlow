@@ -825,32 +825,45 @@ exec_final_unit_tests()
 
 manage_result()
 {
+  cd ${basepath}
+
   local target_move=$1
   target_finalize_path=${install_source_path}/${target_move}/${version}
-
-  cd ${basepath}
 
   # create path if not exists
   [ -d ${target_finalize_path} ] || mkdir -p ${target_finalize_path}
 
+  # notify
   echo "${mode} ${version} moved to ${target_finalize_path}" | write_log ${target_move}
   echo "Done with ${target_move}" | write_log ${target_move}
 
+  # remove colorcodes from file
   cat ${full_log_file} | sed -r "s/\x1B\[([0-9]{1,3}((;[0-9]{1,3})*)?)?[m|K]//g" > ${full_log_file}.colorless
   rm ${full_log_file}
   mv ${full_log_file}.colorless ${full_log_file}
 
-  # move all
-  mv *${version}* ${target_finalize_path}
-  [[ -f rest/rest_${mode}_${version}.sql ]] && mv rest/rest_${mode}_${version}.sql ${target_finalize_path}
+  # move all logs
+  mv *${mode}*${version}* ${target_finalize_path}
+
+  # move apex lst
+  [[ -f apex_files_${version}.lst ]] && mv apex_files_${version}.lst ${target_finalize_path}
+
+  # move rest files
+  depth=1
+  if [[ ${FLEX_MODE} == TRUE ]]; then
+    depth=2
+  fi
+
+  for restfile in $(find rest -maxdepth ${depth} -mindepth ${depth} -type f)
+  do
+    mv $restfile ${target_finalize_path}
+  done
 
   # loop through schemas
   for schema in "${DBFOLDERS[@]}"
   do
-
     db_install_file=${mode}_${schema}_${version}.sql
     [[ -f db/$schema/$db_install_file ]] && mv db/$schema/$db_install_file* ${target_finalize_path} | write_log ${target_move}
-
   done
 
   # write Info to markdown-table
