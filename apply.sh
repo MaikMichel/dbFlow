@@ -226,7 +226,6 @@ function check_params() {
 
   # Defing some vars
   app_install_file=apex_files_${version}.lst
-  rest_install_file=rest_${mode}_${version}.sql
   remove_old_files=remove_files_${version}.lst
 
   install_target_path=.
@@ -749,7 +748,7 @@ install_apps() {
           manage_result "failure"
         fi
 
-        cd ../..
+        cd ${basepath}
       fi
     done < "$app_install_file"
   else
@@ -766,35 +765,50 @@ install_apps() {
 install_rest() {
   cd ${basepath}
 
+  rest_install_file=rest_${mode}_${version}.sql
+
   if [[ -d rest ]]; then
-    cd rest
 
-    # exists rest_install_file
-    if [ -e $rest_install_file ]
-    then
-      echo "Installing REST-Services ..." | write_log
-      $SQLCLI -s "$(get_connect_string $APP_SCHEMA)" <<! | tee -a ${full_log_file}
+    depth=0
+    if [[ ${FLEX_MODE} == TRUE ]]; then
+      depth=1
+    fi
 
-      define VERSION="${version}"
-      define MODE="${mode}"
+    for d in $(find rest -maxdepth ${depth} -mindepth ${depth} -type d)
+    do
+      cd ${d}
 
-      set define '^'
-      set concat on
-      set concat .
-      set verify off
+      if [[ -f ${rest_install_file} ]]; then
 
-      Prompt calling file ${rest_install_file}
-      @@${rest_install_file}
+        local appschema=${APP_SCHEMA}
+        if [[ ${FLEX_MODE} == TRUE ]]; then
+          appschema=$(basename ${d})
+        fi
+
+        echo "Installing REST-Services ${d}${rest_install_file} on Schema $appschema" | write_log
+        $SQLCLI -s "$(get_connect_string $appschema)" <<! | tee -a ${full_log_file}
+
+        define VERSION="${version}"
+        define MODE="${mode}"
+
+        set define '^'
+        set concat on
+        set concat .
+        set verify off
+
+        Prompt calling file ${instfile}
+        @@${rest_install_file}
 !
 
-      if [ $? -ne 0 ]
-      then
-        echo "ERROR when executing $line" | write_log $failure
-        exit 1
+        if [ $? -ne 0 ]
+        then
+          echo "ERROR when executing $line" | write_log $failure
+          exit 1
+        fi
       fi
-    else
-      echo "File $rest_install_file does not exist" | write_log $warning
-    fi
+
+      cd ${basepath}
+    done
 
   else
     echo "Directory rest does not exist" | write_log
