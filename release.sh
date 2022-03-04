@@ -101,13 +101,21 @@ build_release() {
   # switch to source branch
   log "change to Branch: $RLS_SOURCE_BRANCH"
   git checkout $RLS_SOURCE_BRANCH
-  git pull
+  { #try
+    pulled=$(git pull)
+  } || { # catch
+    pulled="no"
+  }
   log "Head is $(git rev-parse --short HEAD)"
 
   # switch to target branch
   log "change to Branch: $RLS_TARGET_BRANCH"
   git checkout $RLS_TARGET_BRANCH
-  git pull
+  { #try
+    pulled=$(git pull)
+  } || { # catch
+    pulled="no"
+  }
   log "Head is $(git rev-parse --short HEAD)"
 
   if [[ ${RLS_BUILD} == 'Y' ]]; then
