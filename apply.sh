@@ -298,13 +298,18 @@ extract_patchfile()
 
 prepare_redo(){
   if [[ -f ${oldlogfile} ]]; then
+    echo "parsing redolog ${oldlogfile}" | write_log
+
+    this_os=$(uname)
+
     redo_file="redo_${MDATE}_${mode}_${version}.log"
     grep '^<<< ' ${oldlogfile} > ${redo_file}
     sed -i 's/^<<< //' ${redo_file}
 
     # backup install files
-    for schema in "${SCHEMAS[@]}"
+    for schema in "${DBFOLDERS[@]}"
     do
+
       db_install_file=./db/$schema/${mode}_${schema}_${version}.sql
       if [[ -f $db_install_file ]]; then
         mv ${db_install_file} ${db_install_file}.org
@@ -313,11 +318,11 @@ prepare_redo(){
 
     declare -A map
     while IFS= read -r line; do
-      echo "fetch $line"
+      echo " ... Skipping line $line" | write_log
       map[$line]=$line
     done < ${redo_file}
 
-    for schema in "${SCHEMAS[@]}"
+    for schema in "${DBFOLDERS[@]}"
     do
       old_install_file=./db/$schema/${mode}_${schema}_${version}.sql.org
       db_install_file=./db/$schema/${mode}_${schema}_${version}.sql
@@ -325,9 +330,15 @@ prepare_redo(){
       while IFS= read -r line; do
         key=${line/@@/db/$schema/}
 
-        # on macos double bracket lead to failure
-        if [ -v map[${key}] ]; then
-            line="Prompt skipped redo: $line"
+        if [[ ${this_os} == "Darwin" ]]; then
+          # on macos double bracket lead to failure, for now I can't fix that cause I need assoziative array
+          if [ -v map[${key}] ]; then
+              line="Prompt skipped redo: $line"
+          fi
+        else
+          if [[ -v map[${key}] ]]; then
+              line="Prompt skipped redo: $line"
+          fi
         fi
         echo "$line"
       done < ${old_install_file} > ${db_install_file}
@@ -785,7 +796,7 @@ install_rest() {
           appschema=$(basename ${d})
         fi
 
-        echo "Installing REST-Services ${d}${rest_install_file} on Schema $appschema" | write_log
+        echo "Installing REST-Services ${d}/${rest_install_file} on Schema $appschema" | write_log
         $SQLCLI -s "$(get_connect_string $appschema)" <<! | tee -a ${full_log_file}
 
         define VERSION="${version}"
@@ -798,7 +809,9 @@ install_rest() {
 
         Prompt calling file ${instfile}
         @@${rest_install_file}
+
 !
+
 
         if [ $? -ne 0 ]
         then
@@ -861,6 +874,7 @@ manage_result()
 
   # move apex lst
   [[ -f apex_files_${version}.lst ]] && mv apex_files_${version}.lst ${target_finalize_path}
+  [[ -f remove_files_${version}.lst ]] && mv remove_files_${version}.lst ${target_finalize_path}
 
   # move rest files
   depth=1
@@ -884,16 +898,25 @@ manage_result()
   deployed_at=`date +"%Y-%m-%d %T"`
   deployed_by=$(whoami)
 
-  version=`printf '%-10s' "V${version}"`
+  versionmd=`printf '%-10s' "V${version}"`
   deployed_at=`printf '%-19s' "$deployed_at"`
   deployed_by=`printf '%-11s' "$deployed_by"`
   result=`printf '%-11s' "$target_move"`
 
-  echo "| $version | $deployed_at | $deployed_by |  $result " >> ${basepath}/version.md
+  echo "| $versionmd | $deployed_at | $deployed_by |  $result " >> ${basepath}/version.md
 
   if [[ $target_move == "success" ]]; then
     exit 0
   else
+    redolog=$(basename ${full_log_file})
+    # failure
+    echo_warning "You can either copy the broken patch into the current directory with: "
+    echo -e "${BWHITE}cp ${target_finalize_path}/${mode}_${version}.tar.gz .${NC}"
+    echo_warning "And restart the patch after the respective problem has been fixed"
+    echo_warning "Or create a new fixed release and restart the patch. In both cases "
+    echo_warning "by specifying the log file ${full_log_file}"
+    echo_warning "as redolog parameter. This will not repeat the steps that have already been successfully executed"
+    echo -e "${BWHITE}$0 --${mode} --version ${version} --redolog ${target_finalize_path}/${redolog}${NC}"
     exit 1
   fi
 }
