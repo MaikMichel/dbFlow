@@ -555,7 +555,7 @@ function write_install_schemas(){
         echo "set timing on" >> "$target_install_file"
         echo "set trim off" >> "$target_install_file"
         echo "set linesize 2000" >> "$target_install_file"
-        echo "set sqlblanklines on" >> "$target_install_file"
+        echo "set sqlblanklines on" >> "$target_install_file"
         echo "set tab off" >> "$target_install_file"
         echo "set pagesize 9999" >> "$target_install_file"
         echo "set trimspool off" >> "$target_install_file"
