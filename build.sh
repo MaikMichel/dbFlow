@@ -340,12 +340,13 @@ function copy_all_files() {
 
 function copy_files {
   echo " ==== Checking Files and Folders ====" | write_log
+  [[ ! -d ${targetpath} ]] || rm -rf ${targetpath}
   echo " " | write_log
   # getting updated files, and
   # copy (and overwrite forcefully) in exact directory structure as in git repo
   if [[ "${mode}" == "init" ]]; then
     echo "Creating directory $targetpath" | write_log
-    mkdir -p $targetpath
+    mkdir -p ${targetpath}
 
     copy_all_files
   else
@@ -420,6 +421,56 @@ function copy_files {
         done
       fi
     done
+
+    # additionaly we need all condtions beloning to REST
+    if [[ -d "$targetpath"/rest ]]; then
+      folders=()
+      if [[ ${FLEX_MODE} == TRUE ]]; then
+        for d in $(find $targetpath/rest -maxdepth 1 -mindepth 1 -type d | sort -f)
+        do
+          folders+=( $(basename $d) )
+        done
+      else
+        folders=( . )
+      fi
+
+
+      for fldr in "${folders[@]}"
+      do
+        path=modules
+
+        if [[ -d "$targetpath"/rest/$fldr/$path ]]; then
+          depth=1
+          if [[ $path == "modules" ]]; then
+            depth=2
+          fi
+
+          for file in $(find "$targetpath"/rest/$fldr/$path/ -maxdepth $depth -mindepth $depth -type f | sort )
+          do
+
+            base=$targetpath/rest/$fldr/
+            part=${file#$base}
+
+            if [[ "${part}" == *".sql" ]] && [[ "${part}" != *".condition.sql" ]]; then
+              srcf=${sourcepath}/rest/$fldr/$part
+
+              if [[ -f ${srcf/.sql/.condition.sql} ]]; then
+
+                # yes, so copy it...
+                if [[ $(uname) == "Darwin" ]]; then
+                  rsync -R ${srcf/.sql/.condition.sql} $targetpath
+                else
+                  cp --parents -Rf ${srcf/.sql/.condition.sql} $targetpath
+                fi
+              fi
+
+            fi
+          done
+        fi
+      done
+
+    fi
+
 
     ## and we need all hooks
     for schema in "${SCHEMAS[@]}"
