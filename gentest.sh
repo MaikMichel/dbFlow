@@ -1,14 +1,15 @@
 #!/bin/bash
 # echo "Your script args ($#) are: $@"
 
+depth=$1
 
-for d in $(find apex -maxdepth 3 -mindepth 3 -type d)
+for d in $(find apex -maxdepth ${depth} -mindepth ${depth} -type d)
 do
   #Do something, the directory is accessible with $d:
   echo "Prompt EXECUTING: $d/install.sql" > $d/install.sql
 done
 
-for d in $(find rest -maxdepth 3 -mindepth 3 -type d)
+for d in $(find rest -maxdepth ${depth} -mindepth ${depth} -type d)
 do
   #Do something, the directory is accessible with $d:
   echo "Prompt EXECUTING: $d/install.sql" > $d/install.sql
