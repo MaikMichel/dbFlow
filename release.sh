@@ -69,11 +69,12 @@ usage() {
   echo -e "  -v | --version <label>  - Required label of version this artifact represents (optional when buildflag is submitted)"
   echo ""
   echo -e "  -b | --build            - Optional buildflag to create 3 artifact for using as nighlybuilds"
+  echo -e "  -k | --keep             - Optional flag to keep folders in depot path (will be passed to build.sh)"
   echo ""
   echo -e "${BWHITE}Examples:${NC}"
   echo -e "  $0 --target release --version 1.2.3"
   echo -e "  $0 --source release --target test --version 1.2.3"
-  echo -e "  $0 --source develop --target build -b"
+  echo -e "  $0 --source develop --target master -b"
   exit 1
 }
 
@@ -131,7 +132,7 @@ build_release() {
 
     # build initial patch
     log "building initial install $version_previous (previous version)"
-    .dbFlow/build.sh -i -v $version_previous
+    .dbFlow/build.sh -i -v $version_previous $keep
     apply_tasks+=( ".dbFlow/apply.sh -i -v $version_previous" )
   fi
 
@@ -143,14 +144,14 @@ build_release() {
 
     # build diff patch
     log "build patch upgrade $version_next (current version)"
-    .dbFlow/build.sh -p -v $version_next
+    .dbFlow/build.sh -p -v $version_next $keep
     apply_tasks+=( ".dbFlow/apply.sh -p -v $version_next" )
 
     # when buildtest then test new initial patch
     if [[ ${RLS_BUILD} == 'Y' ]]; then
       # und den initial Build des aktuellen Stand
       log "building initial install $version_next (current version)"
-      .dbFlow/build.sh -i -v $version_next
+      .dbFlow/build.sh -i -v $version_next $keep
       apply_tasks+=( ".dbFlow/apply.sh -i -v $version_next" )
     fi
   fi
@@ -183,8 +184,8 @@ function check_params() {
       exit 1
   fi
 
-  OPTIONS=dhv:s:t:b
-  LONGOPTS=debug,help,version:,source:,target:,build
+  OPTIONS=dhv:s:t:bk
+  LONGOPTS=debug,help,version:,source:,target:,build,keep
 
   # -regarding ! and PIPESTATUS see above
   # -temporarily store output to be able to check for errors
@@ -228,6 +229,10 @@ function check_params() {
               ;;
           -b|--build)
               build=y
+              shift
+              ;;
+          -k|--keep)
+              keep="-k"
               shift
               ;;
           --)
