@@ -77,13 +77,14 @@ show_generate_summary() {
   echo -e "Your project ${YELLOW}$1${NC} has just been created ${GREEN}successfully${NC}."
   echo -e "APEX applications are stored in the ${CYAN}apex${NC} directory. "
   echo -e "If you use REST servies, you can store them in the ${CYAN}rest${NC} directory. "
-  echo -e "Both can be exported to VSCode with our VSCode Exctension (dbFlow-vsce)"
+  echo -e "Both APEX Apps and REST Moduls can be exported by VSCode with our VSCode Exctension"
+  echo -e " dbFlux - ${BWHITE}https://marketplace.visualstudio.com/items?itemName=MaikMichel.dbflow${NC}"
   echo -e
-  echo -e "The ${CYAN}db${NC} directory contains all your database objects, whereas the ${CYAN}_setup${NC} folder contains "
+  echo -e "The ${CYAN}db${NC} directory contains all your database objects, whereas the ${CYAN}db/_setup${NC} folder contains "
   echo -e "objects / dependencies whose installation requires ${PURPLE}sys${NC} permissions."
-  echo -e "So before you start installing the components, you can edit or add them in the respective directories. "
+  echo -e "So before you start installing the components, you can edit or add them in the corresponding folders. "
   echo -e "Features are stored in the directory with the same name. "
-  echo -e "At the beginning these are logger, utPlsql, teplsql and tapi."
+  echo -e "At the beginning these are logger, utPlsql, teplsql and tapi. (When accepted during initial setup)"
   echo -e "You can also find more information in the readme: ${BYELLOW}.dbFlow/readme.md${NC}"
 
 }
@@ -278,6 +279,14 @@ generate() {
   echo "" >> .gitignore
   echo "# vscode configuration" >> .gitignore
   echo ".vscode" >> .gitignore
+
+  if [[ $depot_path != ".."* ]]; then
+    echo "" >> .gitignore
+    echo "# depot inside wording dir" >> .gitignore
+    echo $depot_path >> .gitignore
+  fi
+
+
 
 
 
