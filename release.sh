@@ -165,6 +165,8 @@ build_release() {
     log "${GREEN}${task}${NC}"
   done
 
+  git checkout ${starting_branch}
+
 
 }
 
