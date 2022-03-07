@@ -865,7 +865,9 @@ manage_result()
   echo "Done with ${target_move}" | write_log ${target_move}
 
   # remove colorcodes from file
+  echo "Processing logs"
   cat ${full_log_file} | sed -r "s/\x1B\[([0-9]{1,3}((;[0-9]{1,3})*)?)?[m|K]//g" > ${full_log_file}.colorless
+  cat ${full_log_file} | .dbFlow/lib/ansi2html.sh --bg=dark > ${full_log_file}.html
   rm ${full_log_file}
   mv ${full_log_file}.colorless ${full_log_file}
 
@@ -905,10 +907,14 @@ manage_result()
 
   echo "| $versionmd | $deployed_at | $deployed_by |  $result " >> ${basepath}/version.md
 
+  htmllog=$(basename ${full_log_file}.html)
+
   if [[ $target_move == "success" ]]; then
+    echo "view output: $DEPOT_PATH/$STAGE/$target_move/$version/${htmllog}"
     exit 0
   else
     redolog=$(basename ${full_log_file})
+
     # failure
     echo_warning "You can either copy the broken patch into the current directory with: "
     echo -e "${BWHITE}cp ${target_finalize_path}/${mode}_${version}.tar.gz .${NC}"
@@ -917,6 +923,7 @@ manage_result()
     echo_warning "by specifying the log file ${full_log_file}"
     echo_warning "as redolog parameter. This will not repeat the steps that have already been successfully executed"
     echo -e "${BWHITE}$0 --${mode} --version ${version} --redolog ${target_finalize_path}/${redolog}${NC}"
+    echo "view output: $DEPOT_PATH/$STAGE/$target_move/$version/${htmllog}"
     exit 1
   fi
 }
