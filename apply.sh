@@ -867,7 +867,7 @@ manage_result()
   # remove colorcodes from file
   echo "Processing logs"
   cat ${full_log_file} | sed -r "s/\x1B\[([0-9]{1,3}((;[0-9]{1,3})*)?)?[m|K]//g" > ${full_log_file}.colorless
-  cat ${full_log_file} | .dbFlow/lib/ansi2html.sh --bg=dark > ${full_log_file}.html
+  cat ${full_log_file} | .dbFlow/ansi2html.sh --bg=dark > ${full_log_file}.html
   rm ${full_log_file}
   mv ${full_log_file}.colorless ${full_log_file}
 
