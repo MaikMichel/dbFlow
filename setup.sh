@@ -172,7 +172,7 @@ install() {
 generate() {
   local project_name=$1
 
-  read -p "Would you like to have a single or multi scheme app (S/M) [M]: " db_scheme_type
+  read -p "Would you like to have a single, multi or flex scheme app (S/M/F) [M]: " db_scheme_type
   db_scheme_type=${db_scheme_type:-"M"}
 
   # create directories
@@ -182,6 +182,8 @@ generate() {
     mkdir -p db/{.hooks/{pre,post},${project_name}_app/{.hooks/{pre,post},sequences,tables/tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,tests/packages,ddl/{init,patch/{pre,post}},dml/{base,init,patch/{pre,post}}}}
   elif [[ $(toLowerCase $db_scheme_type) == "s" ]]; then
     mkdir -p db/{.hooks/{pre,post},${project_name}/{.hooks/{pre,post},sequences,tables/tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,tests/packages,ddl/{init,patch/{pre,post}},dml/{base,init,patch/{pre,post}}}}
+  elif [[ $(toLowerCase $db_scheme_type) == "f" ]]; then
+     mkdir -p db/{.hooks/{pre,post}}
   else
     echo_error "unknown type ${db_scheme_type}"
     exit 1
@@ -192,21 +194,30 @@ generate() {
   echo "# project name" > build.env
   echo "PROJECT=${project_name}" >> build.env
   echo "" >> build.env
-  echo "# what are the schema-names" >> build.env
   if [[ $(toLowerCase $db_scheme_type) == "m" ]]; then
+    echo "# In MultiSchema Mode, we have a classic 3 Tier model" >> build.env
     echo "APP_SCHEMA=${project_name}_app" >> build.env
     echo "DATA_SCHEMA=${project_name}_data" >> build.env
     echo "LOGIC_SCHEMA=${project_name}_logic" >> build.env
-  else
+  elif [[ $(toLowerCase $db_scheme_type) == "s" ]]; then
+    echo "# In SingleSchema Mode, we have a only one" >> build.env
+    echo "# what are the schema-names" >> build.env
     echo "APP_SCHEMA=${project_name}" >> build.env
     echo "DATA_SCHEMA=${project_name}" >> build.env
     echo "LOGIC_SCHEMA=${project_name}" >> build.env
+  elif [[ $(toLowerCase $db_scheme_type) == "f" ]]; then
+    echo "# In FlexSchema Mode, you have to create the schemas by your own" >> build.env
+    echo "# and don't forget to grant connect through proxy_user " >> build.env
+    echo "FLEX_MODE=TRUE" >> build.env
   fi
   echo "" >> build.env
-  echo "" >> build.env
-  echo "# workspace app belongs to" >> build.env
-  echo "WORKSPACE=${project_name}" >> build.env
-  echo "" >> build.env
+
+  if [[ $(toLowerCase $db_scheme_type) != "f" ]]; then
+    echo "" >> build.env
+    echo "# workspace app belongs to" >> build.env
+    echo "WORKSPACE=${project_name}" >> build.env
+    echo "" >> build.env
+  fi
 
   # ask for some vars to put into file
   read -p "Enter database connections [localhost:1521/xepdb1]: " db_tns
@@ -274,7 +285,11 @@ generate() {
 
   echo "" >> .gitignore
   echo "# static files" >> .gitignore
-  echo "static/f*/dist" >> .gitignore
+  if [[ $(toLowerCase $db_scheme_type) == "f" ]]; then
+    echo "static/**/f*/dist" >> .gitignore
+  else
+    echo "static/f*/dist" >> .gitignore
+  fi
 
   echo "" >> .gitignore
   echo "# vscode configuration" >> .gitignore
@@ -287,12 +302,8 @@ generate() {
   fi
 
 
-
-
-
-
   # create targetpath directory
-  mkdir -p ${targetpath}/{tablespaces,directories,users,features,workspaces,workspace_users,acls}
+  mkdir -p ${targetpath}/{tablespaces,directories,users,features,workspaces,acls}
   mkdir -p ${depot_path}
 
   # copy some examples into it
