@@ -18,6 +18,7 @@ BLACK="\033[0;30m"        # Black
 RED="\033[0;31m"          # Red
 REDB="\033[1;41m"         # BoldRedBack
 GREEN="\033[0;32m"        # Green
+BGREEN="\033[1;32m"        # Green
 YELLOW="\033[0;33m"       # Yellow
 BLUE="\033[0;34m"         # Blue
 PURPLE="\033[0;35m"       # Purple
@@ -179,16 +180,16 @@ write_log() {
 }
 
 function check_admin_connection() {
-  sql_output=`${SQLCLI} -S "${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION}" <<EOF
+  sql_output=`${SQLCLI} -S "${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION}" <<EOF
   select 'connected as '||user t from dual;
   exit
 EOF
 ` || true
 
   if [[ $sql_output == *"connected as"* ]]; then
-    echo_success "Connection as ${DB_ADMINUSER} is working"
+    echo_success "Connection as ${DB_ADMIN_USER} is working"
   else
-    echo_fatal "Error to connect as ${DB_ADMINUSER}"
+    echo_fatal "Error to connect as ${DB_ADMIN_USER}"
     echo_error "${sql_output}"
     exit 2
   fi
@@ -245,12 +246,14 @@ DBFOLDERS=()
 DBSCHEMAS=()
 
 {
-  for d in $(find db -maxdepth 1 -mindepth 1 -type d | sort -f)
-  do
-    folder=$(basename $d)
-    if [[ ${folder} != "_setup" ]] && [[ ${folder} != ".hooks" ]]; then
-      DBFOLDERS+=( ${folder} )
-      DBSCHEMAS+=( $(get_schema_from_folder_name ${folder}) )
-    fi
-  done
+  if [[ -d "db" ]]; then
+    for d in $(find db -maxdepth 1 -mindepth 1 -type d | sort -f)
+    do
+      folder=$(basename $d)
+      if [[ ${folder} != "_setup" ]] && [[ ${folder} != ".hooks" ]]; then
+        DBFOLDERS+=( ${folder} )
+        DBSCHEMAS+=( $(get_schema_from_folder_name ${folder}) )
+      fi
+    done
+  fi
 }

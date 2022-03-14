@@ -12,7 +12,7 @@ echo " ==   Installing OraMUC/table-api-generator"
 echo " ============================================================================="
 echo
 yes=${1:-"NO"}
-DB_PASSWORD=${2:-$DB_PASSWORD}
+DB_ADMIN_PWD=${2:-$DB_ADMIN_PWD}
 
 tapi_schema="tapi"
 tapi_pass=$(base64 < /dev/urandom | tr -d 'O0Il1+/' | head -c 20; printf '\n')
@@ -26,24 +26,24 @@ rm ${tag_name}.zip
 
 cd tapi-${tag_name}/table-api-generator-${tag_name/v/} # remove v from tag-name
 
-if [[ -z "$DB_ADMINUSER" ]]; then
-  read -p "Enter username of admin user (admin, sys, ...) [sys]: " DB_ADMINUSER
-  DB_ADMINUSER=${DB_ADMINUSER:-"sys"}
+if [[ -z "$DB_ADMIN_USER" ]]; then
+  read -p "Enter username of admin user (admin, sys, ...) [sys]: " DB_ADMIN_USER
+  DB_ADMIN_USER=${DB_ADMIN_USER:-"sys"}
 fi
 
-if [[ $(toLowerCase $DB_ADMINUSER) != "sys" ]]; then
+if [[ $(toLowerCase $DB_ADMIN_USER) != "sys" ]]; then
   DBA_OPTION=""
   tapi_tspace="data" # no users tablespace when using autonomous db
 fi
 
-if [[ -z "$DB_PASSWORD" ]]; then
-  ask4pwd "Enter password für user ${DB_ADMINUSER}: "
-  DB_PASSWORD=${pass}
+if [[ -z "$DB_ADMIN_PWD" ]]; then
+  ask4pwd "Enter password für user ${DB_ADMIN_USER}: "
+  DB_ADMIN_PWD=${pass}
 fi
 
 
 is_tapi_installed () {
-    ${SQLCLI} -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
+    ${SQLCLI} -s ${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION} <<!
     set heading off
     set feedback off
     set pages 0
@@ -67,7 +67,7 @@ then
   fi
 
   if [[ $(toLowerCase $reinstall) == "y" ]]; then
-    ${SQLCLI} -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
+    ${SQLCLI} -s ${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION} <<!
   Prompt ${tapi_schema} droppen
   drop user ${tapi_schema} cascade;
 !
@@ -78,7 +78,7 @@ then
   fi
 fi
 
-${SQLCLI} -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
+${SQLCLI} -s ${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION} <<!
 Prompt create user: ${tapi_schema}
 create user ${tapi_schema} identified by "${tapi_pass}" default tablespace ${tapi_tspace} temporary tablespace temp
 /
@@ -102,7 +102,7 @@ grant execute on om_tapigen to public;
 grant execute on om_tapigen_oddgen_wrapper to public;
 
 Promp lock user: ${tapi_schema}
-conn ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION}
+conn ${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION}
 alter user ${tapi_schema} account lock;
 
 Promp table-api installen

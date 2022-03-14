@@ -12,7 +12,7 @@ echo " ==   Installing Logger $1"
 echo " ============================================================================="
 echo
 yes=${1:-"NO"}
-DB_PASSWORD=${2:-$DB_PASSWORD}
+DB_ADMIN_PWD=${2:-$DB_ADMIN_PWD}
 
 logger_schema="logger"
 logger_pass=$(base64 < /dev/urandom | tr -d 'O0Il1+/' | head -c 20; printf '\n')
@@ -24,23 +24,23 @@ curl -OL "https://github.com/OraOpenSource/Logger/raw/master/releases/logger_${t
 unzip logger_${tag_name}.zip -d logger
 rm logger_${tag_name}.zip
 
-if [[ -z "$DB_ADMINUSER" ]]; then
-  read -p "Enter username of admin user (admin, sys, ...) [sys]: " DB_ADMINUSER
-  DB_ADMINUSER=${DB_ADMINUSER:-"sys"}
+if [[ -z "$DB_ADMIN_USER" ]]; then
+  read -p "Enter username of admin user (admin, sys, ...) [sys]: " DB_ADMIN_USER
+  DB_ADMIN_USER=${DB_ADMIN_USER:-"sys"}
 fi
 
-if [[ $(toLowerCase $DB_ADMINUSER) != "sys" ]]; then
+if [[ $(toLowerCase $DB_ADMIN_USER) != "sys" ]]; then
   DBA_OPTION=""
   logger_tspace="data" # no users tablespace when using autonomous db
 fi
 
-if [[ -z "$DB_PASSWORD" ]]; then
-  ask4pwd "Enter password für user ${DB_ADMINUSER}: "
-  DB_PASSWORD=${pass}
+if [[ -z "$DB_ADMIN_PWD" ]]; then
+  ask4pwd "Enter password für user ${DB_ADMIN_USER}: "
+  DB_ADMIN_PWD=${pass}
 fi
 
 is_logger_installed () {
-    ${SQLCLI} -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
+    ${SQLCLI} -s ${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION} <<!
     set heading off
     set feedback off
     set pages 0
@@ -63,7 +63,7 @@ then
   fi
 
   if [[ $(toLowerCase $reinstall) == "y" ]]; then
-    ${SQLCLI} -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
+    ${SQLCLI} -s ${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION} <<!
   Prompt ${logger_schema} droppen
   drop user ${logger_schema} cascade;
 !
@@ -73,7 +73,7 @@ then
   fi
 fi
 
-${SQLCLI} -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
+${SQLCLI} -s ${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION} <<!
 Prompt create user: ${logger_schema}
 create user ${logger_schema} identified by "${logger_pass}" default tablespace ${logger_tspace} temporary tablespace temp
 /
@@ -103,7 +103,7 @@ grant select on logger_logs_5_min to public;
 grant select on logger_logs_60_min to public;
 grant select on logger_logs_terse to public;
 Promp lock user: ${logger_schema}
-conn ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION}
+conn ${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION}
 alter user ${logger_schema} account lock;
 !
 

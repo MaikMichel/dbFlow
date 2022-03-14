@@ -1,6 +1,7 @@
 #!/bin/bash
 # echo "Your script args ($#) are: $@"
 
+
 usage() {
   echo -e "${BYELLOW}setup [dbFlow]${NC} - generate project structure and install dependencies. "
 
@@ -30,6 +31,7 @@ usage() {
   echo
   exit 1
 }
+
 # get required functions and vars
 source ./.dbFlow/lib.sh
 
@@ -42,7 +44,7 @@ targetpath="db/_setup"
 basepath=$(pwd)
 
 # array of subdirectories inside $targetpath to scan for executables (sh/sql)
-array=( tablespaces directories users features workspaces workspace_users acls )
+array=( tablespaces directories users features workspaces acls )
 
 notify() {
     [[ $1 = 0 ]] || echo ❌ EXIT $1
@@ -57,14 +59,26 @@ trap 'rc=$?; notify $rc; exit $rc' EXIT
 
 print2envsql() {
   echo define project=${PROJECT} > $targetpath/env.sql
-  echo define app_schema=${APP_SCHEMA} >> $targetpath/env.sql
-  echo define data_schema=${DATA_SCHEMA} >> $targetpath/env.sql
-  echo define logic_schema=${LOGIC_SCHEMA} >> $targetpath/env.sql
-  echo define workspace=${WORKSPACE} >> $targetpath/env.sql
-  echo define db_app_pwd=${DB_APP_PWD} >> $targetpath/env.sql
+
+  if [[ -n ${APP_SCHEMA} ]]; then
+    echo define app_schema=${APP_SCHEMA} >> $targetpath/env.sql
+  fi
+  if [[ -n ${DATA_SCHEMA} ]]; then
+    echo define data_schema=${DATA_SCHEMA} >> $targetpath/env.sql
+  fi
+  if [[ -n ${LOGIC_SCHEMA} ]]; then
+    echo define logic_schema=${LOGIC_SCHEMA} >> $targetpath/env.sql
+  fi
+  if [[ -n ${WORKSPACE} ]]; then
+    echo define workspace=${WORKSPACE} >> $targetpath/env.sql
+  fi
+  if [[ -n ${DB_APP_PWD} ]]; then
+    echo define db_app_pwd=${DB_APP_PWD} >> $targetpath/env.sql
+  fi
+
   echo define db_app_user=${DB_APP_USER} >> $targetpath/env.sql
 
-  if [[ ${DB_ADMINUSER} != "sys" ]]; then
+  if [[ ${DB_ADMIN_USER} != "sys" ]]; then
     echo define deftablespace=data >> $targetpath/env.sql
   else
     echo define deftablespace=users >> $targetpath/env.sql
@@ -72,22 +86,68 @@ print2envsql() {
 }
 
 show_generate_summary() {
-  echo -e
-  echo -e
-  echo -e "Your project ${YELLOW}$1${NC} has just been created ${GREEN}successfully${NC}."
-  echo -e "APEX applications are stored in the ${CYAN}apex${NC} directory. "
-  echo -e "If you use REST servies, you can store them in the ${CYAN}rest${NC} directory. "
-  echo -e "Both APEX Apps and REST Moduls can be exported by VSCode with our VSCode Exctension"
-  echo -e " dbFlux - ${BWHITE}https://marketplace.visualstudio.com/items?itemName=MaikMichel.dbflow${NC}"
-  echo -e
-  echo -e "The ${CYAN}db${NC} directory contains all your database objects, whereas the ${CYAN}db/_setup${NC} folder contains "
-  echo -e "objects / dependencies whose installation requires ${PURPLE}sys${NC} permissions."
-  echo -e "So before you start installing the components, you can edit or add them in the corresponding folders. "
-  echo -e "Features are stored in the directory with the same name. "
-  echo -e "At the beginning these are logger, utPlsql, teplsql and tapi. (When accepted during initial setup)"
-  echo -e "You can also find more information in the readme: ${BYELLOW}.dbFlow/readme.md${NC}"
+  # target environment
+[ ! -f ./build.env ] || source ./build.env
+[ ! -f ./apply.env ] || source ./apply.env
 
+  echo -e
+  echo -e
+  echo -e "${BGREEN}Congratulations${NC}"
+  echo -e "Your project ${BYELLOW}$PROJECT${NC} has been ${GREEN}successfully${NC} created. "
+  echo -e "Scripts have been added inside directory: ${CYAN}db/_setup${NC} that allow you "
+  echo -e "to create the respective schemas, workspaces as well as ACLs and features, as long "
+  echo -e "as you specified them during the configuration. "
+
+  echo
+  echo -e "${BWHITE}${PROJECT} - directory structure${NC}"
+  printf "|-- %-22b %b\n" ${DEPOT_PATH} ">> Path to store your build artifacts"
+  printf "|-- ${CYAN}%-22b${NC} %b\n" ".dbFlow" ">> ${CYAN}dbFlow itself${NC}"
+  printf "|-- %-22b %b\n" ".hooks" ">> Scripts/Tasks to run pre or post deployment"
+  printf "|-- %-22b %b\n" "apex" ">> APEX applications"
+  if [[ -z ${FLEX_MODE} ]] || [[ ${FLEX_MODE} != TRUE ]]; then
+    printf "|   %-22b %b\n" "|-- f123" ">> APEX application 123 for Example"
+  else
+    printf "|   %-22b %b\n" "|-- ${PROJECT}_app" ">> Example DB Schema assigned to workspace"
+    printf "|   %-22b %b\n" "|   |-- ${PROJECT}" ">> Example Workspace assigned to apps"
+    printf "|   %-22b %b\n" "|   |   |-- f123" ">> APEX application 123 for Example"
+  fi
+  printf "|-- %-22b %b\n" "db" ">> All DB Schemas used"
+  printf "|   %-22b %b\n" "|-- _setup" ">> Scripts to create schemas, features, workspaces, ..."
+  printf "|   %-22b %b\n" "|-- .hooks" ">> Scripts/Tasks to run pre or post db schema deployments"
+  if [[ -z ${FLEX_MODE} ]] || [[ ${FLEX_MODE} != TRUE ]]; then
+    if [[ -d db/${PROJECT}_logic ]]; then
+      printf "|   %-22b %b\n" "|-- ${PROJECT}_data" ">> DB Schema responsible for data in MultiMode (3 Tier)"
+      printf "|   %-22b %b\n" "|-- ${PROJECT}_logic" ">> DB Schema responsible for logic in MultiMode (3 Tier)"
+      printf "|   %-22b %b\n" "|-- ${PROJECT}_app" ">> DB Schema responsible for app in MultiMode (3 Tier)"
+    else
+      printf "|   %-22b %b\n" "|-- ${PROJECT}" ">> Main DB Schema mostly used for SingleMode"
+    fi
+  else
+  printf "|   %-22b %b\n" "|-- ${PROJECT}_app" ">> Example DB schema when using FlexMode"
+  fi
+  printf "|-- %-22b %b\n" "reports" ">> Place all your binaries for upload in a seperate folder here"
+  printf "|-- %-22b %b\n" "rest" ">> REST Modules"
+  if [[ -z ${FLEX_MODE} ]] || [[ ${FLEX_MODE} != TRUE ]]; then
+    printf "|   %-22b %b\n" "|-- access" ">> Place all your privileges, roles and clients here (plsql)"
+    printf "|   %-22b %b\n" "|-- modules" ">> The REST modules inside seperate folders"
+  else
+    printf "|   %-22b %b\n" "|-- schema" ">> DB Schema responible for running this RESTservice"
+    printf "|   %-22b %b\n" "|   |-- access" ">> Place all your privileges, roles and clients here (plsql)"
+    printf "|   %-22b %b\n" "|   |-- module" ">> The REST modules inside seperate folders"
+  fi
+  printf "|-- %-22b %b\n" "static" ">> StaticFiles used to uploads go here (managed by dbFlux)"
+  printf "%-26b %b\n" "apply.env" ">> Environment configuration added to .gitignore"
+  printf "%-26b %b\n" "build.env" ">> Project configuration"
+  echo
+  echo -e "To execute the installation just run: ${CYAN}.dbFlow/setup.sh install${NC}"
+  echo
+  echo -e "For your daily work I recommend the use of the extension: "
+  echo -e "${BWHITE}dbFlux - https://marketplace.visualstudio.com/items?itemName=MaikMichel.dbflow${NC}"
+  echo -e "For more information refer to readme: ${CYAN}.dbFlow/readme.md${NC}"
+  echo
+  echo
 }
+
 
 remove2envsql() {
   rm -f ${basepath}/${targetpath}/env.sql
@@ -100,18 +160,18 @@ install() {
     echo_warning "Force option detected!"
   fi
 
-  if [[ -z "$DB_ADMINUSER" ]]; then
-    read -p "Enter username of admin user (admin, sys, ...) [sys]: " DB_ADMINUSER
-    DB_ADMINUSER=${DB_ADMINUSER:-"sys"}
+  if [[ -z "$DB_ADMIN_USER" ]]; then
+    read -p "Enter username of admin user (admin, sys, ...) [sys]: " DB_ADMIN_USER
+    DB_ADMIN_USER=${DB_ADMIN_USER:-"sys"}
   fi
 
-  if [[ $(toLowerCase $DB_ADMINUSER) != "sys" ]]; then
+  if [[ $(toLowerCase $DB_ADMIN_USER) != "sys" ]]; then
    DBA_OPTION=""
   fi
 
-  if [[ -z "$DB_PASSWORD" ]]; then
-    ask4pwd "Enter password für user ${DB_ADMINUSER}: "
-    DB_PASSWORD=${pass}
+  if [[ -z "$DB_ADMIN_PWD" ]]; then
+    ask4pwd "Enter password für user ${DB_ADMIN_USER}: "
+    DB_ADMIN_PWD=${pass}
   fi
 
   if [[ -z "$DB_APP_PWD" ]]; then
@@ -135,29 +195,57 @@ install() {
   # check every path in given order
   for path in "${array[@]}"
   do
-    if [[ -d "$targetpath"/$path ]]
-    then
+    level1_dir=$targetpath/$path
+    if [[ -d "${level1_dir}" ]]; then
       echo "Installing $path"
-      for file in $(ls "$targetpath"/$path | sort )
+      for file in $(ls "${level1_dir}" | sort )
       do
-        if [[ -f "$targetpath"/$path/${file} ]]; then
+        if [[ -f "${level1_dir}"/${file} ]]; then
           BASEFL=$(basename -- "${file}")
           EXTENSION="${BASEFL##*.}"
 
           if [[ $EXTENSION == "sql" ]]; then
-            cd $targetpath/$path
-            echo "Calling $targetpath/$path/${file}"
-            exit | ${SQLCLI} -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} @${file}
+            cd ${level1_dir}
+            echo "Calling ${level1_dir}/${file}"
+            exit | ${SQLCLI} -s ${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION} @${file}
             cd ../../..
           elif [[ $EXTENSION == "sh" ]]; then
-            cd $targetpath/$path
-            echo "Executing $targetpath/$path/${file}"
-            ./${file} ${yes} ${DB_PASSWORD}
+            cd ${level1_dir}
+            echo "Executing ${level1_dir}/${file}"
+            ./${file} ${yes} ${DB_ADMIN_PWD}
             cd ../../..
           fi
-        fi
-      done #file
 
+        elif [[ -d "${level1_dir}"/${file} ]]; then
+
+          level2_dir=${level1_dir}/${file}
+
+          echo "Installing $file"
+          for file2 in $(ls "${level2_dir}" | sort )
+          do
+            if [[ -f "${level2_dir}"/${file2} ]]; then
+              BASEFL=$(basename -- "${file2}")
+              EXTENSION="${BASEFL##*.}"
+
+              if [[ $EXTENSION == "sql" ]]; then
+                cd ${level2_dir}
+                echo "Calling ${level2_dir}/${file2}"
+                exit | ${SQLCLI} -s ${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION} @${file2}
+                cd ../../../..
+              elif [[ $EXTENSION == "sh" ]]; then
+                cd ${level2_dir}
+                echo "Executing ${level2_dir}/${file2}"
+                ./${file2} ${yes} ${DB_ADMIN_PWD}
+                cd ../../../..
+              fi
+            fi
+
+          done #file
+
+
+        fi
+
+      done #file
     fi
   done #path
 
@@ -170,6 +258,15 @@ install() {
 } # install
 
 generate() {
+  rm -rf .hooks
+  rm -rf apex
+  rm -rf db
+  rm -rf rest
+  rm -rf reports
+  rm -rf static
+  rm -f apply.env
+  rm -f build.env
+
   local project_name=$1
 
   read -p "Would you like to have a single, multi or flex scheme app (S/M/F) [M]: " db_scheme_type
@@ -183,7 +280,7 @@ generate() {
   elif [[ $(toLowerCase $db_scheme_type) == "s" ]]; then
     mkdir -p db/{.hooks/{pre,post},${project_name}/{.hooks/{pre,post},sequences,tables/tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,tests/packages,ddl/{init,patch/{pre,post}},dml/{base,init,patch/{pre,post}}}}
   elif [[ $(toLowerCase $db_scheme_type) == "f" ]]; then
-     mkdir -p db/{.hooks/{pre,post}}
+    mkdir -p db/{.hooks/{pre,post},${project_name}_app/{.hooks/{pre,post},sequences,tables/tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,tests/packages,ddl/{init,patch/{pre,post}},dml/{base,init,patch/{pre,post}}}}
   else
     echo_error "unknown type ${db_scheme_type}"
     exit 1
@@ -203,8 +300,6 @@ generate() {
     echo "# In SingleSchema Mode, we have a only one" >> build.env
     echo "# what are the schema-names" >> build.env
     echo "APP_SCHEMA=${project_name}" >> build.env
-    echo "DATA_SCHEMA=${project_name}" >> build.env
-    echo "LOGIC_SCHEMA=${project_name}" >> build.env
   elif [[ $(toLowerCase $db_scheme_type) == "f" ]]; then
     echo "# In FlexSchema Mode, you have to create the schemas by your own" >> build.env
     echo "# and don't forget to grant connect through proxy_user " >> build.env
@@ -223,13 +318,13 @@ generate() {
   read -p "Enter database connections [localhost:1521/xepdb1]: " db_tns
   db_tns=${db_tns:-"localhost:1521/xepdb1"}
 
-  read -p "Enter username of admin user (admin, sys, ...) [sys]: " db_adminuser
-  db_adminuser=${db_adminuser:-"sys"}
+  read -p "Enter username of admin user (admin, sys, ...) [sys]: " db_admin_user
+  db_admin_user=${db_admin_user:-"sys"}
 
-  ask4pwd "Enter password for ${db_adminuser} [leave blank and you will be asked for]: "
-  db_password=${pass}
+  ask4pwd "Enter password for ${db_admin_user} [leave blank and you will be asked for]: "
+  db_admin_pwd=${pass}
 
-  if [[ $(toLowerCase $db_scheme_type) == "m" ]]; then
+  if [[ $(toLowerCase $db_scheme_type) != "s" ]]; then
     ask4pwd "Enter password for deployment_user (proxyuser: ${project_name}_depl) [leave blank and you will be asked for]: "
   else
     ask4pwd "Enter password for application_user (user: ${project_name}) [leave blank and you will be asked for]: "
@@ -251,7 +346,7 @@ generate() {
   echo "DB_TNS=${db_tns}" >> apply.env
   echo "" >> apply.env
   echo "# Deployment User" >> apply.env
-  if [[ $(toLowerCase $db_scheme_type) == "m" ]]; then
+  if [[ $(toLowerCase $db_scheme_type) != "s" ]]; then
     echo "DB_APP_USER=${project_name}_depl" >> apply.env
   else
     echo "DB_APP_USER=${project_name}" >> apply.env
@@ -259,8 +354,8 @@ generate() {
   echo "DB_APP_PWD=${db_app_pwd}" >> apply.env
   echo "" >> apply.env
   echo "# SYS/ADMIN Pass" >> apply.env
-  echo "DB_ADMINUSER=${db_adminuser}" >> apply.env
-  echo "DB_PASSWORD=${db_password}" >> apply.env
+  echo "DB_ADMIN_USER=${db_admin_user}" >> apply.env
+  echo "DB_ADMIN_PWD=${db_admin_pwd}" >> apply.env
   echo "" >> apply.env
   echo "# Path to Depot" >> apply.env
   echo "DEPOT_PATH=${depot_path}" >> apply.env
@@ -308,8 +403,8 @@ generate() {
 
   # copy some examples into it
   cp -rf .dbFlow/scripts/setup/workspaces/* ${targetpath}/workspaces
-  cp -rf .dbFlow/scripts/setup/workspace_users/* ${targetpath}/workspace_users
   cp -rf .dbFlow/scripts/setup/acls/* ${targetpath}/acls
+  mv ${targetpath}/workspaces/workspace ${targetpath}/workspaces/${project_name}
 
   if [[ $(toLowerCase $with_tools) == "y" ]]; then
     cp -rf .dbFlow/scripts/setup/features/* ${targetpath}/features
@@ -321,52 +416,87 @@ generate() {
 
   # create gen_users..
   if [[ $(toLowerCase $db_scheme_type) == "m" ]]; then
-    cp -rf .dbFlow/scripts/setup/users/01_data.sql ${targetpath}/users/01_${project_name}_data.sql
-    cp -rf .dbFlow/scripts/setup/users/02_logic.sql ${targetpath}/users/02_${project_name}_logic.sql
-    cp -rf .dbFlow/scripts/setup/users/03_app.sql ${targetpath}/users/03_${project_name}_app.sql
-    cp -rf .dbFlow/scripts/setup/users/04_depl.sql ${targetpath}/users/04_${project_name}_depl.sql
-  else
-    cp -rf .dbFlow/scripts/setup/users/03_app.sql ${targetpath}/users/03_${project_name}_app.sql
+    sed "s/\^db_app_user/${project_name}_depl/g" .dbFlow/scripts/setup/users/00_depl.sql > ${targetpath}/users/00_create_${project_name}_depl.sql
+
+    sed "s/\^schema_name/${project_name}_data/g" .dbFlow/scripts/setup/users/01_schema.sql > ${targetpath}/users/01_create_${project_name}_data.sql
+    sed "s/\^schema_name/${project_name}_logic/g" .dbFlow/scripts/setup/users/01_schema.sql > ${targetpath}/users/02_create_${project_name}_logic.sql
+    sed "s/\^schema_name/${project_name}_app/g" .dbFlow/scripts/setup/users/01_schema.sql > ${targetpath}/users/03_create_${project_name}_app.sql
+
+    sed -i "s/\^db_app_user/${project_name}_depl/g" ${targetpath}/users/01_create_${project_name}_data.sql
+    sed -i "s/\^db_app_user/${project_name}_depl/g" ${targetpath}/users/02_create_${project_name}_logic.sql
+    sed -i "s/\^db_app_user/${project_name}_depl/g" ${targetpath}/users/03_create_${project_name}_app.sql
+
+
+  elif [[ $(toLowerCase $db_scheme_type) == "s" ]]; then
+    sed "s/\^db_app_user/${project_name}/g" .dbFlow/scripts/setup/users/00_depl.sql > ${targetpath}/users/00_create_${project_name}.sql
+    sed "s/\^schema_name/${project_name}/g" .dbFlow/scripts/setup/users/02_grants.sql >> ${targetpath}/users/00_create_${project_name}.sql
+  elif [[ $(toLowerCase $db_scheme_type) == "f" ]]; then
+    sed "s/\^db_app_user/${project_name}_depl/g" .dbFlow/scripts/setup/users/00_depl.sql > ${targetpath}/users/00_create_${project_name}_depl.sql
+    sed "s/\^schema_name/${project_name}_app/g" .dbFlow/scripts/setup/users/01_schema.sql > ${targetpath}/users/01_create_${project_name}_app.sql
+    sed -i "s/\^db_app_user/${project_name}_depl/g" ${targetpath}/users/01_create_${project_name}_app.sql
+  fi
+
+
+  mkdir -p {apex,static,rest,reports,.hooks/{pre,post}}
+  if [[ $(toLowerCase $db_scheme_type) == "f" ]]; then
+    mkdir -p apex/${project_name}_app/${project_name}
+    mkdir -p static/${project_name}_app/${project_name}
+    mkdir -p rest/${project_name}_app
   fi
 
 
   # ask for application IDs
   apex_ids=""
-  read -p "Enter application IDs (comma separated) you wish to use initialy (1000,2000): " apex_ids
-
-  # ask for restful Modulsa
-  rest_modules=""
-  read -p "Enter restful Moduls (comma separated) you wish to use initialy (com.${project_name}.api.version,com.${project_name}.api.test): " rest_modules
-
+  read -p "Enter application IDs (comma separated) you wish to use initialy (100,101,...): " apex_ids
 
   # split ids gen directories
   apexids=(`echo $apex_ids | sed 's/,/\n/g'`)
   apexidsquotes="\""${apex_ids/,/"\",\""}"\""
   for apxID in "${apexids[@]}"
   do
+    if [[ $(toLowerCase $db_scheme_type) == "f" ]]; then
+      mkdir -p apex/${project_name}_app/${project_name}/f"$apxID"
+      mkdir -p static/${project_name}_app/${project_name}/f"$apxID"/{dist/{css,img,js},src/{css,img,js}}
+    else
       mkdir -p apex/f"$apxID"
       mkdir -p static/f"$apxID"/{dist/{css,img,js},src/{css,img,js}}
+    fi
   done
+
+  # ask for restful Modulsa
+  rest_modules=""
+  read -p "Enter restful Moduls (comma separated) you wish to use initialy (api,test,...): " rest_modules
 
   # split modules
   restmodules=(`echo $rest_modules | sed 's/,/\n/g'`)
   restmodulesquotes="\""${rest_modules/,/"\",\""}"\""
   for restMOD in "${restmodules[@]}"
   do
+    if [[ $(toLowerCase $db_scheme_type) == "f" ]]; then
+      mkdir -p rest/${project_name}_app/modules/"$restMOD"
+      mkdir -p rest/${project_name}_app/access/{privileges,roles,mapping}
+    else
       mkdir -p rest/modules/"$restMOD"
+      mkdir -p rest/access/{privileges,roles,mapping}
+    fi
   done
-  mkdir -p rest/access/privileges
-  mkdir -p rest/access/roles
-  mkdir -p rest/access/mapping
 
-  mkdir -p reports
-  mkdir -p .hooks/{pre,post}
+  # workspace files
+  sed -i "s/\^workspace/${project_name}/g" ${targetpath}/workspaces/${project_name}/create_00_workspace.sql
+  sed -i "s/\^workspace/${project_name}/g" ${targetpath}/workspaces/${project_name}/create_01_user_wsadmin.sql
+  if [[ $(toLowerCase $db_scheme_type) == "s" ]]; then
+    sed -i "s/\^app_schema/${project_name}/g" ${targetpath}/workspaces/${project_name}/create_00_workspace.sql
+    sed -i "s/\^app_schema/${project_name}/g" ${targetpath}/workspaces/${project_name}/create_01_user_wsadmin.sql
+  else
+    sed -i "s/\^app_schema/${project_name}_app/g" ${targetpath}/workspaces/${project_name}/create_00_workspace.sql
+    sed -i "s/\^app_schema/${project_name}_app/g" ${targetpath}/workspaces/${project_name}/create_01_user_wsadmin.sql
+  fi
 
   show_generate_summary ${project_name}
 } # generate
 
 is_any_schema_installed () {
-    ${SQLCLI} -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
+    ${SQLCLI} -s ${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION} <<!
     set heading off
     set feedback off
     set pages 0
