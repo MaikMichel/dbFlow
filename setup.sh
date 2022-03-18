@@ -375,25 +375,25 @@ generate() {
 
 
   # write gitignore
-  echo "# dbFlow target infos" >> .gitignore
-  echo "apply.env" >> .gitignore
+  write_line_if_not_exists "# dbFlow target infos" .gitignore
+  write_line_if_not_exists "apply.env" .gitignore
 
-  echo "" >> .gitignore
-  echo "# static files" >> .gitignore
+  write_line_if_not_exists "" .gitignore
+  write_line_if_not_exists "# static files" .gitignore
   if [[ $(toLowerCase $db_scheme_type) == "f" ]]; then
-    echo "static/**/f*/dist" >> .gitignore
+    write_line_if_not_exists "static/**/f*/dist" .gitignore
   else
-    echo "static/f*/dist" >> .gitignore
+    write_line_if_not_exists "static/f*/dist" .gitignore
   fi
 
-  echo "" >> .gitignore
-  echo "# vscode configuration" >> .gitignore
-  echo ".vscode" >> .gitignore
+  write_line_if_not_exists "" .gitignore
+  write_line_if_not_exists "# vscode configuration" .gitignore
+  write_line_if_not_exists ".vscode" .gitignore
 
   if [[ $depot_path != ".."* ]]; then
-    echo "" >> .gitignore
-    echo "# depot inside wording dir" >> .gitignore
-    echo $depot_path >> .gitignore
+    write_line_if_not_exists "" .gitignore
+    write_line_if_not_exists "# depot inside wording dir" .gitignore
+    write_line_if_not_exists $depot_path .gitignore
   fi
 
 
