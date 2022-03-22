@@ -254,10 +254,12 @@ print_info()
   fi
   echo -e "----------------------------------------------------------" | write_log
   echo -e "project:      ${BWHITE}${PROJECT}${NC}" | write_log
-  echo -e "app_schema:   ${BWHITE}${APP_SCHEMA}${NC}" | write_log
-  echo -e "data_schema:  ${BWHITE}${DATA_SCHEMA}${NC}" | write_log
-  echo -e "logic_schema: ${BWHITE}${LOGIC_SCHEMA}${NC}" | write_log
-  echo -e "workspace:    ${BWHITE}${WORKSPACE}${NC}" | write_log
+  if [[ ${FLEX_MODE} != TRUE ]]; then
+    echo -e "app_schema:   ${BWHITE}${APP_SCHEMA}${NC}" | write_log
+    echo -e "data_schema:  ${BWHITE}${DATA_SCHEMA}${NC}" | write_log
+    echo -e "logic_schema: ${BWHITE}${LOGIC_SCHEMA}${NC}" | write_log
+    echo -e "workspace:    ${BWHITE}${WORKSPACE}${NC}" | write_log
+  fi
   echo -e "schemas:      ${BWHITE}${SCHEMAS[@]}${NC}" | write_log
   echo -e "----------------------------------------------------------" | write_log
   echo -e "stage:        ${BWHITE}${STAGE}${NC}" | write_log
@@ -831,22 +833,46 @@ install_rest() {
 }
 
 
+# when changelog is found and changelog template is defined then
+# execute template on configured schema apply.env:CHANGELOG_SCHEMA=?
+process_changelog() {
+  chlfile=changelog_${mode}_${version}.md
+  tplfile=reports/changelog/template.sql
+  if [[ -f ${chlfile} ]]; then
+    echo "changelog found" | write_log
 
-exec_final_unit_tests()
-{
-  if [[ -e .dbFlow/lib/execute_tests.sql ]]; then
-  echo "Start testing with utplsql" | write_log
+    if [[ -f ${tplfile} ]]; then
+      echo "templatefile found" | write_log
 
-    # loop through schemas
-    for schema in "${SCHEMAS[@]}"
-    do
-      echo "Executing unit tests for schema $schema " | write_log
-      exit | $SQLCLI -S "$(get_connect_string $schema)" @.dbFlow/lib/execute_tests.sql ${version} ${mode}
-      if [[ $? -ne 0 ]]; then
-        echo "ERROR when executing .dbFlow/lib/execute_tests.sql" | write_log $failure
-        manage_result "failure"
+      if [[ -n ${CHANGELOG_SCHEMA} ]]; then
+        echo "changelog schema is configured" | write_log
+
+        # now gen merged sql file
+        create_merged_report_file ${chlfile} ${tplfile} ${chlfile}.sql
+
+        # and run
+        $SQLCLI -S "$(get_connect_string ${CHANGELOG_SCHEMA})" <<! | tee -a ${full_log_file}
+
+          Prompt executing changelog file ${chlfile}.sql
+          @${chlfile}.sql
+
+!
+
+        if [ $? -ne 0 ]
+        then
+          echo "ERROR when runnin ${chlfile}.sql" | write_log $failure
+          exit 1
+        else
+          rm ${chlfile}.sql
+        fi
+      else
+        echo_warning "changelog schema is NOT configured" | write_log
       fi
-    done
+    else
+      echo "No templatefile found" | write_log
+    fi
+  else
+    echo "No changelog ${chlfile} found" | write_log
   fi
 }
 
@@ -988,6 +1014,9 @@ install_rest
 # execute post hooks in root folder
 execute_global_hook_scripts ".hooks/post"
 execute_global_hook_scripts ".hooks/post/${mode}"
+
+# take care of changelog
+process_changelog
 
 # now enable all,
 set_apps_available

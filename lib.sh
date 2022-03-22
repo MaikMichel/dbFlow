@@ -208,6 +208,7 @@ EOF
   else
     echo_fatal "Error to connect to schema ${1}"
     echo_error "${sql_output}"
+    #echo_error ${CONN_STR}
     exit 2
   fi
 }
@@ -269,3 +270,57 @@ function write_line_if_not_exists () {
     echo $line >> $file
   fi
 }
+
+create_merged_report_file() {
+  local source_file=$1
+  local template_file=$2
+  local output_file=$3
+  local base64_file=${source_file}.base64.txt
+
+  # gen base64 from input
+  base64 -w 1000 ${source_file} > ${base64_file}
+
+  ## write the output sql
+  echo "set serveroutput on" > ${output_file}
+  echo "declare" >> ${output_file}
+  echo "  l_b64         clob;" >> ${output_file}
+  echo "  l_bin         blob;" >> ${output_file}
+  echo "  l_file_name   varchar2(2000) := 'changelog.md';  " >> ${output_file}
+  echo "" >> ${output_file}
+  echo "  gc_red           varchar2(7) := chr(27) || '[31m';" >> ${output_file}
+  echo "  gc_green         varchar2(7) := chr(27) || '[32m';" >> ${output_file}
+  echo "  gc_yellow        varchar2(7) := chr(27) || '[33m';" >> ${output_file}
+  echo "  gc_blue          varchar2(7) := chr(27) || '[34m';" >> ${output_file}
+  echo "  gc_cyan          varchar2(7) := chr(27) || '[36m';" >> ${output_file}
+  echo "  gc_reset         varchar2(7) := chr(27) || '[0m';" >> ${output_file}
+  echo "" >> ${output_file}
+
+  echo "begin" >> ${output_file}
+  echo "  dbms_lob.createtemporary(l_b64, true, dbms_lob.session);" >> ${output_file}
+  echo  >> ${output_file}
+  while IFS= read -r line
+  do
+    echo "  dbms_lob.append(l_b64, '$line');" >> ${output_file}
+  done < "${base64_file}"
+
+  echo >> ${output_file}
+  echo "  l_bin := apex_web_service.clobbase642blob(l_b64);" >> ${output_file}
+  echo >> ${output_file}
+
+  echo "-------------" >> ${output_file}
+  cat ${template_file} >> ${output_file}
+  echo "-------------" >> ${output_file}
+
+  echo "  commit;" >> ${output_file}
+  echo "exception" >> ${output_file}
+  echo "  when others then" >> ${output_file}
+  echo "    dbms_output.put_line(gc_red||sqlerrm || gc_reset);" >> ${output_file}
+  echo "    raise;" >> ${output_file}
+
+  echo "end;" >> ${output_file}
+  echo "/" >> ${output_file}
+  echo >> ${output_file}
+
+  rm ${base64_file}
+}
+

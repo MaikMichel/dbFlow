@@ -815,6 +815,16 @@ function write_install_rest() {
   fi
 }
 
+function write_changelog() {
+  echo "" | write_log
+  current_tag=
+  previous_tag=
+  . .dbFlow/genchlog.sh ${until_commit:-HEAD} "changelog_${mode}_${version}.md"
+
+  echo "ChangeLog generated: ${current_tag} -- ${previous_tag}" | write_log
+}
+
+
 function copy_all_when_defined_on_patch() {
   if [[ ${mode} == "patch" ]] && [[ ${SHIP_ALL} == "TRUE" ]]; then
     copy_all_files
@@ -837,8 +847,11 @@ function manage_artifact () {
 
   # create artifact
   if [[ -d $targetpath ]]; then
-    # pack directoy
+
     mv ${full_log_file} $targetpath/
+    [[ -f changelog_${mode}_${version}.md ]] && mv changelog_${mode}_${version}.md $targetpath/
+
+    # pack directoy
     tar -C $targetpath -czf $targetpath.tar.gz .
 
     if [[ ${KEEP_FOLDER} != "TRUE" ]]; then
@@ -954,6 +967,9 @@ list_files_to_remove
 write_install_schemas
 write_install_apps
 write_install_rest
+
+# changelog
+write_changelog
 
 # if all files should be included
 copy_all_when_defined_on_patch
