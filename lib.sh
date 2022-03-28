@@ -28,7 +28,7 @@ WHITE="\033[0;97m"        # White
 LWHITE="\033[1;30m"       # White
 BYELLOW="\033[1;33m"      # Yellow
 
-
+LIBSOURCED="TRUE"
 
 pass=""
 function ask4pwd() {
@@ -265,7 +265,7 @@ function write_line_if_not_exists () {
   local file=$2
 
   if  grep -q "$line" "$file" ; then
-    echo "$line exists in $file"
+    : # echo "$line exists in $file"
   else
     echo $line >> $file
   fi

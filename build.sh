@@ -819,7 +819,7 @@ function write_changelog() {
   echo "" | write_log
   current_tag=
   previous_tag=
-  . .dbFlow/genchlog.sh ${until_commit:-HEAD} "changelog_${mode}_${version}.md"
+  . .dbFlow/genchlog.sh -e ${until_commit:-HEAD} -f "changelog_${mode}_${version}.md"
 
   echo "ChangeLog generated: ${current_tag} -- ${previous_tag}" | write_log
 }
