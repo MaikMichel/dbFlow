@@ -23,6 +23,7 @@ usage() {
   echo ""
   echo -e "  -a | --shipall          - Optional ship all folders [mode=patch]"
   echo -e "  -k | --keepfolder       - Optional keep buildfolder inside depot"
+  echo -e "  -l | --listfiles        - Optional flag to list files which will be a part of the patch"
   echo ""
   echo -e "${BWHITE}Examples:${NC}"
   echo -e "  $0 --init --version 1.0.0"
@@ -100,8 +101,8 @@ function check_params() {
       exit 1
   fi
 
-  OPTIONS=dhipv:s:e:ka
-  LONGOPTS=debug,help,init,patch,version:,start:,end:,keepfolder,shipall
+  OPTIONS=dhipv:s:e:kal
+  LONGOPTS=debug,help,init,patch,version:,start:,end:,keepfolder,shipall,listfiles
 
   # -regarding ! and PIPESTATUS see above
   # -temporarily store output to be able to check for errors
@@ -117,7 +118,7 @@ function check_params() {
   # read getopt’s output this way to handle the quoting right:
   eval set -- "$PARSED"
 
-  debug="n" help="n" init="n" patch="n" version="-" start=ORIG_HEAD end=HEAD k="n" a="n"
+  debug="n" help="n" init="n" patch="n" version="-" start=ORIG_HEAD end=HEAD k="n" a="n" l="n"
 
   # now enjoy the options in order and nicely split until we see --
   while true; do
@@ -156,6 +157,10 @@ function check_params() {
               ;;
           -a|--shipall)
               a=y
+              shift
+              ;;
+          -l|--listfiles)
+              l=y
               shift
               ;;
           --)
@@ -232,11 +237,18 @@ function check_params() {
     KEEP_FOLDER="FALSE"
   fi
 
-  # now check keep folder
+  # now check ship all files
   if [[ $a == "y" ]]; then
     SHIP_ALL="TRUE"
   elif [[ $p == "y" ]]; then
     SHIP_ALL="FALSE"
+  fi
+
+  if [[ $l == "y" ]] && [[ $p == "y" ]]; then
+    echo -e "${PURPLE}Listing changed files (build.env .gitignore apex db reports rest .hooks)${NC}"
+
+    git --no-pager diff -r --compact-summary --dirstat --stat-width=120 --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB  -- build.env .gitignore apex db reports rest .hooks
+    exit 0
   fi
 }
 
