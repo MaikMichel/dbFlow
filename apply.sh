@@ -876,11 +876,11 @@ process_changelog() {
   fi
 }
 
-manage_result()
-{
+manage_result() {
   cd ${basepath}
 
   local target_move=$1
+  target_relative_path=${DEPOT_PATH}/${STAGE}/${target_move}/${version}
   target_finalize_path=${install_source_path}/${target_move}/${version}
 
   # create path if not exists
@@ -919,7 +919,11 @@ manage_result()
   for schema in "${DBFOLDERS[@]}"
   do
     db_install_file=${mode}_${schema}_${version}.sql
-    [[ -f db/$schema/$db_install_file ]] && mv db/$schema/$db_install_file* ${target_finalize_path} | write_log ${target_move}
+
+    if [[ -f db/$schema/$db_install_file ]]; then
+      [[ -d ${target_finalize_path}/db/$schema ]] || mkdir -p ${target_finalize_path}/db/$schema
+      mv db/$schema/$db_install_file* ${target_finalize_path}/db/$schema
+    fi
   done
 
   # write Info to markdown-table
@@ -942,14 +946,14 @@ manage_result()
     redolog=$(basename ${full_log_file})
 
     # failure
-    echo_warning "You can either copy the broken patch into the current directory with: "
-    echo -e "${BWHITE}cp ${target_finalize_path}/${mode}_${version}.tar.gz .${NC}"
-    echo_warning "And restart the patch after the respective problem has been fixed"
-    echo_warning "Or create a new fixed release and restart the patch. In both cases "
-    echo_warning "by specifying the log file ${full_log_file}"
-    echo_warning "as redolog parameter. This will not repeat the steps that have already been successfully executed"
-    echo -e "${BWHITE}$0 --${mode} --version ${version} --redolog ${target_finalize_path}/${redolog}${NC}"
-    echo "view output: $DEPOT_PATH/$STAGE/$target_move/$version/${htmllog}"
+    echo_debug "You can either copy the broken patch into the current directory with: "
+    echo_debug "${WHITE}cp ${target_relative_path}/${mode}_${version}.tar.gz .${NC}"
+    echo_debug "And restart the patch after the respective problem has been fixed"
+    echo_debug "Or create a new fixed release and restart the deployment of the patch. In both cases you have the"
+    echo_debug "possibility to specifiy the log file ${WHITE}${target_relative_path}/${log_file}${NC} as "
+    echo_debug "redolog parameter. This will not repeat the steps that have already been successfully executed."
+    echo_debug "${WHITE}$0 --${mode} --version ${version} --redolog ${target_relative_path}/${redolog}${NC}"
+    echo_debug "view output: $DEPOT_PATH/$STAGE/$target_move/$version/${htmllog}"
     exit 1
   fi
 }
