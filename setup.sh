@@ -258,16 +258,6 @@ install() {
 } # install
 
 generate() {
-  # ! Das mus noch weg
-  rm -rf .hooks
-  rm -rf apex
-  rm -rf db
-  rm -rf rest
-  rm -rf reports
-  rm -rf static
-  rm -f apply.env
-  rm -f build.env
-
   local project_name=$1
 
   read -p "Would you like to have a single, multi or flex scheme app (S/M/F) [M]: " db_scheme_type
