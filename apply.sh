@@ -1,5 +1,5 @@
 #!/bin/bash
-echo "Your script args ($#) are: $@"
+#echo "Your script args ($#) are: $@"
 
 usage() {
   echo -e "${BYELLOW}.dbFlow/apply.sh${NC} - applies the given build to target database from"
@@ -9,7 +9,7 @@ usage() {
   echo -e "  $0 --init --version <label>"
   echo -e "  $0 --patch --version <label> [--noextract] [--redolog <old-logfile>]"
   echo
-    echo -e "${BYELLOW}Options:${NC}"
+  echo -e "${BYELLOW}Options:${NC}"
   echo -e "  -h | --help             - Show this screen"
   echo -e "  -d | --debug            - Show additionaly output messages"
   echo -e "  -i | --init             - Flag to install a full installable artifact "
@@ -98,6 +98,9 @@ function check_vars() {
     if [[ ${#SCHEMAS[@]} == ${#ALL_SCHEMAS[@]} ]]; then
       SCHEMAS=(${ALL_SCHEMAS[@]})
     fi
+
+    # When in Single or Multi Mode, Folders have to name as Schemas
+    DBFOLDERS=SCHEMAS
   fi
 
 
@@ -192,20 +195,20 @@ function check_params() {
   if [[ -z $i ]] && [[ -z $p ]]; then
     echo_error "Missing apply mode, init or patch using flags -i or -p"
     echo_error "type $0 --help for more informations"
-    exit 1
+    usage
   fi
 
   if [[ $i == "y" ]] && [[ $p == "y" ]]; then
     echo_error "Build mode can only be init or patch, not both"
     echo_error "type $0 --help for more informations"
-    exit 1
+    usage
   fi
 
   # Rule 2: we always need a version
   if [[ -z $version ]] || [[ $version == "-" ]]; then
     echo_error "Missing version, use flag -v x.x.x"
     echo_error "type $0 --help for more informations"
-    exit 1
+    usage
   fi
 
   # now check dependent params
