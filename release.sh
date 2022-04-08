@@ -1,4 +1,5 @@
 #!/bin/bash
+# echo "Your script args ($#) are: $@"
 
 # get required functions and vars
 source ./.dbFlow/lib.sh
@@ -13,7 +14,6 @@ fi
 LOG_LOCATION=$(pwd)
 LOG_FILENAME=release.log
 rm -f $LOG_LOCATION/$LOG_FILENAME
-echo "Log Location should be: [ $LOG_LOCATION/$LOG_FILENAME ]"
 exec > >( tee >( sed 's/\x1B\[[0-9;]*[JKmsu]//g' >> $LOG_LOCATION/$LOG_FILENAME ) )
 
 RLS_BUILDBRANCH=${BUILD_BRANCH:-build}
@@ -271,7 +271,6 @@ function check_params() {
   if [[ -z $target_branch ]] || [[ $target_branch == "-" ]]; then
     echo_error "Missing target branch, use --target <target branchname>"
     usage
-    exit 1
   else
     RLS_TARGET_BRANCH=$target_branch
   fi
@@ -281,7 +280,6 @@ function check_params() {
   if [[ $build == "n" ]] && [[ $version == "-" ]]; then
     echo_error "Missing version, use --verion 1.2.3 or --build $build"
     usage
-    exit 1
   fi
   RLS_VERSION=$version
   RLS_BUILD=${build^^}
