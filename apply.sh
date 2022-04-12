@@ -100,7 +100,7 @@ function check_vars() {
     fi
 
     # When in Single or Multi Mode, Folders have to name as Schemas
-    DBFOLDERS=SCHEMAS
+    DBFOLDERS=(${SCHEMAS[@]})
   fi
 
 
