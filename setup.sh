@@ -324,7 +324,12 @@ generate() {
 
   read -p "Would you like to process changelogs during deployment [Y]: " create_changelogs
   if [[ $(toLowerCase ${create_changelogs:-y}) == "y" ]]; then
-    read -p "What is the schema name the changelog are processed with [${project_name}_app]: " chl_schema
+    if [[ $(toLowerCase $db_scheme_type) != "s" ]]; then
+      read -p "What is the schema name the changelog are processed with [${project_name}_app]: " chl_schema
+    else
+      # when SingleSchema then there is only one possibility
+      chl_schema=${project_name}
+    fi
     echo "CHANGELOG_SCHEMA=${chl_schema:-${project_name}_app}" >> build.env
     echo "INTENT_PREFIXES=( Feat Fix )" >> build.env
     echo "INTENT_NAMES=( Features Fixes )" >> build.env
