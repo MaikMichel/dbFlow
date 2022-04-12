@@ -67,15 +67,15 @@ function check_vars() {
       echo_error "undefined var: APP_SCHEMA"
       do_exit="YES"
     fi
-    if [[ -z ${DATA_SCHEMA:-} ]]; then
-      echo_error "undefined var: DATA_SCHEMA"
-      do_exit="YES"
-    fi
-    if [[ -z ${LOGIC_SCHEMA:-} ]]; then
-      echo_error "undefined var: LOGIC_SCHEMA"
-      do_exit="YES"
-    fi
 
+    if [[ ${FLEX_MODE:FALSE} != TRUE ]]; then
+      if [[ -z ${DATA_SCHEMA:-} ]]; then
+        DATA_SCHEMA=${APP_SCHEMA}
+      fi
+      if [[ -z ${LOGIC_SCHEMA:-} ]]; then
+        LOGIC_SCHEMA=${APP_SCHEMA}
+      fi
+    fi
     if [[ -z ${WORKSPACE:-} ]]; then
       echo_error "undefined var: WORKSPACE"
       do_exit="YES"
