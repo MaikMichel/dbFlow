@@ -411,10 +411,11 @@ generate() {
 
 
   # write gitignore
+  [[ -f .gitignore ]] || touch .gitignore
   write_line_if_not_exists "# dbFlow target infos" .gitignore
   write_line_if_not_exists "apply.env" .gitignore
 
-  write_line_if_not_exists "" .gitignore
+  echo "" >> .gitignore
   write_line_if_not_exists "# static files" .gitignore
   if [[ $(toLowerCase $db_scheme_type) == "f" ]]; then
     write_line_if_not_exists "static/**/f*/dist" .gitignore
@@ -422,26 +423,27 @@ generate() {
     write_line_if_not_exists "static/f*/dist" .gitignore
   fi
 
-  write_line_if_not_exists "" .gitignore
+  echo "" >> .gitignore
   write_line_if_not_exists "# vscode configuration" .gitignore
   write_line_if_not_exists ".vscode" .gitignore
 
   if [[ $depot_path != ".."* ]]; then
-    write_line_if_not_exists "" .gitignore
+    echo "" >> .gitignore
     write_line_if_not_exists "# depot inside wording dir" .gitignore
     write_line_if_not_exists $depot_path .gitignore
   fi
 
 
   # create targetpath directory
-  mkdir -p ${targetpath}/{tablespaces,directories,users,features,workspaces,acls}
+  mkdir -p ${targetpath}/{tablespaces,directories,users,features,workspaces/${project_name},acls}
   mkdir -p ${depot_path}
 
   # copy some examples into it
-
-  cp -rf .dbFlow/scripts/setup/workspaces/* ${targetpath}/workspaces
+  cp -rf .dbFlow/scripts/setup/workspaces/workspace/* ${targetpath}/workspaces/${project_name}
+  cp -rf .dbFlow/scripts/setup/workspaces/*.* ${targetpath}/workspaces
   cp -rf .dbFlow/scripts/setup/acls/* ${targetpath}/acls
-  mv ${targetpath}/workspaces/workspace ${targetpath}/workspaces/${project_name}
+
+  # cp -rf ${targetpath}/workspaces/workspace ${targetpath}/workspaces/${project_name}
 
   if [[ $(toLowerCase $with_tools) == "y" ]]; then
     cp -rf .dbFlow/scripts/setup/features/* ${targetpath}/features
