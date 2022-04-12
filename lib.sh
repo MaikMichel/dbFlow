@@ -264,7 +264,7 @@ function write_line_if_not_exists () {
   local line=$1
   local file=$2
 
-  if  grep -q "$line" "$file" ; then
+  if  grep -qxF "$line" "$file" ; then
     : # echo "$line exists in $file"
   else
     echo $line >> $file
