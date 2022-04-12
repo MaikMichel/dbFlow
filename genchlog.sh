@@ -175,7 +175,7 @@ function check_params() {
     fi
   else
     if [[ ${current_tag} == "HEAD" ]]; then
-      previous_tag=$(git describe --tags --abbrev=0)
+      previous_tag=$(git describe --tags --abbrev=0 --always)
     else
       previous_tag=$(git tag --sort=-creatordate | grep -A 1 ${current_tag} | tail -n 1) || true
     fi
