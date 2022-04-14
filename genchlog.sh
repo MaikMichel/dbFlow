@@ -69,14 +69,6 @@ function check_vars() {
     do_exit="YES"
   fi
 
-  # when MultisSchema or SingleSchema, this vars are required
-
-  # if [[ -z ${INTENT_ELSE:-} ]] && [[ -z ${INTENT_PREFIXES:-} ]]; then
-  #   echo_error "INTENT_ELSE or INTENT_PREFIXES has to be defined"
-  #   do_exit="YES"
-  # fi
-
-
   ####
   if [[ ${do_exit} == "YES" ]]; then
     echo_warning "aborting"
@@ -180,6 +172,15 @@ function check_params() {
       previous_tag=$(git tag --sort=-creatordate | grep -A 1 ${current_tag} | tail -n 1) || true
     fi
   fi
+
+  # if start and end are the same at head, we put all into the change log
+  # otherwise we had to look for a previous commit: git log --format="%H" -n 2 | tail -1
+  if [[ ${current_tag} == "HEAD" ]]; then
+    current_commit=$(git rev-parse HEAD)
+    if [[ ${current_commit} == ${previous_tag} ]]; then
+      previous_tag=$(git log --max-parents=0 HEAD --pretty=format:%H)
+    fi
+  fi
   targetfile=${file}
 }
 
@@ -194,7 +195,7 @@ force_trailing_slash() {
 
 
 function gen_changelog() {
-  echo_debug "Generating Changelog" | write_log
+  echo_debug "Generating Changelog ${current_tag}...${previous_tag}" | write_log
 
   # define log
   changetime=`date "+%Y%m%d%H%M%S"`
@@ -206,6 +207,7 @@ function gen_changelog() {
 
   if [[ -n ${INTENT_PREFIXES} ]]; then
     for intent in "${!INTENT_PREFIXES[@]}"; do
+      echo "git log ${current_tag}...${previous_tag} --pretty=\"%s\" --reverse"
       readarray -t fixes <<< $(git log ${current_tag}...${previous_tag} --pretty="%s" --reverse | grep -v Merge | grep "^${INTENT_PREFIXES[$intent]}: *")
       eval fixes=($(printf "%q\n" "${fixes[@]}" | sort -u))
 
