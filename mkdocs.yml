@@ -1,4 +1,11 @@
 site_name: dbFLow - Documentation
+nav:
+    - Home: index.md
+    - Concept: concept.md
+    - Getting started: getting_started.md
+    - Release: release.md
+    - Changelog: changelog.md
+    - Migrating: migrating.md
 theme:
   name: material
   palette:
