@@ -13,7 +13,7 @@
     
     
       
-        <title>Release - dbFLow - Documentation</title>
+        <title>Migrating - dbFLow - Documentation</title>
       
     
     
@@ -63,7 +63,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#release" class="md-skip">
+        <a href="#migrating" class="md-skip">
           Skip to content
         </a>
       
@@ -96,7 +96,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Release
+              Migrating
             
           </span>
         </div>
@@ -214,12 +214,10 @@
         
   
   
-    
-  
 
 
   <li class="md-tabs__item">
-    <a href="./" class="md-tabs__link md-tabs__link--active">
+    <a href="../release/" class="md-tabs__link">
       Release
     </a>
   </li>
@@ -240,10 +238,12 @@
         
   
   
+    
+  
 
 
   <li class="md-tabs__item">
-    <a href="../migrating/" class="md-tabs__link">
+    <a href="./" class="md-tabs__link md-tabs__link--active">
       Migrating
     </a>
   </li>
@@ -332,66 +332,11 @@
 
   
   
-    
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          Release
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../release/" class="md-nav__link">
         Release
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#build" class="md-nav__link">
-    build
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#apply" class="md-nav__link">
-    apply
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#release_1" class="md-nav__link">
-    release
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -417,11 +362,66 @@
 
   
   
+    
   
-    <li class="md-nav__item">
-      <a href="../migrating/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          Migrating
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         Migrating
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#basic-adjustments" class="md-nav__link">
+    Basic adjustments
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#following-changes-in-directory-structure-from-098-stable-to-100" class="md-nav__link">
+    Following changes in directory structure from 0.9.8 - stable to 1.0.0
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#following-changes-in-buildenv-from-098-stable-to-100-have-to-be-done" class="md-nav__link">
+    Following changes in build.env from 0.9.8 - stable to 1.0.0 have to be done
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -453,22 +453,22 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#build" class="md-nav__link">
-    build
+  <a href="#basic-adjustments" class="md-nav__link">
+    Basic adjustments
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#apply" class="md-nav__link">
-    apply
+  <a href="#following-changes-in-directory-structure-from-098-stable-to-100" class="md-nav__link">
+    Following changes in directory structure from 0.9.8 - stable to 1.0.0
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#release_1" class="md-nav__link">
-    release
+  <a href="#following-changes-in-buildenv-from-098-stable-to-100-have-to-be-done" class="md-nav__link">
+    Following changes in build.env from 0.9.8 - stable to 1.0.0 have to be done
   </a>
   
 </li>
@@ -487,10 +487,73 @@
                 
 
 
-<h1 id="release">Release</h1>
-<h2 id="build">build</h2>
-<h2 id="apply">apply</h2>
-<h2 id="release_1">release</h2>
+<h1 id="migrating">Migrating</h1>
+<h3 id="basic-adjustments">Basic adjustments</h3>
+<p>If you want to migrate from an old version to a new version, you have to do the following steps</p>
+<ol>
+<li>pullthe current dbFlow version from github</li>
+<li>Adjust the directory structure from top to bottom</li>
+</ol>
+<div class="admonition info">
+<p class="admonition-title">Important</p>
+<p>This means that you have to make the changes in the master branch and merge them through the stage branches to the development branch. This way, there is no new delta to be imported for these adjustments in the next release.</p>
+<div class="highlight"><pre><span></span><code>  <span class="c1"># after the changes</span>
+  $...@master: git commit -m <span class="s2">&quot;migrating dbFlow new structure&quot;</span>
+  $...@master: git push
+
+  <span class="c1"># checkout user acceptence stage</span>
+  $...@master: git checkout uac
+  $...@uac: git merge master
+  $...@uac: git push
+
+  <span class="c1"># checkout user test stage</span>
+  $...@uac: git checkout <span class="nb">test</span>
+  $...@test: git merge uac
+  $...@test: git push
+
+  <span class="c1"># checkout user development stage</span>
+  $...@test: git checkout develop
+  $...@develop: git merge <span class="nb">test</span>
+  $...@develop: git push
+</code></pre></div>
+</div>
+<h3 id="following-changes-in-directory-structure-from-098-stable-to-100">Following changes in directory structure from 0.9.8 - stable to 1.0.0</h3>
+<ol>
+<li>The folder <code>tables_ddl</code> becomes a subfolder of the folder <code>tables</code>.</li>
+<li>The directories <code>dml/pre</code> and <code>dml/post</code>, and <code>ddl/pre</code> and <code>ddl/post</code> become:
+    <code>dml/patch/pre</code> and <code>dml/patch/post</code>, and <code>ddl/patch/pre</code> and <code>ddl/patch/post</code>.</li>
+<li>In old versions there was the folder <code>source</code>. This is treated as plural now and must be renamed to <code>sources</code>.</li>
+</ol>
+<h3 id="following-changes-in-buildenv-from-098-stable-to-100-have-to-be-done">Following changes in build.env from 0.9.8 - stable to 1.0.0 have to be done</h3>
+<ol>
+<li>You have to store project mode inside build.env
+  <div class="highlight"><pre><span></span><code>  <span class="c1"># Following values are valid: SINGLE, MULTI or FLEX</span>
+  <span class="nv">PROJECT_MODE</span><span class="o">=</span>MULTI
+</code></pre></div></li>
+<li>
+<p>When you want to use release.sh for nightlybuild, you have to name the build branch
+  <div class="highlight"><pre><span></span><code>  <span class="c1"># Name of the branch, where release tests are build</span>
+  <span class="nv">BUILD_BRANCH</span><span class="o">=</span>build
+</code></pre></div></p>
+</li>
+<li>
+<p>When you are using the generate changelog feature you have to adjust the following vars
+  <div class="highlight"><pre><span></span><code>  <span class="c1"># Generate a changelog with these settings</span>
+  <span class="c1"># When template.sql file found in reports/changelog then it will be</span>
+  <span class="c1"># executed on apply with the CHANGELOG_SCHEMA .</span>
+  <span class="c1"># The changelog itself is structured using INTENT_PREFIXES to look</span>
+  <span class="c1"># for in commits and to place them in corresponding INTENT_NAMES inside</span>
+  <span class="c1"># the file itself. You can define a regexp in TICKET_MATCH to look for</span>
+  <span class="c1"># keys to link directly to your ticketsystem using TICKET_URL</span>
+  <span class="nv">CHANGELOG_SCHEMA</span><span class="o">=</span>schema_name
+  <span class="nv">INTENT_PREFIXES</span><span class="o">=(</span> Feat Fix <span class="o">)</span>
+  <span class="nv">INTENT_NAMES</span><span class="o">=(</span> Features Fixes <span class="o">)</span>
+  <span class="nv">INTENT_ELSE</span><span class="o">=</span><span class="s2">&quot;Others&quot;</span>
+  <span class="nv">TICKET_MATCH</span><span class="o">=</span><span class="s2">&quot;[A-Z]\+-[0-9]\+&quot;</span>
+  <span class="nv">TICKET_URL</span><span class="o">=</span><span class="s2">&quot;https://url-to-your-issue-tracker-like-jira/browse&quot;</span>
+</code></pre></div></p>
+</li>
+</ol>
 
               
             </article>
@@ -504,7 +567,7 @@
     <nav class="md-footer__inner md-grid" aria-label="Footer">
       
         
-        <a href="../getting_started/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Getting started" rel="prev">
+        <a href="../changelog/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Changelog" rel="prev">
           <div class="md-footer__button md-icon">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12z"/></svg>
           </div>
@@ -513,26 +576,11 @@
               <span class="md-footer__direction">
                 Previous
               </span>
-              Getting started
-            </div>
-          </div>
-        </a>
-      
-      
-        
-        <a href="../changelog/" class="md-footer__link md-footer__link--next" aria-label="Next: Changelog" rel="next">
-          <div class="md-footer__title">
-            <div class="md-ellipsis">
-              <span class="md-footer__direction">
-                Next
-              </span>
               Changelog
             </div>
           </div>
-          <div class="md-footer__button md-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4z"/></svg>
-          </div>
         </a>
+      
       
     </nav>
   
