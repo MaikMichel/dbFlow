@@ -17,16 +17,16 @@ usage() {
   echo -e "                                             schemas/users will be dropped if exists"
   echo -e "                                             and recreated"
   echo
-  echo -e "  export <target-schema>|ALL                 exports targetschema or ${BWHITE}ALL${NC} to filesystem  ${BWHITE}*required${NC}"
-  echo -e "    -o                                       specific object (emp)"
-  echo
+  # echo -e "  export <target-schema>|ALL                 exports targetschema or ${BWHITE}ALL${NC} to filesystem  ${BWHITE}*required${NC}"
+  # echo -e "    -o                                       specific object (emp)"
+  # echo
   echo
 
   echo -e "${BWHITE}EXAMPLE${NC}"
   echo -e "  $0 generate example"
   echo -e "  $0 install"
-  echo -e "  $0 export ALL"
-  echo -e "  $0 export hr_data -o dept"
+  # echo -e "  $0 export ALL"
+  # echo -e "  $0 export hr_data -o dept"
   echo
   echo
   exit 1
