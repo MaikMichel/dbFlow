@@ -1,0 +1,1007 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.3.0, mkdocs-material-8.2.8">
+    
+    
+      
+        <title>Concept - dbFLow - Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.644de097.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.e6a45f82.min.css">
+        
+      
+    
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="" data-md-color-accent="">
+  
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&"object"==typeof palette.color)for(var key of Object.keys(palette.color))document.body.setAttribute("data-md-color-"+key,palette.color[key])</script>
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#concept" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="dbFLow - Documentation" class="md-header__button md-logo" aria-label="dbFLow - Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            dbFLow - Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Concept
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      <form class="md-header__option" data-md-component="palette">
+        
+          
+          
+          <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="" data-md-color-accent=""  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+          
+            <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 6H7c-3.31 0-6 2.69-6 6s2.69 6 6 6h10c3.31 0 6-2.69 6-6s-2.69-6-6-6zm0 10H7c-2.21 0-4-1.79-4-4s1.79-4 4-4h10c2.21 0 4 1.79 4 4s-1.79 4-4 4zM7 9c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+            </label>
+          
+        
+          
+          
+          <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="" data-md-color-accent=""  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_2">
+          
+            <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 7H7a5 5 0 0 0-5 5 5 5 0 0 0 5 5h10a5 5 0 0 0 5-5 5 5 0 0 0-5-5m0 8a3 3 0 0 1-3-3 3 3 0 0 1 3-3 3 3 0 0 1 3 3 3 3 0 0 1-3 3z"/></svg>
+            </label>
+          
+        
+      </form>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" aria-label="Clear" tabindex="-1">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-tabs__inner md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+
+
+  <li class="md-tabs__item">
+    <a href=".." class="md-tabs__link">
+      Welcome to dbFLow
+    </a>
+  </li>
+
+      
+        
+  
+  
+
+
+  <li class="md-tabs__item">
+    <a href="../changelog/" class="md-tabs__link">
+      Generating Changelogs
+    </a>
+  </li>
+
+      
+        
+  
+  
+    
+  
+
+
+  <li class="md-tabs__item">
+    <a href="./" class="md-tabs__link md-tabs__link--active">
+      Concept
+    </a>
+  </li>
+
+      
+        
+  
+  
+
+
+  <li class="md-tabs__item">
+    <a href="../getting_started/" class="md-tabs__link">
+      Getting startet
+    </a>
+  </li>
+
+      
+        
+  
+  
+
+
+  <li class="md-tabs__item">
+    <a href="../release/" class="md-tabs__link">
+      Release
+    </a>
+  </li>
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="dbFLow - Documentation" class="md-nav__button md-logo" aria-label="dbFLow - Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54z"/></svg>
+
+    </a>
+    dbFLow - Documentation
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        Welcome to dbFLow
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../changelog/" class="md-nav__link">
+        Generating Changelogs
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+    
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          Concept
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        Concept
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#git-flow" class="md-nav__link">
+    Git Flow
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dbflow" class="md-nav__link">
+    dbFlow
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#modes" class="md-nav__link">
+    Modes
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#main-folders" class="md-nav__link">
+    Main Folders
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#project-types" class="md-nav__link">
+    Project Types
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#schema-folders" class="md-nav__link">
+    Schema Folders
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#apex" class="md-nav__link">
+    APEX
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rest" class="md-nav__link">
+    REST
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hooks" class="md-nav__link">
+    Hooks
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#depot" class="md-nav__link">
+    Depot
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting_started/" class="md-nav__link">
+        Getting startet
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release/" class="md-nav__link">
+        Release
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#git-flow" class="md-nav__link">
+    Git Flow
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dbflow" class="md-nav__link">
+    dbFlow
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#modes" class="md-nav__link">
+    Modes
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#main-folders" class="md-nav__link">
+    Main Folders
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#project-types" class="md-nav__link">
+    Project Types
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#schema-folders" class="md-nav__link">
+    Schema Folders
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#apex" class="md-nav__link">
+    APEX
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rest" class="md-nav__link">
+    REST
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hooks" class="md-nav__link">
+    Hooks
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#depot" class="md-nav__link">
+    Depot
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          <div class="md-content" data-md-component="content">
+            <article class="md-content__inner md-typeset">
+              
+                
+
+
+<h1 id="concept">Concept</h1>
+<h2 id="git-flow">Git Flow</h2>
+<p>dbFlow is a deployment framework to deploy Oracle based projects / applications. dbFlow is roughly based on the so called Git Flow.</p>
+<p>This flow describes how releases of an application are delivered from the main development branch to the master branch, production. The following figure outlines this flow.</p>
+<p><img alt="" src="../images/gitflow_01.png" /></p>
+<p>Development mainly takes place on the develop branch. Features that are not included in the next release are developed in so-called feature branches. If a release has to be built from the current development state, the develop branch is merged into the release branch. This represents at the same time a so-called distribution boundary. This means that development can continue on the development branch and does not have to wait for the actual release. The release is first merged into the next higher branch. In our case this is the test branch. If an error is found here, it is fixed in the release branch and merged back to test. These changes also flow back into the development branch later. If the tests on the test stage are successful, the next branch is merged and the release is tested accordingly. This continues until the respective release has reached the master branch and therefore has reached production.</p>
+<h2 id="dbflow">dbFlow</h2>
+<p>dbFlow supports the developers and release managers by building an artifact corresponding to the delta of a merge, meaning the changed files, which can be applied to the respective database instance.</p>
+<p><img alt="" src="../images/gitflow_02.png" /></p>
+<p>For each target branch a separate database or database container is expected. The artifacts that dbFLow generates by merging the branches can then be imported into the databases/containers.</p>
+<h2 id="modes">Modes</h2>
+<p>dbFlow can generate two types of artifacts / supports two types of installation modes, which can be applied to the databases/containers. On the one hand this is a so-called <strong>INIT</strong>ial delivery, which empties the target schemas first, or expects empty schemas, and on the other hand a <strong>PATCH</strong> delivery, which requires the corresponding previous version of a deployment on the database.</p>
+<div class="admonition info">
+<p class="admonition-title">Info</p>
+<p>Usually, the initial delivery is only installed <strong>ONCE</strong> on a production system. After that, only patch versions are applied.</p>
+</div>
+<p>The advantage of this two-track approach is that a version of an application can always be built directly and thus forms the basis of a subsequent patch. For example, one can build the initial version of a predecessor and install the current state as a patch on top of it. This procedure forms the basis of flawless releases.</p>
+<p><img alt="" src="../images/nightly_builds.png" /></p>
+<p>With this approach it is easy to map the concept of NighlyBuilds with Jenkins or similar CI/CD tools. To test whether a release can be applied to Prod/Master, it is sufficient to create an initial release of Master and apply it to a test database. Afterwards, the patch, in other words the delta to the development branch, is applied.</p>
+<div class="admonition warning">
+<p class="admonition-title">Important</p>
+<ul>
+<li>In <strong>INIT</strong> mode, all files from all directories except those named with Patch are applied.</li>
+<li>In <strong>PATCH</strong> mode only the changed files are applied.</li>
+</ul>
+<blockquote>
+<p>Files inside <strong><em>.hook</em></strong> - folders will be always executed</p>
+</blockquote>
+</div>
+<h2 id="main-folders">Main Folders</h2>
+<p>To support this concept a dbFlow project and its directory structure must have a certain structure. dbFLow expects the following directories at the root level of the project itself.</p>
+<table>
+<thead>
+<tr>
+<th>Folder</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>apex</strong></td>
+<td>All APEX application will be stored in this folder</td>
+</tr>
+<tr>
+<td><strong>db</strong></td>
+<td>This folder contains the required database schemas and their objects.</td>
+</tr>
+<tr>
+<td><em>db/_setup</em></td>
+<td>This folder contains the required objects your application depends on. <br/>All scripts inside are called by the preferred admin account you configured (sys, admin, ...)</td>
+</tr>
+<tr>
+<td><strong>rest</strong></td>
+<td>Here the REST services / modules are stored</td>
+</tr>
+<tr>
+<td><strong>reports</strong></td>
+<td>binary files for templating purpose</td>
+</tr>
+<tr>
+<td><strong>static</strong></td>
+<td>In this folder the files are stored, which you upload later <br/>with the upload command to the static files of the respective application. (managed by <em><code>dbFlux</code></em>)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="project-types">Project Types</h2>
+<p>This structure is independent from the project-type. <strong>dbFlow</strong> knows 3 types of projects: SingleSchema, MultiSchema and FlexSchema</p>
+<p><img alt="" src="../images/doc_project_modes.png" /></p>
+<p><em><code>SingleSchema</code></em> and <em><code>MultiSchema</code></em> are very similar. APEX applications and REST modules are imported or exported with the application user. The name of the workspace is stored in both modes in the project configuration. In <em><code>MultiSchema</code></em> mode two additional schemas (LOGIC and DATA) are used. Here a three layer model is built up, which holds the data in the DATA schema, the business logic in the LOGIC schema and everything that is application specific in the APP schema. In <em><code>SingleSchema</code></em> mode, a direct database connection is established with the respective schema. In <em><code>MultiSchema</code></em> mode, as well as in <em><code>FlexSchema</code></em> mode, a ProxyUser is used for the database connection, which then connects to the target schema.
+If the project is configured in <em><code>FlexMode</code></em>, you can freely configure the corresponding schemas and workspaces via the directory structure. When using <em><code>FlexMode</code></em>, APEX applications are stored within workspace folders, which are again located within schema folders. The same applies to the static subdirectories, of course. REST modules are also stored in their own schema folder in <em><code>FlexMode</code></em>. Importing or exporting is done via the proxy user, which connects to the respective schema, which is configured by directory name.</p>
+<h2 id="schema-folders">Schema Folders</h2>
+<p>Each schemafolder inside <strong>db</strong> folder except <code>_setup</code> is build with the same structur.</p>
+<table>
+<thead>
+<tr>
+<th><div style="width:150px">Folder</div></th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>db</td>
+<td></td>
+</tr>
+<tr>
+<td>.. schema</td>
+<td></td>
+</tr>
+<tr>
+<td>.... constraints</td>
+<td>Constraints are stored here and subdivided according to their type</td>
+</tr>
+<tr>
+<td>...... checks</td>
+<td>Check Constraints</td>
+</tr>
+<tr>
+<td>...... foreigns</td>
+<td>Foreign Keys</td>
+</tr>
+<tr>
+<td>...... primaries</td>
+<td>Primary Keys</td>
+</tr>
+<tr>
+<td>...... uniques</td>
+<td>Unique Keys</td>
+</tr>
+<tr>
+<td>.... contexts</td>
+<td>Sys_Contexts when needed</td>
+</tr>
+<tr>
+<td>.... ddl</td>
+<td>DDL Scripts for deployment subddivided on deployment mode</td>
+</tr>
+<tr>
+<td>...... init</td>
+<td>Init scripts are executed only for the first installation (init).</td>
+</tr>
+<tr>
+<td>...... patch</td>
+<td>Patch scripts are executed only in the update case (patch) <br/>and are divided into scripts that are executed at the beginning <br/>or at the end of the respective update.</td>
+</tr>
+<tr>
+<td>........ post</td>
+<td></td>
+</tr>
+<tr>
+<td>........ pre</td>
+<td></td>
+</tr>
+<tr>
+<td>.... dml</td>
+<td>DML Scripts for deployment subddivided on deployment mode</td>
+</tr>
+<tr>
+<td>...... base</td>
+<td>Base scripts are always executed, no matter in what mode the deployment is used (first install - init) <br/>or (update - patch). Therefore they must be restartable.</td>
+</tr>
+<tr>
+<td>...... init</td>
+<td>Init scripts are executed only for the first installation (init).</td>
+</tr>
+<tr>
+<td>...... patch</td>
+<td>Patch scripts are executed only in the update case (patch) and are<br/> divided into scripts that are executed at the beginning <br/>or at the end of the respective update.</td>
+</tr>
+<tr>
+<td>........ post</td>
+<td></td>
+</tr>
+<tr>
+<td>........ pre</td>
+<td></td>
+</tr>
+<tr>
+<td>.... indexes</td>
+<td>Indexes are stored here and subdivided according to their type</td>
+</tr>
+<tr>
+<td>...... defaults</td>
+<td>Non uniqe indexes</td>
+</tr>
+<tr>
+<td>...... primaries</td>
+<td>Unique Indexes based in primary key columns</td>
+</tr>
+<tr>
+<td>...... uniques</td>
+<td>Unique Indexes</td>
+</tr>
+<tr>
+<td>.... jobs</td>
+<td>Jobs, Scheduler scripts goes here</td>
+</tr>
+<tr>
+<td>.... policies</td>
+<td>Policies</td>
+</tr>
+<tr>
+<td>.... sequences</td>
+<td>Sequences must be scripted in a restartable manner</td>
+</tr>
+<tr>
+<td>.... sources</td>
+<td>All PL/SQL Code is stored in respective subfolders</td>
+</tr>
+<tr>
+<td>...... functions</td>
+<td></td>
+</tr>
+<tr>
+<td>...... packages</td>
+<td>Extension for package specification is pks and extension pkb <br/>is used for body</td>
+</tr>
+<tr>
+<td>...... procedures</td>
+<td></td>
+</tr>
+<tr>
+<td>...... triggers</td>
+<td></td>
+</tr>
+<tr>
+<td>...... types</td>
+<td></td>
+</tr>
+<tr>
+<td>.... views</td>
+<td>Views goes here</td>
+</tr>
+<tr>
+<td>.... tables</td>
+<td>Here are all create table scripts stored</td>
+</tr>
+<tr>
+<td>...... tables_ddl</td>
+<td>All table alter or modification scripts named <br/>with tablename.num.sql goes here</td>
+</tr>
+<tr>
+<td>.....tests</td>
+<td>Unittests</td>
+</tr>
+<tr>
+<td>...... packages</td>
+<td>Packages containing utPLSQL Unittests</td>
+</tr>
+</tbody>
+</table>
+<p>All files must be stored as executable SQL scripts. dbFlow uses SQLPlus or SQLcl to import these scripts.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Don't forget the trailing slashes in PLSQL files</p>
+</div>
+<p>The file structure has several purposes. On the one hand, these directories represent a fixed point in time during delivery, i.e. they reflect the order of execution. For example, tables are applied before the indexes and the constraints. Primary key constraints are applied before foreign key constraints, and so on.</p>
+<p>In addition, the division of the table directory into tables and tables_ddl represents a kind of toggle. In case of an initial delivery only the scripts from the table directory are executed. If it is a patch delivery, the script from the table directory will not be executed if files with the same root name exist in the tables_ddl directory.</p>
+<p>For example, if the table employees changes, the file is updated accordingly with the actual create-table statement. In addition, a matching alter-table script with the same base name is stored in the tables_ddl directory.</p>
+<p><div class="highlight"><pre><span></span><code><span class="o">//</span><span class="w"> </span><span class="n">employees</span><span class="p">.</span><span class="k">sql</span><span class="w"></span>
+<span class="k">create</span><span class="w"> </span><span class="k">table</span><span class="w"> </span><span class="n">employees</span><span class="w"> </span><span class="p">(</span><span class="w"></span>
+<span class="w">  </span><span class="n">emp_id</span><span class="w">        </span><span class="nb">number</span><span class="w"> </span><span class="k">not</span><span class="w"> </span><span class="k">null</span><span class="p">,</span><span class="w"></span>
+<span class="w">  </span><span class="n">emp_name</span><span class="w">      </span><span class="n">varchar2</span><span class="p">(</span><span class="mi">250</span><span class="w"> </span><span class="nb">char</span><span class="p">)</span><span class="w"> </span><span class="k">not</span><span class="w"> </span><span class="k">null</span><span class="p">,</span><span class="w"></span>
+<span class="w">  </span><span class="n">emp_birthday</span><span class="w">  </span><span class="nb">date</span><span class="w">                        </span><span class="c1">-- new column</span>
+<span class="p">);</span><span class="w"></span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="o">//</span><span class="w"> </span><span class="n">employees</span><span class="p">.</span><span class="mi">1</span><span class="p">.</span><span class="k">sql</span><span class="w"></span>
+<span class="k">alter</span><span class="w"> </span><span class="k">table</span><span class="w"> </span><span class="n">employees</span><span class="w"> </span><span class="k">add</span><span class="w"> </span><span class="p">(</span><span class="w"></span>
+<span class="w">  </span><span class="n">emp_birthday</span><span class="w">  </span><span class="nb">date</span><span class="w">                        </span><span class="c1">-- new column</span>
+<span class="p">);</span><span class="w"></span>
+</code></pre></div></p>
+<table>
+<thead>
+<tr>
+<th>files</th>
+<th>content</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>tables</td>
+<td></td>
+</tr>
+<tr>
+<td>- table_ddl</td>
+<td></td>
+</tr>
+<tr>
+<td>- - employees.1.sql</td>
+<td>alter table add (..);</td>
+</tr>
+<tr>
+<td>- employees.sql</td>
+<td>create table (..);</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<ul>
+<li>Changes to tables are always made 2 times. Once for a new installation (init) and once for an update (patch).</li>
+<li>Table scripts may only contain the pure tables and comments. Constraints and indexes must be stored in the appropriate directories.</li>
+<li>Files from the table directory are executed if it is a new installation (init) or if the table is to be newly created in this update (patch).</li>
+</ul>
+</div>
+<h2 id="apex">APEX</h2>
+<p>The used applications are stored in the apex directory. The applications will be expected in splitted form. For each application there is a corresponding folder containing the respective files (standard APEX export). For a deployment only the appropriate changes are included. A configuration option can be used here, in order to include all files into the deployment.</p>
+<div class="highlight"><pre><span></span><code>├─ apex
+│  └─ f1000
+│  │  └─ application
+│  │  └─ install.sql
+│  └─ f2000
+</code></pre></div>
+<p>In SingleSchema and MultiSchema mode, the workspace is stored in the project configuration. The target schema is always the APP schema. If you use FlexSchema mode, however, this information is stored in the directory tree itself.</p>
+<div class="highlight"><pre><span></span><code>├─ apex
+│  └─ schema_a
+│  │  └─ workspace_x
+│  │     └─ f1000
+│  └─ schema_b
+│     └─ workspace_y
+│        └─ f2000
+</code></pre></div>
+<h2 id="rest">REST</h2>
+<p>If you use REST modules in your project, they are placed in the rest folder. Here dbFlow also expects a certain directory structure. This has a direct influence on the order of execution during the deployment.</p>
+<div class="highlight"><pre><span></span><code>├─ rest
+│  └─ access
+│  │  └─ roles
+│  │  └─ privileges
+│  │  └─ mapping
+│  └─ module
+│     └─ module_name_a
+│     │  └─ module_name_a.module.sql
+│     └─ module_name_b
+│        └─ module_name_b.module.sql
+│        └─ module_name_b.condition.sql
+</code></pre></div>
+<p>Files are imported into these folders in the following order.</p>
+<ol>
+<li>access/roles</li>
+<li>access/privileges</li>
+<li>access/mapping</li>
+<li>modules</li>
+</ol>
+<p>Within the folders the order is alphabetical. If dbFLow finds a module file with the same file base and the extension *.condition.sql, this condition will be included in the install script.</p>
+<div class="admonition warning">
+<p class="admonition-title">Important</p>
+<p>In the Condtion file a PLSQL expression is expected which returns a boolean value. Later this expression becomes part of an IF condition.</p>
+</div>
+<h2 id="hooks">Hooks</h2>
+<p>On each level of the directories there are so called <code>.hooks</code> folders. You can find them in the root directory, in the db folder and in the schema folders. The <code>.hooks</code> folders are always divided into the subfolders <code>pre</code> and <code>post</code>. During the deployment process the scripts there will be executed in alphabetically order. These type of folders are meant to hold scripts which won't change too much during lifecycle of your product. For example you could place some kind of generator script inside here (Gen TableAPI, ...).</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Hookscripts outside the respective schema folders <strong>must</strong> contain the corresponding target schema in the name.</p>
+</div>
+<div class="highlight"><pre><span></span><code>├─ .hooks
+│  ├─ pre
+│  │  └─ 01_schema_a_do_something.sql
+│  │  └─ 02_schema_a_do_something.sql
+│  └─ post
+│     └─ 01_schema_c_do_something.sql
+│     └─ 02_schema_b_do_something.sql
+│     └─ 03_schema_b_do_something.sql
+├─ apex
+├─ db
+│  ├─ .hooks
+│  │  └─ pre
+│  │  └─ post
+│  ├─ schema_a
+│  └─ schema_b
+│     └─ .hooks
+│     │  └─ pre
+│     │  └─ post
+│     └─ ...
+├─ rest
+├─ static
+</code></pre></div>
+<p>To execute a hook on a specific object type, you can add this structure to the corresponding directory within the schema hook.</p>
+<div class="highlight"><pre><span></span><code>├─ db
+│  └─ schema_a
+│     └─ .hooks
+│     │  └─ pre
+│     │  └─ post
+│     │     └─ sources
+│     │        └─ packages
+│     │           └─ call_me_after_packages_applied.sql
+│     └─ sources
+│        └ packages
+│          └─ my_package.pks
+│          └─ my_package.pkb
+</code></pre></div>
+<h2 id="depot">Depot</h2>
+<p>When you create a deployment, whether INIT or PATCH, the deployment artifact is stored in a so-called depot. From this depot, a CI/CD tool, for example, can later fetch the artifact and install it on the target instance. Within the depot directory, the individual deployments are stored in subdirectories that correspond to the Git branch from which they were created.
+A deployment is stored in the ready subfolder. After a successful installation, the patch, including all logs and temporary files, is placed in the success folder. Errors during the deployment lead to an abort and are stored in the failures subfolder.</p>
+<p><img alt="" src="../images/depot_and_flow.png" /></p>
+<p>I recommend to use a separate repository or directory for each stage DB. This has the advantage that the corresponding directories serve their purpose even without Git and possibly access to the development repository. Theoretically, the repository can also be "doubled" to have a target directory at home and a source directory at the customer.</p>
+
+              
+            </article>
+          </div>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    <nav class="md-footer__inner md-grid" aria-label="Footer">
+      
+        
+        <a href="../changelog/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Generating Changelogs" rel="prev">
+          <div class="md-footer__button md-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12z"/></svg>
+          </div>
+          <div class="md-footer__title">
+            <div class="md-ellipsis">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              Generating Changelogs
+            </div>
+          </div>
+        </a>
+      
+      
+        
+        <a href="../getting_started/" class="md-footer__link md-footer__link--next" aria-label="Next: Getting startet" rel="next">
+          <div class="md-footer__title">
+            <div class="md-ellipsis">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              Getting startet
+            </div>
+          </div>
+          <div class="md-footer__button md-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4z"/></svg>
+          </div>
+        </a>
+      
+    </nav>
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    <script id="__config" type="application/json">{"base": "..", "features": ["navigation.tabs", "navigation.expand", "navigation.indexes", "navigation.sections"], "search": "../assets/javascripts/workers/search.5e67fbfe.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version.title": "Select version"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.c44cc438.min.js"></script>
+      
+    
+  </body>
+</html>
