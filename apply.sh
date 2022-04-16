@@ -87,7 +87,7 @@ function check_vars() {
     do_exit="YES"
   fi
 
-  if [[ ${FLEX_MODE} == TRUE ]]; then
+  if [[ ${PROJECT_MODE} == "FLEX" ]]; then
     SCHEMAS=(${DBSCHEMAS[@]})
   else
     # get distinct values of array
@@ -257,10 +257,12 @@ print_info()
   fi
   echo -e "----------------------------------------------------------" | write_log
   echo -e "project:      ${BWHITE}${PROJECT}${NC}" | write_log
-  if [[ ${FLEX_MODE} != TRUE ]]; then
+  if [[ ${PROJECT_MODE} != "FLEX" ]]; then
     echo -e "app_schema:   ${BWHITE}${APP_SCHEMA}${NC}" | write_log
-    echo -e "data_schema:  ${BWHITE}${DATA_SCHEMA}${NC}" | write_log
-    echo -e "logic_schema: ${BWHITE}${LOGIC_SCHEMA}${NC}" | write_log
+    if [[ ${PROJECT_MODE} != "SINGLE" ]]; then
+      echo -e "data_schema:  ${BWHITE}${DATA_SCHEMA}${NC}" | write_log
+      echo -e "logic_schema: ${BWHITE}${LOGIC_SCHEMA}${NC}" | write_log
+    fi
     echo -e "workspace:    ${BWHITE}${WORKSPACE}${NC}" | write_log
   fi
   echo -e "schemas:      ${BWHITE}${SCHEMAS[@]}${NC}" | write_log
@@ -501,7 +503,7 @@ set_rest_publish_state() {
     local appschema=${APP_SCHEMA}
 
     folders=()
-    if [[ ${FLEX_MODE} == TRUE ]]; then
+    if [[ ${PROJECT_MODE} == "FLEX" ]]; then
       for d in $(find rest -maxdepth 1 -mindepth 1 -type d | sort -f)
       do
         folders+=( $(basename $d)/modules )
@@ -512,7 +514,7 @@ set_rest_publish_state() {
 
     for fldr in "${folders[@]}"
     do
-      if [[ ${FLEX_MODE} == TRUE ]]; then
+      if [[ ${PROJECT_MODE} == "FLEX" ]]; then
         appschema=${fldr/\/modules/}
       fi
       modules=()
@@ -563,7 +565,7 @@ set_apps_unavailable() {
   if [[ -d "apex" ]]; then
 
     depth=1
-    if [[ ${FLEX_MODE} == TRUE ]]; then
+    if [[ ${PROJECT_MODE} == "FLEX" ]]; then
       depth=3
     fi
 
@@ -575,7 +577,7 @@ set_apps_unavailable() {
       local workspace=${WORKSPACE}
       local appschema=${APP_SCHEMA}
 
-      if [[ ${FLEX_MODE} == TRUE ]]; then
+      if [[ ${PROJECT_MODE} == "FLEX" ]]; then
         workspace=$(basename $(dirname ${d}))
         appschema=$(basename $(dirname $(dirname ${d})))
       fi
@@ -630,7 +632,7 @@ set_apps_available() {
   if [[ -d "apex" ]]; then
 
     depth=1
-    if [[ ${FLEX_MODE} == TRUE ]]; then
+    if [[ ${PROJECT_MODE} == "FLEX" ]]; then
       depth=3
     fi
 
@@ -642,7 +644,7 @@ set_apps_available() {
       local workspace=${WORKSPACE}
       local appschema=${APP_SCHEMA}
 
-      if [[ ${FLEX_MODE} == TRUE ]]; then
+      if [[ ${PROJECT_MODE} == "FLEX" ]]; then
         workspace=$(basename $(dirname ${d}))
         appschema=$(basename $(dirname $(dirname ${d})))
       fi
@@ -715,7 +717,7 @@ install_apps() {
 
         local workspace=${WORKSPACE}
         local appschema=${APP_SCHEMA}
-        if [[ ${FLEX_MODE} == TRUE ]]; then
+        if [[ ${PROJECT_MODE} == "FLEX" ]]; then
           workspace=$(basename $(dirname $line))
           appschema=$(basename $(dirname $(dirname ${line})))
         fi
@@ -786,7 +788,7 @@ install_rest() {
   if [[ -d rest ]]; then
 
     depth=0
-    if [[ ${FLEX_MODE} == TRUE ]]; then
+    if [[ ${PROJECT_MODE} == "FLEX" ]]; then
       depth=1
     fi
 
@@ -797,7 +799,7 @@ install_rest() {
       if [[ -f ${rest_install_file} ]]; then
 
         local appschema=${APP_SCHEMA}
-        if [[ ${FLEX_MODE} == TRUE ]]; then
+        if [[ ${PROJECT_MODE} == "FLEX" ]]; then
           appschema=$(basename ${d})
         fi
 
@@ -909,7 +911,7 @@ manage_result() {
 
   # move rest files
   depth=1
-  if [[ ${FLEX_MODE} == TRUE ]]; then
+  if [[ ${PROJECT_MODE} == "FLEX" ]]; then
     depth=2
   fi
 

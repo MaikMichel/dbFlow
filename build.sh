@@ -62,13 +62,13 @@ function check_vars() {
   fi
 
   # when MultisSchema or SingleSchema, this vars are required
-  if [[ ${FLEX_MODE:FALSE} != TRUE ]]; then
+  if [[ ${PROJECT_MODE:"MULTI"} != "FLEX" ]]; then
     if [[ -z ${APP_SCHEMA:-} ]]; then
       echo_error "undefined var: APP_SCHEMA"
       do_exit="YES"
     fi
 
-    if [[ ${FLEX_MODE:FALSE} != TRUE ]]; then
+    if [[ ${PROJECT_MODE:"MULTI"} != "SINGLE" ]]; then
       if [[ -z ${DATA_SCHEMA:-} ]]; then
         DATA_SCHEMA=${APP_SCHEMA}
       fi
@@ -257,7 +257,7 @@ function setup_env() {
 
   SCHEMAS=()
 
-  if [[ ${FLEX_MODE} == TRUE ]]; then
+  if [[ ${PROJECT_MODE} == "FLEX" ]]; then
     SCHEMAS=(${DBFOLDERS[@]})
   else
     ALL_SCHEMAS=( ${DATA_SCHEMA} ${LOGIC_SCHEMA} ${APP_SCHEMA} )
@@ -322,10 +322,12 @@ function setup_env() {
   fi
   echo -e "keepfolder:    ${BWHITE}${KEEP_FOLDER}${NC}" | write_log
   echo -e "----------------------------------------------------------" | write_log
-  if [[ ${FLEX_MODE} != TRUE ]]; then
+  if [[ ${PROJECT_MODE} != "FLEX" ]]; then
     echo -e "app_schema:    ${BWHITE}${APP_SCHEMA}${NC}" | write_log
-    echo -e "data_schema:   ${BWHITE}${DATA_SCHEMA}${NC}" | write_log
-    echo -e "logic_schema:  ${BWHITE}${LOGIC_SCHEMA}${NC}" | write_log
+    if [[ ${PROJECT_MODE} == "MULTI" ]]; then
+      echo -e "data_schema:   ${BWHITE}${DATA_SCHEMA}${NC}" | write_log
+      echo -e "logic_schema:  ${BWHITE}${LOGIC_SCHEMA}${NC}" | write_log
+    fi
   fi
   echo -e "schemas:      (${BWHITE}${SCHEMAS[@]}${NC})" | write_log
   echo -e "----------------------------------------------------------" | write_log
@@ -437,7 +439,7 @@ function copy_files {
     # additionaly we need all condtions beloning to REST
     if [[ -d "$targetpath"/rest ]]; then
       folders=()
-      if [[ ${FLEX_MODE} == TRUE ]]; then
+      if [[ ${PROJECT_MODE} == "FLEX" ]]; then
         for d in $(find $targetpath/rest -maxdepth 1 -mindepth 1 -type d | sort -f)
         do
           folders+=( $(basename $d) )
@@ -725,7 +727,7 @@ function write_install_apps() {
     [ -f $target_apex_file ] && rm $target_apex_file
 
     depth=1
-    if [[ ${FLEX_MODE} == TRUE ]]; then
+    if [[ ${PROJECT_MODE} == "FLEX" ]]; then
       depth=3
     fi
 
@@ -745,7 +747,7 @@ function write_install_rest() {
     echo "" | write_log
 
     folders=()
-    if [[ ${FLEX_MODE} == TRUE ]]; then
+    if [[ ${PROJECT_MODE} == "FLEX" ]]; then
       for d in $(find rest -maxdepth 1 -mindepth 1 -type d | sort -f)
       do
         folders+=( $(basename $d) )

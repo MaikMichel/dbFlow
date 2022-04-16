@@ -35,7 +35,7 @@ usage() {
 MAINFOLDERS=( apex db reports rest .hooks )
 SCHEMAS=()
 
-if [[ ${FLEX_MODE} == TRUE ]]; then
+if [[ ${PROJECT_MODE} == "FLEX" ]]; then
   SCHEMAS=(${DBFOLDERS[@]})
 else
   ALL_SCHEMAS=( ${DATA_SCHEMA} ${LOGIC_SCHEMA} ${APP_SCHEMA} )

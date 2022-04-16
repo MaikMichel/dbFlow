@@ -104,7 +104,7 @@ show_generate_summary() {
   printf "|-- ${CYAN}%-22b${NC} %b\n" ".dbFlow" ">> ${CYAN}dbFlow itself${NC}"
   printf "|-- %-22b %b\n" ".hooks" ">> Scripts/Tasks to run pre or post deployment"
   printf "|-- %-22b %b\n" "apex" ">> APEX applications"
-  if [[ -z ${FLEX_MODE} ]] || [[ ${FLEX_MODE} != TRUE ]]; then
+  if [[ ${PROJECT_MODE} != "FLEX" ]]; then
     printf "|   %-22b %b\n" "|-- f123" ">> APEX application 123 for Example"
   else
     printf "|   %-22b %b\n" "|-- ${PROJECT}_app" ">> Example DB Schema assigned to workspace"
@@ -114,7 +114,7 @@ show_generate_summary() {
   printf "|-- %-22b %b\n" "db" ">> All DB Schemas used"
   printf "|   %-22b %b\n" "|-- _setup" ">> Scripts to create schemas, features, workspaces, ..."
   printf "|   %-22b %b\n" "|-- .hooks" ">> Scripts/Tasks to run pre or post db schema deployments"
-  if [[ -z ${FLEX_MODE} ]] || [[ ${FLEX_MODE} != TRUE ]]; then
+  if [[ ${PROJECT_MODE} != "FLEX" ]]; then
     if [[ -d db/${PROJECT}_logic ]]; then
       printf "|   %-22b %b\n" "|-- ${PROJECT}_data" ">> DB Schema responsible for data in MultiMode (3 Tier)"
       printf "|   %-22b %b\n" "|-- ${PROJECT}_logic" ">> DB Schema responsible for logic in MultiMode (3 Tier)"
@@ -127,7 +127,7 @@ show_generate_summary() {
   fi
   printf "|-- %-22b %b\n" "reports" ">> Place all your binaries for upload in a seperate folder here"
   printf "|-- %-22b %b\n" "rest" ">> REST Modules"
-  if [[ -z ${FLEX_MODE} ]] || [[ ${FLEX_MODE} != TRUE ]]; then
+  if [[ ${PROJECT_MODE} != "FLEX" ]]; then
     printf "|   %-22b %b\n" "|-- access" ">> Place all your privileges, roles and clients here (plsql)"
     printf "|   %-22b %b\n" "|-- modules" ">> The REST modules inside seperate folders"
   else
@@ -285,17 +285,18 @@ generate() {
   echo "" >> build.env
   if [[ $(toLowerCase $db_scheme_type) == "m" ]]; then
     echo "# In MultiSchema Mode, we have a classic 3 Tier model" >> build.env
+    echo "PROJECT_MODE=MULTI" >> build.env
     echo "APP_SCHEMA=${project_name}_app" >> build.env
     echo "DATA_SCHEMA=${project_name}_data" >> build.env
     echo "LOGIC_SCHEMA=${project_name}_logic" >> build.env
   elif [[ $(toLowerCase $db_scheme_type) == "s" ]]; then
-    echo "# In SingleSchema Mode, we have a only one" >> build.env
-    echo "# what are the schema-names" >> build.env
+    echo "# In SingleSchema Mode, we have a only one schema" >> build.env
+    echo "PROJECT_MODE=SINGLE" >> build.env
     echo "APP_SCHEMA=${project_name}" >> build.env
   elif [[ $(toLowerCase $db_scheme_type) == "f" ]]; then
     echo "# In FlexSchema Mode, you have to create the schemas by your own" >> build.env
     echo "# and don't forget to grant connect through proxy_user " >> build.env
-    echo "FLEX_MODE=TRUE" >> build.env
+    echo "PROJECT_MODE=FLEX" >> build.env
   fi
   echo "" >> build.env
 
