@@ -207,7 +207,6 @@ function gen_changelog() {
 
   if [[ -n ${INTENT_PREFIXES} ]]; then
     for intent in "${!INTENT_PREFIXES[@]}"; do
-      echo "git log ${current_tag}...${previous_tag} --pretty=\"%s\" --reverse"
       readarray -t fixes <<< $(git log ${current_tag}...${previous_tag} --pretty="%s" --reverse | grep -v Merge | grep "^${INTENT_PREFIXES[$intent]}: *")
       eval fixes=($(printf "%q\n" "${fixes[@]}" | sort -u))
 
