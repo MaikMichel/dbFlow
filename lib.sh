@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # Enable xtrace if the DEBUG environment variable is set
 if [[ ${DEBUG-} =~ ^1|yes|true$ ]]; then
     set -o xtrace       # Trace the execution of the script (debug)
@@ -29,6 +31,8 @@ LWHITE="\033[1;30m"       # White
 BYELLOW="\033[1;33m"      # Yellow
 
 LIBSOURCED="TRUE"
+
+NUMBERPATTERN='^[0-9]+$'
 
 pass=""
 function ask4pwd() {
@@ -112,7 +116,7 @@ get_connect_string() {
 
   # when dbfolder starts with a number and underscore
   # then remove it, cause this is for sorting
-  if [[ $firstpart == ?(-)+([0-9]) ]]; then
+  if [[ $firstpart =~ $NUMBERPATTERN ]]; then
     dbschema=${dbfolder/$firstpart"_"/""}
   fi
 
@@ -220,7 +224,7 @@ function get_schema_from_folder_name() {
 
   # when dbfolder starts with a number and underscore
   # then remove it, cause this is for sorting
-  if [[ $firstpart == ?(-)+([0-9]) ]]; then
+  if [[ $firstpart =~ $NUMBERPATTERN ]]; then
     dbschema=${dbfolder/$firstpart"_"/""}
   fi
 

@@ -62,13 +62,13 @@ function check_vars() {
   fi
 
   # when MultisSchema or SingleSchema, this vars are required
-  if [[ ${PROJECT_MODE:"MULTI"} != "FLEX" ]]; then
+  if [[ ${PROJECT_MODE:-"MULTI"} != "FLEX" ]]; then
     if [[ -z ${APP_SCHEMA:-} ]]; then
       echo_error "undefined var: APP_SCHEMA"
       do_exit="YES"
     fi
 
-    if [[ ${PROJECT_MODE:"MULTI"} != "SINGLE" ]]; then
+    if [[ ${PROJECT_MODE:-"MULTI"} != "SINGLE" ]]; then
       if [[ -z ${DATA_SCHEMA:-} ]]; then
         DATA_SCHEMA=${APP_SCHEMA}
       fi
