@@ -65,7 +65,7 @@ To configure a dbFlow project, set it up initially with the command `setup.sh ge
 
 ### Generate Project
 
-```shell
+```bash
 $ setup.sh generate <project_name>
 ```
 
@@ -88,3 +88,13 @@ $ setup.sh generate <project_name>
 
 
   [changelog]: ../changelog/#configuration
+
+After answering all the questions, your project structure is created with some SQL and bash files inside. You can now modifiy these files and / or put some files of your own into the corresponding folders.
+
+### When you are ready, just install the project with dependencies into your database
+
+
+```bash
+$ setup.sh install
+```
+> This will run all SQL and bash files inside the db/_setup directory.
