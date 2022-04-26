@@ -831,11 +831,16 @@ function write_install_rest() {
 
 function write_changelog() {
   echo "" | write_log
-  current_tag=
-  previous_tag=
-  . .dbFlow/genchlog.sh -e ${until_commit:-HEAD} -f "changelog_${mode}_${version}.md"
+  count_commits=$(git rev-list --all --count)
+  if [ "$count_commits" -gt "0" ]; then
+    current_tag=
+    previous_tag=
+    . .dbFlow/genchlog.sh -e ${until_commit:-HEAD} -f "changelog_${mode}_${version}.md"
 
-  echo "ChangeLog generated: ${current_tag} -- ${previous_tag}" | write_log
+    echo "ChangeLog generated: ${current_tag} -- ${previous_tag}" | write_log
+  else
+    echo "ChangeLog not generated: Nothing commited yet" | write_log
+  fi
 }
 
 
