@@ -35,11 +35,15 @@ $ git init
 # clone dbFlow as submodule
 $ git submodule add https://github.com/MaikMichel/dbFlow.git .dbFlow
 
+# generate and switch to your development branch
+$ git checkout -b develop
+
 # generate project structure
 $ .dbFlow/setup.sh generate <project_name>
 
 # after processing the wizard steps, just install
 $ .dbFlow/setup.sh install
+
 
 ```
 
