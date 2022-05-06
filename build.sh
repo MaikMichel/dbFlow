@@ -399,7 +399,9 @@ function copy_files {
       fi
     done
 
-    # additionaly we need all condtions beloning to REST
+
+
+    # additionaly we need all conditions beloning to REST
     if [[ -d "$targetpath"/rest ]]; then
       folders=()
       if [[ ${PROJECT_MODE} == "FLEX" ]]; then
@@ -445,9 +447,13 @@ function copy_files {
           done
         fi
       done
-
     fi
 
+
+    if [ ! -d "${targetpath}" ]; then
+      echo "Creating directory '${targetpath}'" | write_log
+      mkdir -p "${targetpath}"
+    fi
 
     ## and we need all hooks
     for schema in "${SCHEMAS[@]}"
@@ -461,7 +467,6 @@ function copy_files {
         fi
       fi
     done
-
 
     if [[ $(uname) == "Darwin" ]]; then
       rsync -R ${sourcepath}/.hooks $targetpath
