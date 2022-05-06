@@ -95,91 +95,54 @@ function check_vars() {
 }
 
 function check_params() {
-  ! getopt --test > /dev/null
-  if [[ ${PIPESTATUS[0]} -ne 4 ]]; then
-      echo_fatal 'I’m sorry, `getopt --test` failed in this environment.'
-      exit 1
-  fi
-
-  OPTIONS=dhipv:s:e:kal
-  LONGOPTS=debug,help,init,patch,version:,start:,end:,keepfolder,shipall,listfiles
-
-  # -regarding ! and PIPESTATUS see above
-  # -temporarily store output to be able to check for errors
-  # -activate quoting/enhanced mode (e.g. by writing out “--options”)
-  # -pass arguments only via   -- "$@"   to separate them correctly
-  ! PARSED=$(getopt --options=$OPTIONS --longoptions=$LONGOPTS --name "$0" -- "$@")
-  if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
-      # e.g. return value is 1
-      #  then getopt has complained about wrong arguments to stdout
-      exit 2
-  fi
-
-  # read getopt’s output this way to handle the quoting right:
-  eval set -- "$PARSED"
-
   debug="n" help="n" init="n" patch="n" version="-" start=ORIG_HEAD end=HEAD k="n" a="n" l="n"
 
-  # now enjoy the options in order and nicely split until we see --
-  while true; do
-      case "$1" in
-          -d|--debug)
+  while getopts_long 'dhipv:s:e:kal debug help init patch version: start: end: keepfolder shipall listfiles' OPTKEY; do
+      case ${OPTKEY} in
+          'd'|'debug')
               d=y
-              shift
               ;;
-          -h|--help)
+          'h'|'help')
               h=y
-              shift
               ;;
-          -i|--init)
+          'i'|'init')
               i=y
-              shift
               ;;
-          -p|--patch)
+          'p'|'patch')
               p=y
-              shift
               ;;
-          -v|--version)
-              version="$2"
-              shift 2
+          'v'|'version')
+              version="${OPTARG}"
               ;;
-          -s|--start)
-              start="$2"
-              shift 2
+          's'|'start')
+              start="${OPTARG}"
               ;;
-          -e|--end)
-              end="$2"
-              shift 2
+          'e'|'end')
+              end="${OPTARG}"
               ;;
-          -k|--keepfolder)
+          'k'|'keepfolder')
               k=y
-              shift
               ;;
-          -a|--shipall)
+          'a'|'shipall')
               a=y
-              shift
               ;;
-          -l|--listfiles)
+          'l'|'listfiles')
               l=y
-              shift
               ;;
-          --)
-              shift
-              break
+          '?')
+              echo_error "INVALID OPTION -- ${OPTARG}" >&2
+              usage
+              ;;
+          ':')
+              echo_error "MISSING ARGUMENT for option -- ${OPTARG}" >&2
+              usage
               ;;
           *)
-              echo_fatal "Programming error"
-              exit 3
+              echo_error "UNIMPLEMENTED OPTION -- ${OPTKEY}" >&2
+              usage
               ;;
       esac
   done
-
-  # handle non-option arguments
-  # if [[ $# -ne 1 ]]; then
-  #     echo "$0: A single input file is required."
-  #     exit 4
-  # fi
-
 
   # help first
   if [[ -n $h ]] && [[ $h == "y" ]]; then
