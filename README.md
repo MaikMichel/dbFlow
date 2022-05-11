@@ -39,10 +39,10 @@ $ git init
 $ git submodule add https://github.com/MaikMichel/dbFlow.git .dbFlow
 
 # generate project structure
-$ setup.sh generate <project_name>
+./$ setup.sh generate <project_name>
 
 # after processing the wizard steps, just install
-$ setup.sh install
+$ ./setup.sh install
 
 ```
 
