@@ -46,7 +46,12 @@
 </br>
 </br>
 
-> ## Works best with dbFLux [dbFlux](https://marketplace.visualstudio.com/items?itemName=MaikMichel.dbflow)
+<a href='https://marketplace.visualstudio.com/items?itemName=MaikMichel.dbflow'><img src='docs/images/dbflux.png' width="100px" align="right"></a>
+## Works best with dbFLux [dbFlux](https://marketplace.visualstudio.com/items?itemName=MaikMichel.dbflow)
+
+
+<br/>
+
 >### With that in place you get the ability to
 >- compile SQL or PLSQL based on folder structure
 >- execute tests based on folder structure
