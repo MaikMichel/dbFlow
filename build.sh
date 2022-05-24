@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # echo "Your script args ($#) are: $@"
 
 usage() {
@@ -336,7 +336,7 @@ function copy_files {
       fi
 
       if [[ $(uname) == "Darwin" ]]; then
-        rsync -R `git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB -- build.env .gitignore` ${targetpath}
+        rsync -Rr `git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB -- build.env .gitignore` ${targetpath}
       else
         cp --parents -Rf `git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB -- build.env .gitignore` ${targetpath}
       fi
@@ -357,7 +357,7 @@ function copy_files {
 
         echo "Copy files ..." | write_log
         if [[ $(uname) == "Darwin" ]]; then
-          rsync -R `git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB -- ${folder}` ${targetpath}
+          rsync -Rr `git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB -- ${folder}` ${targetpath}
         else
           cp --parents -Rf `git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB -- ${folder}` ${targetpath}
         fi
@@ -387,7 +387,7 @@ function copy_files {
             then
                 # yes, so copy it...
                 if [[ $(uname) == "Darwin" ]]; then
-                  rsync -R $f $targetpath
+                  rsync -Rr $f $targetpath
                 else
                   cp --parents -Rf $f $targetpath
                 fi
@@ -437,7 +437,7 @@ function copy_files {
 
                 # yes, so copy it...
                 if [[ $(uname) == "Darwin" ]]; then
-                  rsync -R ${srcf/.sql/.condition.sql} $targetpath
+                  rsync -Rr ${srcf/.sql/.condition.sql} $targetpath
                 else
                   cp --parents -Rf ${srcf/.sql/.condition.sql} $targetpath
                 fi
@@ -460,7 +460,7 @@ function copy_files {
     do
       # yes, so copy it...
       if [[ $(uname) == "Darwin" ]]; then
-        rsync -R ${sourcepath}/db/$schema/.hooks $targetpath
+        rsync -Rr ${sourcepath}/db/$schema/.hooks $targetpath
       else
         if [[ -d ${sourcepath}/db/$schema/.hooks ]]; then
           cp --parents -Rf ${sourcepath}/db/$schema/.hooks $targetpath
@@ -469,7 +469,7 @@ function copy_files {
     done
 
     if [[ $(uname) == "Darwin" ]]; then
-      rsync -R ${sourcepath}/.hooks $targetpath
+      rsync -Rr ${sourcepath}/.hooks $targetpath
     else
       if [[ -d ${sourcepath}/.hooks ]]; then
         cp --parents -Rf ${sourcepath}/.hooks $targetpath
