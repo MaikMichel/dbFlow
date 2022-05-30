@@ -64,12 +64,13 @@
 </br>
 </br>
 
-## Quick Preferred way of installation
+## Getting Started
 
 1. create a git repositoy
 2. add dbFlow as `.dbFlow` submodule to your project
 3. run `.dbFlow/setup.sh generate <project_name>`
 4. answer some question based on your requirements
+6. Review files, generated for you and make some adjustments
 5. after that just run `.dbFlow/setup.sh install`
 
 ```bash

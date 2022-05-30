@@ -66,7 +66,7 @@ To configure a dbFlow project, set it up initially with the command `setup.sh ge
 ### Generate Project
 
 ```bash
-$ setup.sh generate <project_name>
+$ .dbFlow/setup.sh generate <project_name>
 ```
 
 | Question | Notes |
@@ -95,6 +95,13 @@ After answering all the questions, your project structure is created with some S
 
 
 ```bash
-$ setup.sh install
+$ .dbFlow/setup.sh install
 ```
 > This will run all SQL and bash files inside the db/_setup directory.
+
+For deployment or release purposes. This is the time to make all branches equal. So if you are on master and this your only branch, create a branch for each deployment stage (develop, test, ...) or if you allready did that, just merge these changes into your branches.
+
+Now the actual development work may start. After that have a look to the tutorial on [How to make a release]
+
+
+[How to make a release]: ../release

@@ -1,11 +1,12 @@
 site_name: dbFLow - Documentation
 nav:
     - Home: index.md
-    - Concept: concept.md
-    - Getting started: getting_started.md
-    - Release: release.md
-    - Changelog: changelog.md
-    - Migrating: migrating.md
+    - The Concept: concept.md
+    - How to setup: getting_started.md
+    - How to deploy: deployment.md
+    - Generating a changelog: changelog.md
+    - Migrating from previous: migrating.md
+    - A Tutorial: tutorial.md
 theme:
   name: material
   palette:

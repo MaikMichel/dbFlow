@@ -1,10 +1,10 @@
 # Migrating
 
-### Basic adjustments
+## Basic adjustments
 
 If you want to migrate from an old version to a new version, you have to do the following steps
 
-1. pullthe current dbFlow version from github
+1. pull the current dbFlow version from github
 2. Adjust the directory structure from top to bottom
 
 !!! info "Important"

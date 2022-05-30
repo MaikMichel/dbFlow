@@ -243,6 +243,7 @@ function setup_env() {
   }
 
   # at INIT there is no pretreatment or an evaluation of the table_ddl
+  # !: Don't forgett to change documentation when changing these arrays
   if [[ "${mode}" == "init" ]]; then
     array=( .hooks/pre sequences tables indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies sources/types sources/packages sources/functions sources/procedures views mviews sources/triggers jobs tests/packages ddl/init dml/init dml/base .hooks/post)
   else
