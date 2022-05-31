@@ -382,3 +382,11 @@ getopts_long() {
         printf -v "${optvar}" '?'
     fi
 }
+
+rem_trailing_slash() {
+    echo "$1" | sed 's/\/*$//g'
+}
+
+force_trailing_slash() {
+    echo "$(rem_trailing_slash "$1")/"
+}

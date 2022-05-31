@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# echo "Your script args ($#) are: $@"
+#echo "$0 Your script args ($#) are: $@"
 
 # delta to diplay messages is from
 #   a) HEAD to latest tag
@@ -81,6 +81,7 @@ function check_params() {
   debug="n" help="n" start="-" end=HEAD file="changelog.md"
 
   while getopts_long 'dhs:e:f: debug help start: end: file:' OPTKEY; do
+    echo "OPTKEY: ${OPTKEY}"
       case ${OPTKEY} in
           'd'|'debug')
               d=y
@@ -151,14 +152,6 @@ function check_params() {
   targetfile=${file}
 }
 
-
-rem_trailing_slash() {
-    echo "$1" | sed 's/\/*$//g'
-}
-
-force_trailing_slash() {
-    echo "$(rem_trailing_slash "$1")/"
-}
 
 
 function gen_changelog() {
