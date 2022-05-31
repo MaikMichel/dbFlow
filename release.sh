@@ -9,14 +9,16 @@ if [[ -e ./build.env ]]; then
   source ./build.env
 fi
 
+CUR_DIRECTORY=$(pwd)
 
 # Log Location on Server.
-LOG_LOCATION=$(pwd)
+LOG_LOCATION=${CUR_DIRECTORY}
 LOG_FILENAME=release.log
 rm -f $LOG_LOCATION/$LOG_FILENAME
 exec > >( tee >( sed 's/\x1B\[[0-9;]*[JKmsu]//g' >> $LOG_LOCATION/$LOG_FILENAME ) )
 
 RLS_BUILDBRANCH=${BUILD_BRANCH:-build}
+
 
 # get branch name
 { #try
@@ -69,6 +71,7 @@ usage() {
   echo -e "  -v | --version <label>  - Required label of version this artifact represents (optional when buildflag is submitted)"
   echo ""
   echo -e "  -b | --build            - Optional buildflag to create 3 artifact for using as nighlybuilds"
+  echo -e "  -a | --apply <folder>   - Optional path to apply the build(s) when buildflag is set"
   echo -e "  -k | --keep             - Optional flag to keep folders in depot path (will be passed to build.sh)"
   echo ""
   echo -e "${BWHITE}Examples:${NC}"
@@ -158,15 +161,25 @@ build_release() {
 
   # some summarizings
   log "${GREEN}Done${NC}"
-
-  log "${GREEN}go to your instance directory where you host $RLS_TARGET_BRANCH and apply the following commands/patches${NC}"
-  for task in "${apply_tasks[@]}"
-  do
-    log "${GREEN}${task}${NC}"
-  done
-
   git checkout ${starting_branch}
 
+  log "${GREEN}go to your instance directory where you host $RLS_TARGET_BRANCH and apply the following commands/patches${NC}"
+
+  if [[ ${RLS_BUILD} == 'Y' ]] && [[ ${RLS_TOFOLDER} != '-' ]]; then
+    cd ${RLS_TOFOLDER}
+  fi
+
+  for task in "${apply_tasks[@]}"
+  do
+    echo -e "${GREEN}${task}${NC}"
+    if [[ ${RLS_BUILD} == 'Y' ]] && [[ ${RLS_TOFOLDER} != '-' ]]; then
+      ${task}
+    fi
+  done
+
+  if [[ ${RLS_BUILD} == 'Y' ]] && [[ ${RLS_TOFOLDER} != '-' ]]; then
+    cd ${CUR_DIRECTORY}
+  fi
 
 }
 
@@ -180,10 +193,10 @@ trap 'rc=$?; notify $rc; exit $rc' EXIT
 
 
 function check_params() {
-  debug="n" help="n" version="-" source_branch="-" target_branch="-" build="n"
-  d=$debug h=$help v=$version s=$source_branch t=$target_branch b=$build
+  debug="n" help="n" version="-" source_branch="-" target_branch="-" build="n" apply_folder="-"
+  d=$debug h=$help v=$version s=$source_branch t=$target_branch b=$build a=$apply_folder
 
-  while getopts_long 'dhv:s:t:bk debug help version: source: target: build keep' OPTKEY; do
+  while getopts_long 'dhv:s:t:ba:k debug help version: source: target: build apply: keep' OPTKEY; do
       case ${OPTKEY} in
           'd'|'debug')
               d=y
@@ -202,6 +215,9 @@ function check_params() {
               ;;
           'b'|'build')
               build=y
+              ;;
+          'a'|'apply')
+              apply_folder="${OPTARG}"
               ;;
           'k'|'keep')
               keep="-k"
@@ -249,6 +265,13 @@ function check_params() {
   fi
   RLS_VERSION=$version
   RLS_BUILD=${build^^}
+
+  if [[ ${RLS_BUILD} == 'Y' ]] && [[ ${apply_folder} != '-' ]] && [[ ! -d ${apply_folder} ]]; then
+    echo_error "Folder to apply to does not exist!"
+    usage
+  else
+    RLS_TOFOLDER=${apply_folder}
+  fi
 }
 
 
