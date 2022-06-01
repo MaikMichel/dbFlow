@@ -289,7 +289,7 @@ create_merged_report_file() {
   echo "declare" >> ${output_file}
   echo "  l_b64         clob;" >> ${output_file}
   echo "  l_bin         blob;" >> ${output_file}
-  echo "  l_file_name   varchar2(2000) := 'changelog.md';  " >> ${output_file}
+  echo "  l_file_name   varchar2(2000) := '${source_file}';  " >> ${output_file}
   echo "" >> ${output_file}
   echo "  gc_red           varchar2(7) := chr(27) || '[31m';" >> ${output_file}
   echo "  gc_green         varchar2(7) := chr(27) || '[32m';" >> ${output_file}
