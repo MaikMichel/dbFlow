@@ -356,7 +356,7 @@ function copy_files {
           mkdir -p "${targetpath}"
         fi
 
-        echo "Copy files ..." | write_log
+        echo "Copy files in folder: ${folder}" | write_log
         if [[ $(uname) == "Darwin" ]]; then
           rsync -Rr `git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB -- ${folder}` ${targetpath}
         else
@@ -541,7 +541,7 @@ function write_install_schemas(){
         echo "set sqlblanklines on" >> "$target_install_file"
         echo "set tab off" >> "$target_install_file"
         echo "set pagesize 9999" >> "$target_install_file"
-        echo "set trimspool off" >> "$target_install_file"
+        echo "set trimspool on" >> "$target_install_file"
         echo "" >> "$target_install_file"
 
         echo "Prompt .............................................................................. " >> "$target_install_file"

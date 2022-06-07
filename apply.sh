@@ -372,6 +372,16 @@ execute_global_hook_scripts() {
             set concat .
             set verify off
 
+            set timing on
+            set trim off
+            set linesize 2000
+            set sqlblanklines on
+            set tab off
+            set pagesize 9999
+            set trimspool on
+
+            set serveroutput on
+
             Prompt calling file ${runfile}
             @${runfile}
 !
