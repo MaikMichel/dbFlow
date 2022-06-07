@@ -196,7 +196,7 @@ function check_params() {
   debug="n" help="n" version="-" source_branch="-" target_branch="-" build="n" apply_folder="-"
   d=$debug h=$help v=$version s=$source_branch t=$target_branch b=$build a=$apply_folder
 
-  while getopts_long 'dhv:s:t:ba:k debug help version: source: target: build apply: keep' OPTKEY; do
+  while getopts_long 'dhv:s:t:ba:k debug help version: source: target: build apply: keep' OPTKEY "${@}"; do
       case ${OPTKEY} in
           'd'|'debug')
               d=y

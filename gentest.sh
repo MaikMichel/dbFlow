@@ -75,7 +75,7 @@ patch_folders+=( ddl/patch/pre dml/patch/pre ddl/patch/post dml/patch/post )
 function check_params() {
   debug="n" help="n" init="n" patch="n"
 
-  while getopts_long 'dhip debug help init patch' OPTKEY; do
+  while getopts_long 'dhip debug help init patch' OPTKEY "${@}"; do
       case ${OPTKEY} in
           'd'|'debug')
               d=y

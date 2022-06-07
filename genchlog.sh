@@ -80,7 +80,7 @@ function check_vars() {
 function check_params() {
   debug="n" help="n" start="-" end=HEAD file="changelog.md"
 
-  while getopts_long 'dhs:e:f: debug help start: end: file:' OPTKEY; do
+  while getopts_long 'dhs:e:f: debug help start: end: file:' OPTKEY "${@}"; do
     echo "OPTKEY: ${OPTKEY}"
       case ${OPTKEY} in
           'd'|'debug')

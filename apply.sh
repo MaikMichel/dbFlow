@@ -115,7 +115,7 @@ function check_vars() {
 function check_params() {
   debug="n" help="h" init="n" patch="n" version="-" noextract="n"  redolog=""
 
-  while getopts_long 'dhipv:nr: debug help init patch version: noextract redolog:' OPTKEY; do
+  while getopts_long 'dhipv:nr: debug help init patch version: noextract redolog:' OPTKEY "${@}"; do
       case ${OPTKEY} in
           'd'|'debug')
               d=y
