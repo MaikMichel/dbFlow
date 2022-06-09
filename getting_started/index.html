@@ -13,7 +13,7 @@
     
     
       
-        <title>Getting started - dbFLow - Documentation</title>
+        <title>How to setup - dbFLow - Documentation</title>
       
     
     
@@ -96,7 +96,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Getting started
+              How to setup
             
           </span>
         </div>
@@ -194,7 +194,7 @@
 
   <li class="md-tabs__item">
     <a href="../concept/" class="md-tabs__link">
-      Concept
+      The Concept
     </a>
   </li>
 
@@ -208,7 +208,7 @@
 
   <li class="md-tabs__item">
     <a href="./" class="md-tabs__link md-tabs__link--active">
-      Getting started
+      How to setup
     </a>
   </li>
 
@@ -219,8 +219,8 @@
 
 
   <li class="md-tabs__item">
-    <a href="../release/" class="md-tabs__link">
-      Release
+    <a href="../deployment/" class="md-tabs__link">
+      How to deploy
     </a>
   </li>
 
@@ -232,7 +232,7 @@
 
   <li class="md-tabs__item">
     <a href="../changelog/" class="md-tabs__link">
-      Changelog
+      Generating a changelog
     </a>
   </li>
 
@@ -244,7 +244,19 @@
 
   <li class="md-tabs__item">
     <a href="../migrating/" class="md-tabs__link">
-      Migrating
+      Migrating from previous
+    </a>
+  </li>
+
+      
+        
+  
+  
+
+
+  <li class="md-tabs__item">
+    <a href="../tutorial/" class="md-tabs__link">
+      A Tutorial
     </a>
   </li>
 
@@ -305,7 +317,7 @@
   
     <li class="md-nav__item">
       <a href="../concept/" class="md-nav__link">
-        Concept
+        The Concept
       </a>
     </li>
   
@@ -329,12 +341,12 @@
       
       
         <label class="md-nav__link md-nav__link--active" for="__toc">
-          Getting started
+          How to setup
           <span class="md-nav__icon md-icon"></span>
         </label>
       
       <a href="./" class="md-nav__link md-nav__link--active">
-        Getting started
+        How to setup
       </a>
       
         
@@ -429,8 +441,8 @@
   
   
     <li class="md-nav__item">
-      <a href="../release/" class="md-nav__link">
-        Release
+      <a href="../deployment/" class="md-nav__link">
+        How to deploy
       </a>
     </li>
   
@@ -445,7 +457,7 @@
   
     <li class="md-nav__item">
       <a href="../changelog/" class="md-nav__link">
-        Changelog
+        Generating a changelog
       </a>
     </li>
   
@@ -460,7 +472,22 @@
   
     <li class="md-nav__item">
       <a href="../migrating/" class="md-nav__link">
-        Migrating
+        Migrating from previous
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorial/" class="md-nav__link">
+        A Tutorial
       </a>
     </li>
   
@@ -616,7 +643,7 @@ $ git submodule add https://github.com/MaikMichel/dbFlow.git .dbFlow
 <p>You can always execute a main shell script/command inside .dbFLow folder to show usage help.</p>
 </div>
 <h3 id="generate-project">Generate Project</h3>
-<div class="highlight"><pre><span></span><code>$ setup.sh generate &lt;project_name&gt;
+<div class="highlight"><pre><span></span><code>$ .dbFlow/setup.sh generate &lt;project_name&gt;
 </code></pre></div>
 <table>
 <thead>
@@ -686,11 +713,13 @@ $ git submodule add https://github.com/MaikMichel/dbFlow.git .dbFlow
 </table>
 <p>After answering all the questions, your project structure is created with some SQL and bash files inside. You can now modifiy these files and / or put some files of your own into the corresponding folders.</p>
 <h3 id="when-you-are-ready-just-install-the-project-with-dependencies-into-your-database">When you are ready, just install the project with dependencies into your database</h3>
-<div class="highlight"><pre><span></span><code>$ setup.sh install
+<div class="highlight"><pre><span></span><code>$ .dbFlow/setup.sh install
 </code></pre></div>
 <blockquote>
 <p>This will run all SQL and bash files inside the db/_setup directory.</p>
 </blockquote>
+<p>For deployment or release purposes. This is the time to make all branches equal. So if you are on master and this your only branch, create a branch for each deployment stage (develop, test, ...) or if you allready did that, just merge these changes into your branches.</p>
+<p>Now the actual development work may start. After that have a look to the tutorial on <a href="../release">How to make a release</a></p>
 
               
             </article>
@@ -704,7 +733,7 @@ $ git submodule add https://github.com/MaikMichel/dbFlow.git .dbFlow
     <nav class="md-footer__inner md-grid" aria-label="Footer">
       
         
-        <a href="../concept/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Concept" rel="prev">
+        <a href="../concept/" class="md-footer__link md-footer__link--prev" aria-label="Previous: The Concept" rel="prev">
           <div class="md-footer__button md-icon">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12z"/></svg>
           </div>
@@ -713,20 +742,20 @@ $ git submodule add https://github.com/MaikMichel/dbFlow.git .dbFlow
               <span class="md-footer__direction">
                 Previous
               </span>
-              Concept
+              The Concept
             </div>
           </div>
         </a>
       
       
         
-        <a href="../release/" class="md-footer__link md-footer__link--next" aria-label="Next: Release" rel="next">
+        <a href="../deployment/" class="md-footer__link md-footer__link--next" aria-label="Next: How to deploy" rel="next">
           <div class="md-footer__title">
             <div class="md-ellipsis">
               <span class="md-footer__direction">
                 Next
               </span>
-              Release
+              How to deploy
             </div>
           </div>
           <div class="md-footer__button md-icon">

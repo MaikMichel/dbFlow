@@ -13,7 +13,7 @@
     
     
       
-        <title>Changelog - dbFLow - Documentation</title>
+        <title>Generating a changelog - dbFLow - Documentation</title>
       
     
     
@@ -96,7 +96,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Changelog
+              Generating a changelog
             
           </span>
         </div>
@@ -194,7 +194,7 @@
 
   <li class="md-tabs__item">
     <a href="../concept/" class="md-tabs__link">
-      Concept
+      The Concept
     </a>
   </li>
 
@@ -206,7 +206,7 @@
 
   <li class="md-tabs__item">
     <a href="../getting_started/" class="md-tabs__link">
-      Getting started
+      How to setup
     </a>
   </li>
 
@@ -217,8 +217,8 @@
 
 
   <li class="md-tabs__item">
-    <a href="../release/" class="md-tabs__link">
-      Release
+    <a href="../deployment/" class="md-tabs__link">
+      How to deploy
     </a>
   </li>
 
@@ -232,7 +232,7 @@
 
   <li class="md-tabs__item">
     <a href="./" class="md-tabs__link md-tabs__link--active">
-      Changelog
+      Generating a changelog
     </a>
   </li>
 
@@ -244,7 +244,19 @@
 
   <li class="md-tabs__item">
     <a href="../migrating/" class="md-tabs__link">
-      Migrating
+      Migrating from previous
+    </a>
+  </li>
+
+      
+        
+  
+  
+
+
+  <li class="md-tabs__item">
+    <a href="../tutorial/" class="md-tabs__link">
+      A Tutorial
     </a>
   </li>
 
@@ -305,7 +317,7 @@
   
     <li class="md-nav__item">
       <a href="../concept/" class="md-nav__link">
-        Concept
+        The Concept
       </a>
     </li>
   
@@ -320,7 +332,7 @@
   
     <li class="md-nav__item">
       <a href="../getting_started/" class="md-nav__link">
-        Getting started
+        How to setup
       </a>
     </li>
   
@@ -334,8 +346,8 @@
   
   
     <li class="md-nav__item">
-      <a href="../release/" class="md-nav__link">
-        Release
+      <a href="../deployment/" class="md-nav__link">
+        How to deploy
       </a>
     </li>
   
@@ -359,12 +371,12 @@
       
       
         <label class="md-nav__link md-nav__link--active" for="__toc">
-          Changelog
+          Generating a changelog
           <span class="md-nav__icon md-icon"></span>
         </label>
       
       <a href="./" class="md-nav__link md-nav__link--active">
-        Changelog
+        Generating a changelog
       </a>
       
         
@@ -383,8 +395,22 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#intro" class="md-nav__link">
+    Intro
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#configuration" class="md-nav__link">
     Configuration
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example" class="md-nav__link">
+    Example:
   </a>
   
 </li>
@@ -406,7 +432,22 @@
   
     <li class="md-nav__item">
       <a href="../migrating/" class="md-nav__link">
-        Migrating
+        Migrating from previous
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorial/" class="md-nav__link">
+        A Tutorial
       </a>
     </li>
   
@@ -439,8 +480,22 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#intro" class="md-nav__link">
+    Intro
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#configuration" class="md-nav__link">
     Configuration
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example" class="md-nav__link">
+    Example:
   </a>
   
 </li>
@@ -460,7 +515,112 @@
 
 
 <h1 id="generating-changelogs">Generating Changelogs</h1>
+<h2 id="intro">Intro</h2>
+<p>With dbFlow you have the possibility to create changelogs automatically. These are based on the commit messages of the commits that lead to a patch. The changelog file itself is kept as markdown. Additionally the changelog can be automatically processed (uploaded to the DB) during the deployment if there is a subdirectory named changelog in the reports-folder.</p>
 <h2 id="configuration">Configuration</h2>
+<p>After creating the directory structure and environment files, the following variables were created in the build.env file.</p>
+<div class="highlight"><pre><span></span><code>CHANGELOG_SCHEMA=&lt;schema_name&gt;
+INTENT_PREFIXES=( Feat Fix )
+INTENT_NAMES=( Features Fixes )
+INTENT_ELSE=&quot;Others&quot;
+TICKET_MATCH=&quot;[A-Z]\+-[0-9]\+&quot;
+TICKET_URL=&quot;https://[your-jira-url]/browse&quot;
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CHANGELOG_SCHEMA</td>
+<td>With this scheme the changelog is processed by the reports directory</td>
+</tr>
+<tr>
+<td>INTENT_PREFIXES</td>
+<td>The commit messages are grouped with this array of prefixes</td>
+</tr>
+<tr>
+<td>INTENT_NAMES</td>
+<td>This array holds the labels of the prefixes, which then appear as headings in the actual changelog</td>
+</tr>
+<tr>
+<td>INTENT_ELSE</td>
+<td>All messages not handled by the prefixes appear here</td>
+</tr>
+<tr>
+<td>TICKET_MATCH</td>
+<td>RegularExpression to get the ticket number from the commit message</td>
+</tr>
+<tr>
+<td>TICKET_URL</td>
+<td>URL to which the ticket number is appended</td>
+</tr>
+</tbody>
+</table>
+<p>A template.sql file is stored in the reports/changelog directory by default. This file contains the code you have to change to upload this changelog as a clob to a target table.</p>
+<p>For example like this:</p>
+<div class="highlight"><pre><span></span><code><span class="w">  </span><span class="cm">/***********************************************</span>
+<span class="cm">    -------     TEMPLATE START            -------</span>
+<span class="cm">    l_bin         &gt;&gt;&gt; Content as blob of file</span>
+<span class="cm">    l_file_name   &gt;&gt;&gt; name of the file</span>
+<span class="cm">                      changelog_init_1.2.3.md</span>
+<span class="cm">  ************************************************/</span><span class="w"></span>
+
+<span class="w">  </span><span class="k">Declare</span><span class="w"></span>
+<span class="w">    </span><span class="n">l_version</span><span class="w"> </span><span class="n">varchar2</span><span class="p">(</span><span class="mi">100</span><span class="p">);</span><span class="w"></span>
+<span class="w">  </span><span class="k">Begin</span><span class="w"></span>
+<span class="w">    </span><span class="n">l_version</span><span class="w"> </span><span class="p">:</span><span class="o">=</span><span class="w"> </span><span class="n">substr</span><span class="p">(</span><span class="n">l_file_name</span><span class="p">,</span><span class="w"> </span><span class="n">instr</span><span class="p">(</span><span class="n">l_file_name</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;_&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">);</span><span class="w"></span>
+<span class="w">    </span><span class="n">l_version</span><span class="w"> </span><span class="p">:</span><span class="o">=</span><span class="w"> </span><span class="n">substr</span><span class="p">(</span><span class="n">l_version</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="n">instr</span><span class="p">(</span><span class="n">l_version</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;.&#39;</span><span class="p">,</span><span class="w"> </span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">);</span><span class="w"></span>
+
+<span class="w">    </span><span class="c1">-- START custom code</span>
+<span class="w">    </span><span class="k">begin</span><span class="w"></span>
+<span class="w">      </span><span class="k">insert</span><span class="w"> </span><span class="k">into</span><span class="w"> </span><span class="n">changelogs</span><span class="w"> </span><span class="p">(</span><span class="n">chl_version</span><span class="p">,</span><span class="w"> </span><span class="n">chl_date</span><span class="p">,</span><span class="w"> </span><span class="n">chl_content</span><span class="p">)</span><span class="w"></span>
+<span class="w">       </span><span class="k">values</span><span class="w"> </span><span class="p">(</span><span class="n">l_version</span><span class="p">,</span><span class="w"> </span><span class="k">current_date</span><span class="p">,</span><span class="w"> </span><span class="n">l_bin</span><span class="p">);</span><span class="w"></span>
+<span class="w">    </span><span class="k">exception</span><span class="w"></span>
+<span class="w">      </span><span class="k">when</span><span class="w"> </span><span class="n">dup_val_on_index</span><span class="w"> </span><span class="k">then</span><span class="w"></span>
+<span class="w">        </span><span class="k">update</span><span class="w"> </span><span class="n">changelogs</span><span class="w"></span>
+<span class="w">           </span><span class="k">set</span><span class="w"> </span><span class="n">chl_content</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">l_bin</span><span class="p">,</span><span class="w"></span>
+<span class="w">               </span><span class="n">chl_date</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="k">current_date</span><span class="w"></span>
+<span class="w">         </span><span class="k">where</span><span class="w"> </span><span class="n">chl_version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">l_version</span><span class="p">;</span><span class="w"></span>
+<span class="w">    </span><span class="k">end</span><span class="p">;</span><span class="w"></span>
+
+<span class="w">    </span><span class="c1">-- END custom code</span>
+
+<span class="w">    </span><span class="n">dbms_output</span><span class="p">.</span><span class="n">put_line</span><span class="p">(</span><span class="n">gc_green</span><span class="o">||</span><span class="s1">&#39; ... Version info uploaded: &#39;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">l_version</span><span class="w"> </span><span class="o">||</span><span class="n">gc_reset</span><span class="p">);</span><span class="w"></span>
+<span class="w">  </span><span class="k">End</span><span class="p">;</span><span class="w"></span>
+
+<span class="w">  </span><span class="cm">/***********************************************</span>
+<span class="cm">    -------     TEMPLATE END              -------</span>
+<span class="cm">  ************************************************/</span><span class="w"></span>
+</code></pre></div>
+<h2 id="example">Example:</h2>
+<h1 id="project-xyz-changelog">Project XYZ - Changelog</h1>
+<h2 id="version-123-2022-04-08">Version 1.2.3 (2022-04-08)</h2>
+<h3 id="features">Features</h3>
+<ul>
+<li>Changelogs and Version infos are now displayed</li>
+<li>Emailfrom is included in ref_codes based on stage #XYZ-69 <a href="https://your-own-jira-url-for-exampl.com/browse/XYZ-69">View</a></li>
+<li>Managing total revenues per corporations #XYZ-71 <a href="https://your-own-jira-url-for-exampl.com/browse/XYZ-71">View</a></li>
+<li>Reporting Dashboard includes total revenues #XYZ-72 <a href="https://your-own-jira-url-for-exampl.com/browse/XYZ-72">View</a></li>
+</ul>
+<h3 id="others">Others</h3>
+<ul>
+<li>Add some unit tests</li>
+<li>Application processes outsourced to package</li>
+<li>Color Settings for VSCode</li>
+<li>Fix Refresh Facetted Search after transaction occured</li>
+<li>Refactored revenue_totals to be more testable</li>
+<li>Set missing max length</li>
+<li>Set plsql searchPath</li>
+<li>XYZ-50: Changed Buttontext on confirm Email <a href="https://your-own-jira-url-for-exampl.com/browse/XYZ-50">View</a></li>
+<li>XYZ-50: Update Email text of invitation <a href="https://your-own-jira-url-for-exampl.com/browse/XYZ-50">View</a></li>
+<li>XYZ-74: Aliases in own table <a href="https://your-own-jira-url-for-exampl.com/browse/XYZ-74">View</a></li>
+<li>XYZ-74: Nach Nachfrage aus bestehenden Supplier einen Alias machen <a href="https://your-own-jira-url-for-exampl.com/browse/XYZ-74">View</a></li>
+</ul>
+<hr />
 
               
             </article>
@@ -474,7 +634,7 @@
     <nav class="md-footer__inner md-grid" aria-label="Footer">
       
         
-        <a href="../release/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Release" rel="prev">
+        <a href="../deployment/" class="md-footer__link md-footer__link--prev" aria-label="Previous: How to deploy" rel="prev">
           <div class="md-footer__button md-icon">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12z"/></svg>
           </div>
@@ -483,20 +643,20 @@
               <span class="md-footer__direction">
                 Previous
               </span>
-              Release
+              How to deploy
             </div>
           </div>
         </a>
       
       
         
-        <a href="../migrating/" class="md-footer__link md-footer__link--next" aria-label="Next: Migrating" rel="next">
+        <a href="../migrating/" class="md-footer__link md-footer__link--next" aria-label="Next: Migrating from previous" rel="next">
           <div class="md-footer__title">
             <div class="md-ellipsis">
               <span class="md-footer__direction">
                 Next
               </span>
-              Migrating
+              Migrating from previous
             </div>
           </div>
           <div class="md-footer__button md-icon">
