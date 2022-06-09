@@ -18,8 +18,10 @@ logger_schema="logger"
 logger_pass=$(base64 < /dev/urandom | tr -d 'O0Il1+/' | head -c 20; printf '\n')
 logger_tspace="users"
 
-tag_name=$(curl --silent "https://github.com/OraOpenSource/Logger/releases/latest" | sed 's#.*tag/\(.*\)\".*#\1#')
+tag_name=$(basename $(curl -fs -o/dev/null -w %{redirect_url} https://github.com/OraOpenSource/Logger/releases/latest))
+echo "Downloading ... https://github.com/OraOpenSource/Logger/raw/master/releases/logger_${tag_name}.zip"
 curl -OL "https://github.com/OraOpenSource/Logger/raw/master/releases/logger_${tag_name}.zip"
+
 
 unzip logger_${tag_name}.zip -d logger
 rm logger_${tag_name}.zip

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # echo "Your script args ($#) are: $@"
 
 # get required functions and vars
@@ -9,14 +9,16 @@ if [[ -e ./build.env ]]; then
   source ./build.env
 fi
 
+CUR_DIRECTORY=$(pwd)
 
 # Log Location on Server.
-LOG_LOCATION=$(pwd)
+LOG_LOCATION=${CUR_DIRECTORY}
 LOG_FILENAME=release.log
 rm -f $LOG_LOCATION/$LOG_FILENAME
 exec > >( tee >( sed 's/\x1B\[[0-9;]*[JKmsu]//g' >> $LOG_LOCATION/$LOG_FILENAME ) )
 
 RLS_BUILDBRANCH=${BUILD_BRANCH:-build}
+
 
 # get branch name
 { #try
@@ -69,6 +71,7 @@ usage() {
   echo -e "  -v | --version <label>  - Required label of version this artifact represents (optional when buildflag is submitted)"
   echo ""
   echo -e "  -b | --build            - Optional buildflag to create 3 artifact for using as nighlybuilds"
+  echo -e "  -a | --apply <folder>   - Optional path to apply the build(s) when buildflag is set"
   echo -e "  -k | --keep             - Optional flag to keep folders in depot path (will be passed to build.sh)"
   echo ""
   echo -e "${BWHITE}Examples:${NC}"
@@ -158,15 +161,25 @@ build_release() {
 
   # some summarizings
   log "${GREEN}Done${NC}"
-
-  log "${GREEN}go to your instance directory where you host $RLS_TARGET_BRANCH and apply the following commands/patches${NC}"
-  for task in "${apply_tasks[@]}"
-  do
-    log "${GREEN}${task}${NC}"
-  done
-
   git checkout ${starting_branch}
 
+  log "${GREEN}go to your instance directory where you host $RLS_TARGET_BRANCH and apply the following commands/patches${NC}"
+
+  if [[ ${RLS_BUILD} == 'Y' ]] && [[ ${RLS_TOFOLDER} != '-' ]]; then
+    cd ${RLS_TOFOLDER}
+  fi
+
+  for task in "${apply_tasks[@]}"
+  do
+    echo -e "${GREEN}${task}${NC}"
+    if [[ ${RLS_BUILD} == 'Y' ]] && [[ ${RLS_TOFOLDER} != '-' ]]; then
+      ${task}
+    fi
+  done
+
+  if [[ ${RLS_BUILD} == 'Y' ]] && [[ ${RLS_TOFOLDER} != '-' ]]; then
+    cd ${CUR_DIRECTORY}
+  fi
 
 }
 
@@ -180,80 +193,49 @@ trap 'rc=$?; notify $rc; exit $rc' EXIT
 
 
 function check_params() {
-  ! getopt --test > /dev/null
-  if [[ ${PIPESTATUS[0]} -ne 4 ]]; then
-      echo_fatal 'I’m sorry, `getopt --test` failed in this environment.'
-      exit 1
-  fi
+  debug="n" help="n" version="-" source_branch="-" target_branch="-" build="n" apply_folder="-"
+  d=$debug h=$help v=$version s=$source_branch t=$target_branch b=$build a=$apply_folder
 
-  OPTIONS=dhv:s:t:bk
-  LONGOPTS=debug,help,version:,source:,target:,build,keep
-
-  # -regarding ! and PIPESTATUS see above
-  # -temporarily store output to be able to check for errors
-  # -activate quoting/enhanced mode (e.g. by writing out “--options”)
-  # -pass arguments only via   -- "$@"   to separate them correctly
-  ! PARSED=$(getopt --options=$OPTIONS --longoptions=$LONGOPTS --name "$0" -- "$@")
-  if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
-      # e.g. return value is 1
-      #  then getopt has complained about wrong arguments to stdout
-      exit 2
-  fi
-
-  # read getopt’s output this way to handle the quoting right:
-  eval set -- "$PARSED"
-
-  debug="n" help="n" version="-" source_branch="-" target_branch="-" build="n"
-  d=$debug h=$help v=$version s=$source_branch t=$target_branch b=$build
-
-  # now enjoy the options in order and nicely split until we see --
-  while true; do
-      case "$1" in
-          -d|--debug)
+  while getopts_long 'dhv:s:t:ba:k debug help version: source: target: build apply: keep' OPTKEY "${@}"; do
+      case ${OPTKEY} in
+          'd'|'debug')
               d=y
-              shift
               ;;
-          -h|--help)
+          'h'|'help')
               h=y
-              shift
               ;;
-          -v|--version)
-              version="$2"
-              shift 2
+          'v'|'version')
+              version="${OPTARG}"
               ;;
-          -s|--source)
-              source_branch="$2"
-              shift 2
+          's'|'source')
+              source_branch="${OPTARG}"
               ;;
-          -t|--target)
-              target_branch="$2"
-              shift 2
+          't'|'target')
+              target_branch="${OPTARG}"
               ;;
-          -b|--build)
+          'b'|'build')
               build=y
-              shift
               ;;
-          -k|--keep)
+          'a'|'apply')
+              apply_folder="${OPTARG}"
+              ;;
+          'k'|'keep')
               keep="-k"
-              shift
               ;;
-          --)
-              shift
-              break
+          '?')
+              echo_error "INVALID OPTION -- ${OPTARG}" >&2
+              usage
+              ;;
+          ':')
+              echo_error "MISSING ARGUMENT for option -- ${OPTARG}" >&2
+              usage
               ;;
           *)
-              echo_fatal "Programming error: $1"
-              exit 3
+              echo_error "UNIMPLEMENTED OPTION -- ${OPTKEY}" >&2
+              usage
               ;;
       esac
   done
-
-  # handle non-option arguments
-  # if [[ $# -ne 1 ]]; then
-  #     echo "$0: A single input file is required."
-  #     exit 4
-  # fi
-
 
   # help first
   if [[ -n $h ]] && [[ $h == "y" ]]; then
@@ -283,6 +265,13 @@ function check_params() {
   fi
   RLS_VERSION=$version
   RLS_BUILD=${build^^}
+
+  if [[ ${RLS_BUILD} == 'Y' ]] && [[ ${apply_folder} != '-' ]] && [[ ! -d ${apply_folder} ]]; then
+    echo_error "Folder to apply to does not exist!"
+    usage
+  else
+    RLS_TOFOLDER=${apply_folder}
+  fi
 }
 
 

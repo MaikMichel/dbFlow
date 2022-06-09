@@ -18,8 +18,10 @@ utplsql_schema="ut3"
 utplsql_pass=$(base64 < /dev/urandom | tr -d 'O0Il1+/' | head -c 20; printf '\n')
 utplsql_tspace="users"
 
-tag_name=$(curl --silent "https://github.com/utPLSQL/utPLSQL/releases/latest" | sed 's#.*tag/\(.*\)\".*#\1#')
+tag_name=$(basename $(curl -fs -o/dev/null -w %{redirect_url} https://github.com/utPLSQL/utPLSQL/releases/latest))
+echo "Downloading ... https://github.com/utPLSQL/utPLSQL/releases/download/${tag_name}/utPLSQL.zip"
 curl -OL "https://github.com/utPLSQL/utPLSQL/releases/download/${tag_name}/utPLSQL.zip"
+
 
 unzip utPLSQL.zip -d utplsql
 rm utPLSQL.zip

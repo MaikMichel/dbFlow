@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Enable xtrace if the DEBUG environment variable is set
 if [[ ${DEBUG-} =~ ^1|yes|true$ ]]; then
@@ -289,7 +289,7 @@ create_merged_report_file() {
   echo "declare" >> ${output_file}
   echo "  l_b64         clob;" >> ${output_file}
   echo "  l_bin         blob;" >> ${output_file}
-  echo "  l_file_name   varchar2(2000) := 'changelog.md';  " >> ${output_file}
+  echo "  l_file_name   varchar2(2000) := '${source_file}';  " >> ${output_file}
   echo "" >> ${output_file}
   echo "  gc_red           varchar2(7) := chr(27) || '[31m';" >> ${output_file}
   echo "  gc_green         varchar2(7) := chr(27) || '[32m';" >> ${output_file}
@@ -328,3 +328,65 @@ create_merged_report_file() {
   rm ${base64_file}
 }
 
+getopts_long() {
+    : "${1:?Missing required parameter -- long optspec}"
+    : "${2:?Missing required parameter -- variable name}"
+
+    local optspec_short="${1%% *}-:"
+    local optspec_long="${1#* }"
+    local optvar="${2}"
+
+    shift 2
+
+    if [[ "${#}" == 0 ]]; then
+        local args=()
+        while [[ ${#BASH_ARGV[@]} -gt ${#args[@]} ]]; do
+            local index=$(( ${#BASH_ARGV[@]} - ${#args[@]} - 1 ))
+            args[${#args[@]}]="${BASH_ARGV[${index}]}"
+        done
+        set -- "${args[@]}"
+    fi
+
+    builtin getopts "${optspec_short}" "${optvar}" "${@}" || return 1
+    [[ "${!optvar}" == '-' ]] || return 0
+
+    printf -v "${optvar}" "%s" "${OPTARG%%=*}"
+
+    if [[ "${optspec_long}" =~ (^|[[:space:]])${!optvar}:([[:space:]]|$) ]]; then
+        OPTARG="${OPTARG#${!optvar}}"
+        OPTARG="${OPTARG#=}"
+
+        # Missing argument
+        if [[ -z "${OPTARG}" ]]; then
+            OPTARG="${!OPTIND}" && OPTIND=$(( OPTIND + 1 ))
+            [[ -z "${OPTARG}" ]] || return 0
+
+            if [[ "${optspec_short:0:1}" == ':' ]]; then
+                OPTARG="${!optvar}" && printf -v "${optvar}" ':'
+            else
+                [[ "${OPTERR}" == 0 ]] || \
+                    echo_error "${0}: option requires an argument -- ${!optvar}" >&2
+                unset OPTARG && printf -v "${optvar}" '?'
+            fi
+        fi
+    elif [[ "${optspec_long}" =~ (^|[[:space:]])${!optvar}([[:space:]]|$) ]]; then
+        unset OPTARG
+    else
+        # Invalid option
+        if [[ "${optspec_short:0:1}" == ':' ]]; then
+            OPTARG="${!optvar}"
+        else
+            [[ "${OPTERR}" == 0 ]] || echo_error "${0}: illegal option -- ${!optvar}" >&2
+            unset OPTARG
+        fi
+        printf -v "${optvar}" '?'
+    fi
+}
+
+rem_trailing_slash() {
+    echo "$1" | sed 's/\/*$//g'
+}
+
+force_trailing_slash() {
+    echo "$(rem_trailing_slash "$1")/"
+}

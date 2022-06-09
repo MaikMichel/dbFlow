@@ -18,7 +18,8 @@ tapi_schema="tapi"
 tapi_pass=$(base64 < /dev/urandom | tr -d 'O0Il1+/' | head -c 20; printf '\n')
 tapi_tspace="users"
 
-tag_name=$(curl --silent "https://github.com/MaikMichel/table-api-generator/releases/latest" | sed 's#.*tag/\(.*\)\".*#\1#')
+tag_name=$(basename $(curl -fs -o/dev/null -w %{redirect_url} https://github.com/MaikMichel/table-api-generator/releases/latest))
+echo "Downloading ... https://github.com/MaikMichel/table-api-generator/archive/${tag_name}.zip"
 curl -OL "https://github.com/MaikMichel/table-api-generator/archive/${tag_name}.zip"
 
 unzip ${tag_name}.zip -d "tapi-${tag_name}"

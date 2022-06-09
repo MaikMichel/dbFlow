@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # echo "Your script args ($#) are: $@"
 
 usage() {
@@ -95,91 +95,54 @@ function check_vars() {
 }
 
 function check_params() {
-  ! getopt --test > /dev/null
-  if [[ ${PIPESTATUS[0]} -ne 4 ]]; then
-      echo_fatal 'I’m sorry, `getopt --test` failed in this environment.'
-      exit 1
-  fi
-
-  OPTIONS=dhipv:s:e:kal
-  LONGOPTS=debug,help,init,patch,version:,start:,end:,keepfolder,shipall,listfiles
-
-  # -regarding ! and PIPESTATUS see above
-  # -temporarily store output to be able to check for errors
-  # -activate quoting/enhanced mode (e.g. by writing out “--options”)
-  # -pass arguments only via   -- "$@"   to separate them correctly
-  ! PARSED=$(getopt --options=$OPTIONS --longoptions=$LONGOPTS --name "$0" -- "$@")
-  if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
-      # e.g. return value is 1
-      #  then getopt has complained about wrong arguments to stdout
-      exit 2
-  fi
-
-  # read getopt’s output this way to handle the quoting right:
-  eval set -- "$PARSED"
-
   debug="n" help="n" init="n" patch="n" version="-" start=ORIG_HEAD end=HEAD k="n" a="n" l="n"
 
-  # now enjoy the options in order and nicely split until we see --
-  while true; do
-      case "$1" in
-          -d|--debug)
+  while getopts_long 'dhipv:s:e:kal debug help init patch version: start: end: keepfolder shipall listfiles' OPTKEY "${@}"; do
+      case ${OPTKEY} in
+          'd'|'debug')
               d=y
-              shift
               ;;
-          -h|--help)
+          'h'|'help')
               h=y
-              shift
               ;;
-          -i|--init)
+          'i'|'init')
               i=y
-              shift
               ;;
-          -p|--patch)
+          'p'|'patch')
               p=y
-              shift
               ;;
-          -v|--version)
-              version="$2"
-              shift 2
+          'v'|'version')
+              version="${OPTARG}"
               ;;
-          -s|--start)
-              start="$2"
-              shift 2
+          's'|'start')
+              start="${OPTARG}"
               ;;
-          -e|--end)
-              end="$2"
-              shift 2
+          'e'|'end')
+              end="${OPTARG}"
               ;;
-          -k|--keepfolder)
+          'k'|'keepfolder')
               k=y
-              shift
               ;;
-          -a|--shipall)
+          'a'|'shipall')
               a=y
-              shift
               ;;
-          -l|--listfiles)
+          'l'|'listfiles')
               l=y
-              shift
               ;;
-          --)
-              shift
-              break
+          '?')
+              echo_error "INVALID OPTION -- ${OPTARG}" >&2
+              usage
+              ;;
+          ':')
+              echo_error "MISSING ARGUMENT for option -- ${OPTARG}" >&2
+              usage
               ;;
           *)
-              echo_fatal "Programming error"
-              exit 3
+              echo_error "UNIMPLEMENTED OPTION -- ${OPTKEY}" >&2
+              usage
               ;;
       esac
   done
-
-  # handle non-option arguments
-  # if [[ $# -ne 1 ]]; then
-  #     echo "$0: A single input file is required."
-  #     exit 4
-  # fi
-
 
   # help first
   if [[ -n $h ]] && [[ $h == "y" ]]; then
@@ -280,6 +243,7 @@ function setup_env() {
   }
 
   # at INIT there is no pretreatment or an evaluation of the table_ddl
+  # !: Don't forgett to change documentation when changing these arrays
   if [[ "${mode}" == "init" ]]; then
     array=( .hooks/pre sequences tables indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies sources/types sources/packages sources/functions sources/procedures views mviews sources/triggers jobs tests/packages ddl/init dml/init dml/base .hooks/post)
   else
@@ -373,7 +337,7 @@ function copy_files {
       fi
 
       if [[ $(uname) == "Darwin" ]]; then
-        rsync -R `git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB -- build.env .gitignore` ${targetpath}
+        rsync -Rr `git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB -- build.env .gitignore` ${targetpath}
       else
         cp --parents -Rf `git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB -- build.env .gitignore` ${targetpath}
       fi
@@ -392,9 +356,9 @@ function copy_files {
           mkdir -p "${targetpath}"
         fi
 
-        echo "Copy files ..." | write_log
+        echo "Copy files in folder: ${folder}" | write_log
         if [[ $(uname) == "Darwin" ]]; then
-          rsync -R `git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB -- ${folder}` ${targetpath}
+          rsync -Rr `git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB -- ${folder}` ${targetpath}
         else
           cp --parents -Rf `git diff -r --name-only --no-commit-id ${from_commit} ${until_commit} --diff-filter=ACMRTUXB -- ${folder}` ${targetpath}
         fi
@@ -424,7 +388,7 @@ function copy_files {
             then
                 # yes, so copy it...
                 if [[ $(uname) == "Darwin" ]]; then
-                  rsync -R $f $targetpath
+                  rsync -Rr $f $targetpath
                 else
                   cp --parents -Rf $f $targetpath
                 fi
@@ -436,7 +400,9 @@ function copy_files {
       fi
     done
 
-    # additionaly we need all condtions beloning to REST
+
+
+    # additionaly we need all conditions beloning to REST
     if [[ -d "$targetpath"/rest ]]; then
       folders=()
       if [[ ${PROJECT_MODE} == "FLEX" ]]; then
@@ -472,7 +438,7 @@ function copy_files {
 
                 # yes, so copy it...
                 if [[ $(uname) == "Darwin" ]]; then
-                  rsync -R ${srcf/.sql/.condition.sql} $targetpath
+                  rsync -Rr ${srcf/.sql/.condition.sql} $targetpath
                 else
                   cp --parents -Rf ${srcf/.sql/.condition.sql} $targetpath
                 fi
@@ -482,16 +448,20 @@ function copy_files {
           done
         fi
       done
-
     fi
 
+
+    if [ ! -d "${targetpath}" ]; then
+      echo "Creating directory '${targetpath}'" | write_log
+      mkdir -p "${targetpath}"
+    fi
 
     ## and we need all hooks
     for schema in "${SCHEMAS[@]}"
     do
       # yes, so copy it...
       if [[ $(uname) == "Darwin" ]]; then
-        rsync -R ${sourcepath}/db/$schema/.hooks $targetpath
+        rsync -Rr ${sourcepath}/db/$schema/.hooks $targetpath
       else
         if [[ -d ${sourcepath}/db/$schema/.hooks ]]; then
           cp --parents -Rf ${sourcepath}/db/$schema/.hooks $targetpath
@@ -499,9 +469,8 @@ function copy_files {
       fi
     done
 
-
     if [[ $(uname) == "Darwin" ]]; then
-      rsync -R ${sourcepath}/.hooks $targetpath
+      rsync -Rr ${sourcepath}/.hooks $targetpath
     else
       if [[ -d ${sourcepath}/.hooks ]]; then
         cp --parents -Rf ${sourcepath}/.hooks $targetpath
@@ -572,7 +541,7 @@ function write_install_schemas(){
         echo "set sqlblanklines on" >> "$target_install_file"
         echo "set tab off" >> "$target_install_file"
         echo "set pagesize 9999" >> "$target_install_file"
-        echo "set trimspool off" >> "$target_install_file"
+        echo "set trimspool on" >> "$target_install_file"
         echo "" >> "$target_install_file"
 
         echo "Prompt .............................................................................. " >> "$target_install_file"
@@ -829,13 +798,126 @@ function write_install_rest() {
   fi
 }
 
+function gen_changelog() {
+  local current_tag=${1}
+  local previous_tag=${2}
+  local targetfile=${3}
+  echo_debug "Generating Changelog ${current_tag}...${previous_tag} to ${targetfile}" | write_log
+
+  # define log
+  changetime=`date "+%Y%m%d%H%M%S"`
+  logf=changelog_${changetime}.md
+  tag_date=$(git log -1 --pretty=format:'%ad' --date=short ${current_tag})
+
+  printf "# ${PROJECT} - Changelog\n\n" > ${logf}
+  printf "## ${current_tag} (${tag_date})\n\n" >> ${logf}
+
+  if [[ -n ${INTENT_PREFIXES} ]]; then
+    for intent in "${!INTENT_PREFIXES[@]}"; do
+      readarray -t fixes <<< $(git log ${current_tag}...${previous_tag} --pretty="%s" --reverse | grep -v Merge | grep "^${INTENT_PREFIXES[$intent]}: *")
+      eval fixes=($(printf "%q\n" "${fixes[@]}" | sort -u))
+
+      if [[ ${#fixes[@]} -gt 0 ]] && [[ ${fixes[0]} != "" ]]; then
+        printf "### ${INTENT_NAMES[$intent]}\n\n" >> ${logf}
+
+        for fix in "${fixes[@]}"; do
+          fix_line=${fix/"${INTENT_PREFIXES[$intent]}: "/}
+          fix_issue=""
+
+          if [[ -n ${TICKET_MATCH} ]]; then
+            fix_issue=$(echo "${fix_line}" | grep -e "${TICKET_MATCH}" -o || true)
+          fi
+
+          echo_line=""
+          if [[ $fix_issue != "" ]] && [[ -n ${TICKET_URL} ]]; then
+            echo_line="* ${fix_line} [View]($(force_trailing_slash ${TICKET_URL})${fix_issue})" >> ${logf}
+          else
+            echo_line="* ${fix_line}" >> ${logf}
+          fi
+
+          grep -qxF "${echo_line}" ${logf} || echo "${echo_line}" >> ${logf}
+        done
+        printf "\n\n" >> ${logf}
+      fi;
+
+    done
+  fi
+
+  # when INTENT_ELSE is defined output goes here
+  if [[ -n ${INTENT_ELSE} ]]; then
+    intent_pipes=$(printf '%s|' "${INTENT_PREFIXES[@]}" | sed 's/|$//')
+
+    readarray -t fixes <<< $(git log ${current_tag}...${previous_tag} --pretty="%s" --reverse | grep -v Merge | grep -v -E "^${intent_pipes}: *")
+    eval fixes=($(printf "%q\n" "${fixes[@]}" | sort -u))
+
+    if [[ ${#fixes[@]} -gt 0 ]] && [[ ${fixes[0]} != "" ]]; then
+      if [[ -n ${INTENT_PREFIXES} ]]; then
+        printf "### ${INTENT_ELSE}\n\n" >> ${logf}
+      fi
+
+      for fix in "${fixes[@]}"; do
+        fix_line=${fix}
+        fix_issue=$(echo "${fix_line}" | grep -e "${TICKET_MATCH}" -o || true)
+
+        if [[ $fix_issue != "" ]]; then
+          printf "* ${fix_line} [View]($(force_trailing_slash ${TICKET_URL})${fix_issue})\n" >> ${logf}
+        else
+          printf "* ${fix_line}\n" >> ${logf}
+        fi
+      done
+      printf "\n\n" >> ${logf}
+    fi;
+  fi
+
+  echo "---" >> ${logf}
+
+
+  if [[ -f ${targetfile} ]]; then
+    # remove first line
+    sed -i '1d' ${targetfile}
+
+    # append to new output
+    cat ${targetfile} >> ${logf}
+    rm ${targetfile}
+  fi
+
+
+  mv ${logf} ${targetfile}
+  echo_success "Changelog written to ${targetfile}" | write_log
+}
+
 function write_changelog() {
   echo "" | write_log
-  current_tag=
-  previous_tag=
-  . .dbFlow/genchlog.sh -e ${until_commit:-HEAD} -f "changelog_${mode}_${version}.md"
+  count_commits=$(git rev-list --all --count)
+  if [ "$count_commits" -gt "0" ]; then
+    if git cat-file -e "${until_commit:-HEAD}" 2> /dev/null; then
+      current_tag=${until_commit:-HEAD}
+    else
+      echo_warning "End Commit or Tag ${until_commit:-HEAD} not found" | write_log
+      return
+    fi
 
-  echo "ChangeLog generated: ${current_tag} -- ${previous_tag}" | write_log
+    if [[ ${current_tag} == "HEAD" ]]; then
+      previous_tag=$(git describe --tags --abbrev=0 --always)
+    else
+      previous_tag=$(git tag --sort=-creatordate | grep -A 1 "${current_tag}" | tail -n 1) || true
+    fi
+
+    # if start and end are the same at head, we put all into the change log
+    # otherwise we had to look for a previous commit: git log --format="%H" -n 2 | tail -1
+    if [[ ${current_tag} == "HEAD" ]]; then
+      current_commit=$(git rev-parse HEAD)
+      if [[ ${current_commit} == "${previous_tag}" ]]; then
+        previous_tag=$(git log --max-parents=0 HEAD --pretty=format:%H)
+      fi
+    fi
+
+    gen_changelog "${current_tag}" "${previous_tag}" "changelog_${mode}_${version}.md"
+
+    echo "ChangeLog generated: ${current_tag} -- ${previous_tag}" | write_log
+  else
+    echo "ChangeLog not generated: Nothing commited yet" | write_log
+  fi
 }
 
 
