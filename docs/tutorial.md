@@ -2,12 +2,12 @@ A Tutorial
 
 ## Intro
 
-- Was werden wir hier bauen
-  - kleine ToDo App inkl. REST Anbindung
+- What will we build here
+    - small ToDo App incl. REST connection
 
-- Skizze der Architektur
-  - am besten ein Schaubild
-  - verweis auf dockawex
+- sketch of the architecture
+    - preferably a diagram
+    - reference to dockawex
 
 ## Configuration
 
