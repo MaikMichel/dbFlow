@@ -702,8 +702,8 @@ function write_install_apps() {
 
     for d in $(find "$targetpath"/apex -maxdepth ${depth} -mindepth ${depth} -type d)
     do
-      echo "${d}" >> $target_apex_file
-      echo "Writing call to install APP: ${d} " | write_log
+      echo "$(basename $d)" >> $target_apex_file
+      echo "Writing call to install APP: $(basename $d) " | write_log
     done
   fi
 }
