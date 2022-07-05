@@ -536,7 +536,7 @@ function write_install_schemas(){
         echo "define MODE = '^2'" >> "$target_install_file"
 
         echo "set timing on" >> "$target_install_file"
-        echo "set trim off" >> "$target_install_file"
+        echo "set trim on" >> "$target_install_file"
         echo "set linesize 2000" >> "$target_install_file"
         echo "set sqlblanklines on" >> "$target_install_file"
         echo "set tab off" >> "$target_install_file"
@@ -549,8 +549,6 @@ function write_install_schemas(){
         echo "Prompt .. Start Installation for schema: $schema " >> "$target_install_file"
         echo "Prompt ..                       Version: $mode $version " >> "$target_install_file"
         echo "Prompt .............................................................................. " >> "$target_install_file"
-        # echo "set scan off" >> "$target_install_file"
-        # echo "set define off" >> "$target_install_file"
         echo "set serveroutput on" >> "$target_install_file"
         echo "" >> "$target_install_file"
 
@@ -587,6 +585,7 @@ function write_install_schemas(){
             fi
 
             echo "Prompt" >> "$target_install_file"
+            echo "set scan off" >> "$target_install_file"
 
             if [[ "$path" == "ddl/patch/pre" ]] || [[ "$path" == "ddl/patch/pre_tst" ]] || [[ "$path" == "ddl/patch/pre_uat" ]] || [[ "$path" == "views" ]]; then
               echo "WHENEVER SQLERROR CONTINUE" >> "$target_install_file"
@@ -649,6 +648,7 @@ function write_install_schemas(){
 
             # post hook
             echo "Prompt" >> "$target_install_file"
+            echo "set scan on" >> "$target_install_file"
             if [[ -d "${targetpath}/db/${schema}/.hooks/post/${path}" ]]; then
               for file in $(ls "${targetpath}/db/${schema}/.hooks/post/${path}" | sort )
               do
@@ -667,7 +667,7 @@ function write_install_schemas(){
         done #path
 
         echo "prompt compiling schema" >> "$target_install_file"
-        echo "exec dbms_utility.compile_schema(schema => USER);" >> "$target_install_file"
+        echo "exec dbms_utility.compile_schema(schema => USER, compile_all => false);" >> "$target_install_file"
         echo "exec dbms_session.reset_package" >> "$target_install_file"
 
         echo "Prompt" >> "$target_install_file"

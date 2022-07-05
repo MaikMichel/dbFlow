@@ -373,7 +373,7 @@ execute_global_hook_scripts() {
             set verify off
 
             set timing on
-            set trim off
+            set trim on
             set linesize 2000
             set sqlblanklines on
             set tab off
@@ -875,7 +875,9 @@ manage_result() {
   # remove colorcodes from file
   echo "Processing logs"
   cat ${full_log_file} | sed -r "s/\x1B\[([0-9]{1,3}((;[0-9]{1,3})*)?)?[m|K]//g" > ${full_log_file}.colorless
-  cat ${full_log_file} | .dbFlow/ansi2html.sh --bg=dark > ${full_log_file}.html
+  if [[ ${this_os} != "Darwin" ]]; then
+    cat ${full_log_file} | .dbFlow/ansi2html.sh --bg=dark > ${full_log_file}.html
+  fi
   rm ${full_log_file}
   mv ${full_log_file}.colorless ${full_log_file}
 
@@ -919,10 +921,14 @@ manage_result() {
 
   echo "| $versionmd | $deployed_at | $deployed_by |  $result " >> ${basepath}/version.md
 
-  htmllog=$(basename ${full_log_file}.html)
+  if [[ ${this_os} != "Darwin" ]]; then
+    finallog=$(basename ${full_log_file}.html)
+  else
+    finallog=$(basename ${full_log_file})
+  fi
 
   if [[ $target_move == "success" ]]; then
-    echo "view output: $DEPOT_PATH/$STAGE/$target_move/$version/${htmllog}"
+    echo "view output: $DEPOT_PATH/$STAGE/$target_move/$version/${finallog}"
     exit 0
   else
     redolog=$(basename ${full_log_file})
@@ -935,7 +941,7 @@ manage_result() {
     echo_debug "possibility to specifiy the log file ${WHITE}${target_relative_path}/${log_file}${NC} as "
     echo_debug "redolog parameter. This will not repeat the steps that have already been successfully executed."
     echo_debug "${WHITE}$0 --${mode} --version ${version} --redolog ${target_relative_path}/${redolog}${NC}"
-    echo_debug "view output: $DEPOT_PATH/$STAGE/$target_move/$version/${htmllog}"
+    echo_debug "view output: $DEPOT_PATH/$STAGE/$target_move/$version/${finallog}"
     exit 1
   fi
 }
