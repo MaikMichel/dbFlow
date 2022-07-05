@@ -574,6 +574,7 @@ function write_install_schemas(){
 
             # pre hook
             if [[ -d "${targetpath}/db/${schema}/.hooks/pre/${path}" ]]; then
+              echo "set scan on" >> "$target_install_file"
               for file in $(ls "${targetpath}/db/${schema}/.hooks/pre/${path}" | sort )
               do
                 if [[ -f "${targetpath}/db/${schema}/.hooks/pre/${path}/${file}" ]]; then
@@ -582,11 +583,10 @@ function write_install_schemas(){
                   echo "Prompt <<< db/${schema}/.hooks/pre/${path}/${file}" >> "$target_install_file"
                 fi
               done
+              echo "set scan off" >> "$target_install_file"
             fi
 
             echo "Prompt" >> "$target_install_file"
-            echo "set scan off" >> "$target_install_file"
-
             if [[ "$path" == "ddl/patch/pre" ]] || [[ "$path" == "ddl/patch/pre_tst" ]] || [[ "$path" == "ddl/patch/pre_uat" ]] || [[ "$path" == "views" ]]; then
               echo "WHENEVER SQLERROR CONTINUE" >> "$target_install_file"
             fi
@@ -648,8 +648,8 @@ function write_install_schemas(){
 
             # post hook
             echo "Prompt" >> "$target_install_file"
-            echo "set scan on" >> "$target_install_file"
             if [[ -d "${targetpath}/db/${schema}/.hooks/post/${path}" ]]; then
+              echo "set scan on" >> "$target_install_file"
               for file in $(ls "${targetpath}/db/${schema}/.hooks/post/${path}" | sort )
               do
                 if [[ -f "${targetpath}/db/${schema}/.hooks/post/${path}/${file}" ]]; then
@@ -658,6 +658,7 @@ function write_install_schemas(){
                   echo "Prompt <<< db/${schema}/.hooks/post/${path}/${file}" >> "$target_install_file"
                 fi
               done
+              echo "set scan off" >> "$target_install_file"
             fi
 
             echo "Prompt" >> "$target_install_file"
