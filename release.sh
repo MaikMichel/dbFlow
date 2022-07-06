@@ -167,7 +167,15 @@ build_release() {
 
   if [[ ${RLS_BUILD} == 'Y' ]] && [[ ${RLS_TOFOLDER} != '-' ]]; then
     cd ${RLS_TOFOLDER}
-    git pull --recurse-submodules
+    if [[ -d ".dbFlow" ]]; then
+      cd ".dbFlow"
+      { #try
+        sub_pulled=$(git pull)
+      } || { # catch
+        sub_pulled="no"
+      }
+      cd ".."
+    fi
   fi
 
   for task in "${apply_tasks[@]}"
