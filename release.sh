@@ -167,6 +167,7 @@ build_release() {
 
   if [[ ${RLS_BUILD} == 'Y' ]] && [[ ${RLS_TOFOLDER} != '-' ]]; then
     cd ${RLS_TOFOLDER}
+    git pull --recurse-submodules
   fi
 
   for task in "${apply_tasks[@]}"
