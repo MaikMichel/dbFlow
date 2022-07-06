@@ -572,9 +572,13 @@ function write_install_schemas(){
             echo "Writing calls for $path" | write_log
             echo "Prompt Installing $path ..." >> "$target_install_file"
 
-            # pre hook
-            if [[ -d "${targetpath}/db/${schema}/.hooks/pre/${path}" ]]; then
+            # set scan to on, to make use of vars inside main schema-hooks
+            if [[ "${path}" == ".hooks/pre" ]] || [[ "${path}" == ".hooks/post" ]]; then
               echo "set scan on" >> "$target_install_file"
+            fi
+
+            # pre folder-hooks (something like db/schema/.hooks/pre/tables)
+            if [[ -d "${targetpath}/db/${schema}/.hooks/pre/${path}" ]]; then
               for file in $(ls "${targetpath}/db/${schema}/.hooks/pre/${path}" | sort )
               do
                 if [[ -f "${targetpath}/db/${schema}/.hooks/pre/${path}/${file}" ]]; then
@@ -583,7 +587,6 @@ function write_install_schemas(){
                   echo "Prompt <<< db/${schema}/.hooks/pre/${path}/${file}" >> "$target_install_file"
                 fi
               done
-              echo "set scan off" >> "$target_install_file"
             fi
 
             echo "Prompt" >> "$target_install_file"
@@ -646,10 +649,9 @@ function write_install_schemas(){
 
 
 
-            # post hook
+            # post folder hooks
             echo "Prompt" >> "$target_install_file"
             if [[ -d "${targetpath}/db/${schema}/.hooks/post/${path}" ]]; then
-              echo "set scan on" >> "$target_install_file"
               for file in $(ls "${targetpath}/db/${schema}/.hooks/post/${path}" | sort )
               do
                 if [[ -f "${targetpath}/db/${schema}/.hooks/post/${path}/${file}" ]]; then
@@ -658,6 +660,10 @@ function write_install_schemas(){
                   echo "Prompt <<< db/${schema}/.hooks/post/${path}/${file}" >> "$target_install_file"
                 fi
               done
+            fi
+
+             # set scan to off, to make use of vars inside main schema-hooks
+            if [[ "${path}" == ".hooks/pre" ]] || [[ "${path}" == ".hooks/post" ]]; then
               echo "set scan off" >> "$target_install_file"
             fi
 
@@ -668,7 +674,7 @@ function write_install_schemas(){
         done #path
 
         echo "prompt compiling schema" >> "$target_install_file"
-        echo "exec dbms_utility.compile_schema(schema => USER, compile_all => false);" >> "$target_install_file"
+        echo "exec dbms_utility.compile_schema(schema => user, compile_all => false);" >> "$target_install_file"
         echo "exec dbms_session.reset_package" >> "$target_install_file"
 
         echo "Prompt" >> "$target_install_file"
