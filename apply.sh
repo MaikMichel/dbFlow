@@ -724,6 +724,10 @@ install_apps() {
 
             if nvl(${APP_OFFSET}, 0) > 0 then
               apex_application_install.generate_offset;
+              -- alias must be unique per instance, so when offset is definded
+              -- it should be modified. In this case a post hook at root level
+              -- has to be used to give it a correct alias
+              apex_application_install.set_application_alias('${app_id}_${APP_OFFSET}');
             end if;
 
             apex_application_install.set_application_id(${app_id} + ${APP_OFFSET});
