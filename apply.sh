@@ -215,30 +215,40 @@ print_info()
 {
   echo -e "Installing    ${BWHITE}${mode} ${version}${NC}" | write_log
   echo -e "----------------------------------------------------------" | write_log
-  echo -e "mode:         ${BWHITE}$mode${NC}" | write_log
-  echo -e "version:      ${BWHITE}${version}${NC}" | write_log
-  echo -e "log_file:     ${BWHITE}$log_file${NC}" | write_log
-  echo -e "extract:      ${BWHITE}$must_extract${NC}" | write_log
+  echo -e "Mode:         ${BWHITE}$mode${NC}" | write_log
+  echo -e "Version:      ${BWHITE}${version}${NC}" | write_log
+  echo -e "Log File:     ${BWHITE}$log_file${NC}" | write_log
+  echo -e "Extract:      ${BWHITE}$must_extract${NC}" | write_log
   if [[ $oldlogfile != "" ]]; then
-    echo -e "redolog:      ${BWHITE}$oldlogfile${NC}" | write_log
+    echo -e "Redolog:      ${BWHITE}$oldlogfile${NC}" | write_log
   fi
   echo -e "----------------------------------------------------------" | write_log
-  echo -e "project:      ${BWHITE}${PROJECT}${NC}" | write_log
+  echo -e "Project:             ${BWHITE}${PROJECT}${NC}" | write_log
   if [[ ${PROJECT_MODE} != "FLEX" ]]; then
-    echo -e "app_schema:   ${BWHITE}${APP_SCHEMA}${NC}" | write_log
+    echo -e "Application Schema:  ${BWHITE}${APP_SCHEMA}${NC}" | write_log
     if [[ ${PROJECT_MODE} != "SINGLE" ]]; then
-      echo -e "data_schema:  ${BWHITE}${DATA_SCHEMA}${NC}" | write_log
-      echo -e "logic_schema: ${BWHITE}${LOGIC_SCHEMA}${NC}" | write_log
+      echo -e "Data Schema:         ${BWHITE}${DATA_SCHEMA}${NC}" | write_log
+      echo -e "Logic Schema:        ${BWHITE}${LOGIC_SCHEMA}${NC}" | write_log
     fi
-    echo -e "workspace:    ${BWHITE}${WORKSPACE}${NC}" | write_log
+    echo -e "Workspace:           ${BWHITE}${WORKSPACE}${NC}" | write_log
   fi
-  echo -e "schemas:      ${BWHITE}${SCHEMAS[@]}${NC}" | write_log
+  echo -e "Schemas:             ${BWHITE}${SCHEMAS[@]}${NC}" | write_log
+  if [[ -n ${CHANGELOG_SCHEMA} ]]; then
+    echo -e "----------------------------------------------------------" | write_log
+    echo -e "Changelog Schema: ${BWHITE}${CHANGELOG_SCHEMA}${NC}" | write_log
+    echo -e "Intent Prefixes:  ${BWHITE}${INTENT_PREFIXES[@]}${NC}" | write_log
+    echo -e "Intent Names:     ${BWHITE}${INTENT_NAMES[@]}${NC}" | write_log
+    echo -e "Intent Else:      ${BWHITE}${INTENT_ELSE}${NC}" | write_log
+    echo -e "Ticket Match:     ${BWHITE}${TICKET_MATCH}${NC}" | write_log
+    echo -e "Ticket URL:       ${BWHITE}${TICKET_URL}${NC}" | write_log
+  fi
+
   echo -e "----------------------------------------------------------" | write_log
-  echo -e "stage:        ${BWHITE}${STAGE}${NC}" | write_log
-  echo -e "depot:        ${BWHITE}${DEPOT_PATH}${NC}" | write_log
-  echo -e "app_offset:   ${BWHITE}${APP_OFFSET}${NC}" | write_log
-  echo -e "db_app_user:  ${BWHITE}${DB_APP_USER}${NC}" | write_log
-  echo -e "db_tns:       ${BWHITE}${DB_TNS}${NC}" | write_log
+  echo -e "Stage:               ${BWHITE}${STAGE}${NC}" | write_log
+  echo -e "Depot:               ${BWHITE}${DEPOT_PATH}${NC}" | write_log
+  echo -e "Application Offset:  ${BWHITE}${APP_OFFSET}${NC}" | write_log
+  echo -e "Deployment User:     ${BWHITE}${DB_APP_USER}${NC}" | write_log
+  echo -e "DB Connection:       ${BWHITE}${DB_TNS}${NC}" | write_log
   echo -e "----------------------------------------------------------" | write_log
   echo -e | write_log
 }
@@ -831,7 +841,7 @@ process_changelog() {
       echo "templatefile found" | write_log
 
       if [[ -n ${CHANGELOG_SCHEMA} ]]; then
-        echo "changelog schema is configured" | write_log
+        echo "changelog schema '${CHANGELOG_SCHEMA}' is configured" | write_log
 
         # now gen merged sql file
         create_merged_report_file ${chlfile} ${tplfile} ${chlfile}.sql
