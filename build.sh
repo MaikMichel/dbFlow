@@ -550,7 +550,7 @@ function write_install_schemas(){
         echo "Prompt ..                       Version: $mode $version " >> "$target_install_file"
         echo "Prompt .............................................................................. " >> "$target_install_file"
         echo "set serveroutput on" >> "$target_install_file"
-        echo "set define off" >> "$target_install_file"
+        echo "set define ^" >> "$target_install_file"
         echo "" >> "$target_install_file"
 
         if [[ "${mode}" == "patch" ]]; then
@@ -575,7 +575,7 @@ function write_install_schemas(){
 
             # set scan to on, to make use of vars inside main schema-hooks
             if [[ "${path}" == ".hooks/pre" ]] || [[ "${path}" == ".hooks/post" ]]; then
-              echo "set define on" >> "$target_install_file"
+              echo "set define ^" >> "$target_install_file"
             fi
 
             # pre folder-hooks (something like db/schema/.hooks/pre/tables)
@@ -666,8 +666,6 @@ function write_install_schemas(){
              # set scan to off, to make use of vars inside main schema-hooks
             if [[ "${path}" == ".hooks/pre" ]] || [[ "${path}" == ".hooks/post" ]]; then
               echo "set define off" >> "$target_install_file"
-            else
-
             fi
 
             echo "Prompt" >> "$target_install_file"
