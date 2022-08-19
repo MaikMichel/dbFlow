@@ -572,7 +572,6 @@ set_apps_unavailable() {
       echo "disabling APEX-App ${app_id} in workspace ${workspace} for schema ${appschema}..." | write_log
       $SQLCLI -S "$(get_connect_string ${appschema})" <<! | tee -a ${full_log_file}
       set serveroutput on;
-      set escchar @
       set define off;
       Declare
         v_application_id  apex_application_build_options.application_id%type := ${app_id} + ${APP_OFFSET};
