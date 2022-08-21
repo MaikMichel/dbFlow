@@ -575,7 +575,7 @@ function write_install_schemas(){
 
             # set scan to on, to make use of vars inside main schema-hooks
             if [[ "${path}" == ".hooks/pre" ]] || [[ "${path}" == ".hooks/post" ]]; then
-              echo "set scan ^" >> "$target_install_file"
+              echo "set scan on" >> "$target_install_file"
             fi
 
             # pre folder-hooks (something like db/schema/.hooks/pre/tables)
