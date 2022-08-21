@@ -536,7 +536,7 @@ function write_install_schemas(){
         echo "define MODE = '^2'" >> "$target_install_file"
 
         echo "set timing on" >> "$target_install_file"
-        echo "set trim off" >> "$target_install_file"
+        echo "set trim on" >> "$target_install_file"
         echo "set linesize 2000" >> "$target_install_file"
         echo "set sqlblanklines on" >> "$target_install_file"
         echo "set tab off" >> "$target_install_file"
@@ -549,9 +549,8 @@ function write_install_schemas(){
         echo "Prompt .. Start Installation for schema: $schema " >> "$target_install_file"
         echo "Prompt ..                       Version: $mode $version " >> "$target_install_file"
         echo "Prompt .............................................................................. " >> "$target_install_file"
-        # echo "set scan off" >> "$target_install_file"
-        # echo "set define off" >> "$target_install_file"
         echo "set serveroutput on" >> "$target_install_file"
+        echo "set define off" >> "$target_install_file"
         echo "" >> "$target_install_file"
 
         if [[ "${mode}" == "patch" ]]; then
@@ -574,7 +573,12 @@ function write_install_schemas(){
             echo "Writing calls for $path" | write_log
             echo "Prompt Installing $path ..." >> "$target_install_file"
 
-            # pre hook
+            # set scan to on, to make use of vars inside main schema-hooks
+            if [[ "${path}" == ".hooks/pre" ]] || [[ "${path}" == ".hooks/post" ]]; then
+              echo "set define ^" >> "$target_install_file"
+            fi
+
+            # pre folder-hooks (something like db/schema/.hooks/pre/tables)
             if [[ -d "${targetpath}/db/${schema}/.hooks/pre/${path}" ]]; then
               for file in $(ls "${targetpath}/db/${schema}/.hooks/pre/${path}" | sort )
               do
@@ -587,7 +591,6 @@ function write_install_schemas(){
             fi
 
             echo "Prompt" >> "$target_install_file"
-
             if [[ "$path" == "ddl/patch/pre" ]] || [[ "$path" == "ddl/patch/pre_tst" ]] || [[ "$path" == "ddl/patch/pre_uat" ]] || [[ "$path" == "views" ]]; then
               echo "WHENEVER SQLERROR CONTINUE" >> "$target_install_file"
             fi
@@ -647,7 +650,7 @@ function write_install_schemas(){
 
 
 
-            # post hook
+            # post folder hooks
             echo "Prompt" >> "$target_install_file"
             if [[ -d "${targetpath}/db/${schema}/.hooks/post/${path}" ]]; then
               for file in $(ls "${targetpath}/db/${schema}/.hooks/post/${path}" | sort )
@@ -660,6 +663,11 @@ function write_install_schemas(){
               done
             fi
 
+             # set scan to off, to make use of vars inside main schema-hooks
+            if [[ "${path}" == ".hooks/pre" ]] || [[ "${path}" == ".hooks/post" ]]; then
+              echo "set define off" >> "$target_install_file"
+            fi
+
             echo "Prompt" >> "$target_install_file"
             echo "Prompt" >> "$target_install_file"
             echo "" >> "$target_install_file"
@@ -667,7 +675,7 @@ function write_install_schemas(){
         done #path
 
         echo "prompt compiling schema" >> "$target_install_file"
-        echo "exec dbms_utility.compile_schema(schema => USER);" >> "$target_install_file"
+        echo "exec dbms_utility.compile_schema(schema => user, compile_all => false);" >> "$target_install_file"
         echo "exec dbms_session.reset_package" >> "$target_install_file"
 
         echo "Prompt" >> "$target_install_file"
@@ -700,10 +708,10 @@ function write_install_apps() {
       depth=3
     fi
 
-    for d in $(find apex -maxdepth ${depth} -mindepth ${depth} -type d)
+    for d in $(find "$targetpath"/apex -maxdepth ${depth} -mindepth ${depth} -type d)
     do
-      echo "${d}" >> $target_apex_file
-      echo "Writing call to install APP: ${d} " | write_log
+      echo "${d/${targetpath}\//}" >> $target_apex_file
+      echo "Writing call to install APP: ${d/${targetpath}\//} " | write_log
     done
   fi
 }

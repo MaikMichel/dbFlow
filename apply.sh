@@ -215,30 +215,40 @@ print_info()
 {
   echo -e "Installing    ${BWHITE}${mode} ${version}${NC}" | write_log
   echo -e "----------------------------------------------------------" | write_log
-  echo -e "mode:         ${BWHITE}$mode${NC}" | write_log
-  echo -e "version:      ${BWHITE}${version}${NC}" | write_log
-  echo -e "log_file:     ${BWHITE}$log_file${NC}" | write_log
-  echo -e "extract:      ${BWHITE}$must_extract${NC}" | write_log
+  echo -e "Mode:         ${BWHITE}$mode${NC}" | write_log
+  echo -e "Version:      ${BWHITE}${version}${NC}" | write_log
+  echo -e "Log File:     ${BWHITE}$log_file${NC}" | write_log
+  echo -e "Extract:      ${BWHITE}$must_extract${NC}" | write_log
   if [[ $oldlogfile != "" ]]; then
-    echo -e "redolog:      ${BWHITE}$oldlogfile${NC}" | write_log
+    echo -e "Redolog:      ${BWHITE}$oldlogfile${NC}" | write_log
   fi
   echo -e "----------------------------------------------------------" | write_log
-  echo -e "project:      ${BWHITE}${PROJECT}${NC}" | write_log
+  echo -e "Project:             ${BWHITE}${PROJECT}${NC}" | write_log
   if [[ ${PROJECT_MODE} != "FLEX" ]]; then
-    echo -e "app_schema:   ${BWHITE}${APP_SCHEMA}${NC}" | write_log
+    echo -e "Application Schema:  ${BWHITE}${APP_SCHEMA}${NC}" | write_log
     if [[ ${PROJECT_MODE} != "SINGLE" ]]; then
-      echo -e "data_schema:  ${BWHITE}${DATA_SCHEMA}${NC}" | write_log
-      echo -e "logic_schema: ${BWHITE}${LOGIC_SCHEMA}${NC}" | write_log
+      echo -e "Data Schema:         ${BWHITE}${DATA_SCHEMA}${NC}" | write_log
+      echo -e "Logic Schema:        ${BWHITE}${LOGIC_SCHEMA}${NC}" | write_log
     fi
-    echo -e "workspace:    ${BWHITE}${WORKSPACE}${NC}" | write_log
+    echo -e "Workspace:           ${BWHITE}${WORKSPACE}${NC}" | write_log
   fi
-  echo -e "schemas:      ${BWHITE}${SCHEMAS[@]}${NC}" | write_log
+  echo -e "Schemas:             ${BWHITE}${SCHEMAS[@]}${NC}" | write_log
+  if [[ -n ${CHANGELOG_SCHEMA} ]]; then
+    echo -e "----------------------------------------------------------" | write_log
+    echo -e "Changelog Schema: ${BWHITE}${CHANGELOG_SCHEMA}${NC}" | write_log
+    echo -e "Intent Prefixes:  ${BWHITE}${INTENT_PREFIXES[@]}${NC}" | write_log
+    echo -e "Intent Names:     ${BWHITE}${INTENT_NAMES[@]}${NC}" | write_log
+    echo -e "Intent Else:      ${BWHITE}${INTENT_ELSE}${NC}" | write_log
+    echo -e "Ticket Match:     ${BWHITE}${TICKET_MATCH}${NC}" | write_log
+    echo -e "Ticket URL:       ${BWHITE}${TICKET_URL}${NC}" | write_log
+  fi
+
   echo -e "----------------------------------------------------------" | write_log
-  echo -e "stage:        ${BWHITE}${STAGE}${NC}" | write_log
-  echo -e "depot:        ${BWHITE}${DEPOT_PATH}${NC}" | write_log
-  echo -e "app_offset:   ${BWHITE}${APP_OFFSET}${NC}" | write_log
-  echo -e "db_app_user:  ${BWHITE}${DB_APP_USER}${NC}" | write_log
-  echo -e "db_tns:       ${BWHITE}${DB_TNS}${NC}" | write_log
+  echo -e "Stage:               ${BWHITE}${STAGE}${NC}" | write_log
+  echo -e "Depot:               ${BWHITE}${DEPOT_PATH}${NC}" | write_log
+  echo -e "Application Offset:  ${BWHITE}${APP_OFFSET}${NC}" | write_log
+  echo -e "Deployment User:     ${BWHITE}${DB_APP_USER}${NC}" | write_log
+  echo -e "DB Connection:       ${BWHITE}${DB_TNS}${NC}" | write_log
   echo -e "----------------------------------------------------------" | write_log
   echo -e | write_log
 }
@@ -373,7 +383,7 @@ execute_global_hook_scripts() {
             set verify off
 
             set timing on
-            set trim off
+            set trim on
             set linesize 2000
             set sqlblanklines on
             set tab off
@@ -562,7 +572,6 @@ set_apps_unavailable() {
       echo "disabling APEX-App ${app_id} in workspace ${workspace} for schema ${appschema}..." | write_log
       $SQLCLI -S "$(get_connect_string ${appschema})" <<! | tee -a ${full_log_file}
       set serveroutput on;
-      set escchar @
       set define off;
       Declare
         v_application_id  apex_application_build_options.application_id%type := ${app_id} + ${APP_OFFSET};
@@ -724,6 +733,10 @@ install_apps() {
 
             if nvl(${APP_OFFSET}, 0) > 0 then
               apex_application_install.generate_offset;
+              -- alias must be unique per instance, so when offset is definded
+              -- it should be modified. In this case a post hook at root level
+              -- has to be used to give it a correct alias
+              apex_application_install.set_application_alias('${app_id}_${APP_OFFSET}');
             end if;
 
             apex_application_install.set_application_id(${app_id} + ${APP_OFFSET});
@@ -827,7 +840,7 @@ process_changelog() {
       echo "templatefile found" | write_log
 
       if [[ -n ${CHANGELOG_SCHEMA} ]]; then
-        echo "changelog schema is configured" | write_log
+        echo "changelog schema '${CHANGELOG_SCHEMA}' is configured" | write_log
 
         # now gen merged sql file
         create_merged_report_file ${chlfile} ${tplfile} ${chlfile}.sql
@@ -875,7 +888,9 @@ manage_result() {
   # remove colorcodes from file
   echo "Processing logs"
   cat ${full_log_file} | sed -r "s/\x1B\[([0-9]{1,3}((;[0-9]{1,3})*)?)?[m|K]//g" > ${full_log_file}.colorless
-  cat ${full_log_file} | .dbFlow/ansi2html.sh --bg=dark > ${full_log_file}.html
+  if [[ ${this_os} != "Darwin" ]]; then
+    cat ${full_log_file} | .dbFlow/ansi2html.sh --bg=dark > ${full_log_file}.html
+  fi
   rm ${full_log_file}
   mv ${full_log_file}.colorless ${full_log_file}
 
@@ -919,10 +934,14 @@ manage_result() {
 
   echo "| $versionmd | $deployed_at | $deployed_by |  $result " >> ${basepath}/version.md
 
-  htmllog=$(basename ${full_log_file}.html)
+  if [[ ${this_os} != "Darwin" ]]; then
+    finallog=$(basename ${full_log_file}.html)
+  else
+    finallog=$(basename ${full_log_file})
+  fi
 
   if [[ $target_move == "success" ]]; then
-    echo "view output: $DEPOT_PATH/$STAGE/$target_move/$version/${htmllog}"
+    echo "view output: $DEPOT_PATH/$STAGE/$target_move/$version/${finallog}"
     exit 0
   else
     redolog=$(basename ${full_log_file})
@@ -935,7 +954,7 @@ manage_result() {
     echo_debug "possibility to specifiy the log file ${WHITE}${target_relative_path}/${log_file}${NC} as "
     echo_debug "redolog parameter. This will not repeat the steps that have already been successfully executed."
     echo_debug "${WHITE}$0 --${mode} --version ${version} --redolog ${target_relative_path}/${redolog}${NC}"
-    echo_debug "view output: $DEPOT_PATH/$STAGE/$target_move/$version/${htmllog}"
+    echo_debug "view output: $DEPOT_PATH/$STAGE/$target_move/$version/${finallog}"
     exit 1
   fi
 }
