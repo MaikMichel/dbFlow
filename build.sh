@@ -550,7 +550,7 @@ function write_install_schemas(){
         echo "Prompt ..                       Version: $mode $version " >> "$target_install_file"
         echo "Prompt .............................................................................. " >> "$target_install_file"
         echo "set serveroutput on" >> "$target_install_file"
-        echo "set define ^" >> "$target_install_file"
+        echo "set define off" >> "$target_install_file"
         echo "" >> "$target_install_file"
 
         if [[ "${mode}" == "patch" ]]; then
