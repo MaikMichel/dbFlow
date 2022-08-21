@@ -888,9 +888,9 @@ manage_result() {
   # remove colorcodes from file
   echo "Processing logs"
   cat ${full_log_file} | sed -r "s/\x1B\[([0-9]{1,3}((;[0-9]{1,3})*)?)?[m|K]//g" > ${full_log_file}.colorless
-  if [[ ${this_os} != "Darwin" ]]; then
-    cat ${full_log_file} | .dbFlow/ansi2html.sh --bg=dark > ${full_log_file}.html
-  fi
+  # if [[ ${this_os} != "Darwin" ]]; then
+  #   cat ${full_log_file} | .dbFlow/ansi2html.sh --bg=dark > ${full_log_file}.html
+  # fi
   rm ${full_log_file}
   mv ${full_log_file}.colorless ${full_log_file}
 
@@ -934,11 +934,11 @@ manage_result() {
 
   echo "| $versionmd | $deployed_at | $deployed_by |  $result " >> ${basepath}/version.md
 
-  if [[ ${this_os} != "Darwin" ]]; then
-    finallog=$(basename ${full_log_file}.html)
-  else
+  # if [[ ${this_os} != "Darwin" ]]; then
+  #   finallog=$(basename ${full_log_file}.html)
+  # else
     finallog=$(basename ${full_log_file})
-  fi
+  # fi
 
   if [[ $target_move == "success" ]]; then
     echo "view output: $DEPOT_PATH/$STAGE/$target_move/$version/${finallog}"
