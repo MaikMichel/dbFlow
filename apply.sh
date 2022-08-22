@@ -967,9 +967,7 @@ manage_result() {
   # fi
 
   if [[ $target_move == "success" ]]; then
-    if [[ -z ${TEAMS_WEBHOOK_URL} ]]; then
-      post_message_to_teams "Release ${version}" "4CCC3B" "Release ${version} has been successfully applied to stage: <b>${STAGE}</b>."
-    fi
+    post_message_to_teams "Release ${version}" "4CCC3B" "Release ${version} has been successfully applied to stage: <b>${STAGE}</b>."
 
     echo "view output: $DEPOT_PATH/$STAGE/$target_move/$version/${finallog}"
     exit 0
