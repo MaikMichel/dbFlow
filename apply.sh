@@ -521,7 +521,7 @@ set_rest_publish_state() {
             echo "  ex_schema_not_enabled exception;"
             echo "  PRAGMA EXCEPTION_INIT(ex_schema_not_enabled, -20012);"
             echo "Begin"
-            echo "  dbms_output.put_line('setting publish state to ${publish} for REST module ${element} for schema ${appschema}...');
+            echo "  dbms_output.put_line('setting publish state to ${publish} for REST module ${element} for schema ${appschema}...');"
             echo "  ords.publish_module(p_module_name  => '${element}',"
             echo "                      p_status       => '${publish}');"
             echo "Exception"
