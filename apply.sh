@@ -508,7 +508,6 @@ set_rest_publish_state() {
       for mods in $(find rest/$fldr -maxdepth 1 -mindepth 1 -type d)
       do
         mbase=$(basename $mods)
-        echo "setting publish state to ${publish} for REST module ${mbase} for schema ${appschema}..." | write_log
         modules+=( ${mbase} )
       done
 
@@ -522,6 +521,7 @@ set_rest_publish_state() {
             echo "  ex_schema_not_enabled exception;"
             echo "  PRAGMA EXCEPTION_INIT(ex_schema_not_enabled, -20012);"
             echo "Begin"
+            echo "  dbms_output.put_line('setting publish state to ${publish} for REST module ${element} for schema ${appschema}...');
             echo "  ords.publish_module(p_module_name  => '${element}',"
             echo "                      p_status       => '${publish}');"
             echo "Exception"
