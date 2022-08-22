@@ -243,6 +243,10 @@ print_info()
     echo -e "Ticket URL:       ${BWHITE}${TICKET_URL}${NC}" | write_log
   fi
 
+  if [[ -n ${TEAMS_WEBHOOK_URL} ]]; then
+    echo -e "Teams WebHook:    ${BWHITE}TRUE${NC}" | write_log
+  fi
+
   echo -e "----------------------------------------------------------" | write_log
   echo -e "Stage:               ${BWHITE}${STAGE}${NC}" | write_log
   echo -e "Depot:               ${BWHITE}${DEPOT_PATH}${NC}" | write_log
@@ -871,6 +875,28 @@ process_changelog() {
   fi
 }
 
+post_message_to_teams() {
+  cd ${basepath}
+
+  local TITLE=$1
+  local COLOR=$2
+  local TEXT=$3
+
+  if [ -z ${TEAMS_WEBHOOK_URL} ]
+  then
+    echo "No webhook_url specified."  | write_log
+  else
+    # Convert formating.
+    MESSAGE=$( echo ${TEXT} | sed 's/"/\"/g' | sed "s/'/\'/g" )
+    JSON="{\"title\": \"${TITLE}\", \"themeColor\": \"${COLOR}\", \"text\": \"${MESSAGE}\" }"
+
+    echo "Posting to url: ${JSON} "  | write_log
+    # Post to Microsoft Teams.
+    curl -H "Content-Type: application/json" -d "${JSON}" "${TEAMS_WEBHOOK_URL}"
+
+  fi
+}
+
 manage_result() {
   cd ${basepath}
 
@@ -941,6 +967,10 @@ manage_result() {
   # fi
 
   if [[ $target_move == "success" ]]; then
+    if [[ -z ${TEAMS_WEBHOOK_URL} ]]; then
+      post_message_to_teams "Release ${version}" "4CCC3B" "Release ${version} has been successfully applied to stage: <b>${STAGE}</b>."
+    fi
+
     echo "view output: $DEPOT_PATH/$STAGE/$target_move/$version/${finallog}"
     exit 0
   else

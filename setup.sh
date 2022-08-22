@@ -414,6 +414,9 @@ generate() {
   SQLCLI=${SQLCLI:-"sqlplus"}
   echo "# Scripts are executed with" >> apply.env
   echo "SQLCLI=${SQLCLI}" >> apply.env
+  echo "" >> apply.env
+  echo "# TEAMS Channel to Post to on success" >> apply.env
+  echo "TEAMS_WEBHOOK_URL=" >> apply.env
 
 
   # write gitignore
