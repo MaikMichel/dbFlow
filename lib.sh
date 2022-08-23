@@ -184,7 +184,7 @@ write_log() {
 }
 
 function check_admin_connection() {
-  sql_output=`${SQLCLI} -S "${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION}" <<EOF
+  sql_output=`${SQLCLI} -S -L "${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION}" <<EOF
   select 'connected as '||user t from dual;
   exit
 EOF
@@ -201,7 +201,7 @@ EOF
 
 function check_connection() {
   local CONN_STR=$(get_connect_string $1)
-  sql_output=`${SQLCLI} -S "${CONN_STR}" <<EOF
+  sql_output=`${SQLCLI} -S -L "${CONN_STR}" <<EOF
   select 'connected to schema '||user t from dual;
   exit
 EOF

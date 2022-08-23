@@ -377,7 +377,7 @@ execute_global_hook_scripts() {
 
         if [[ ${targetschema} != "_" ]]; then
           echo "executing hook file ${runfile} in ${targetschema}" | write_log
-          $SQLCLI -S "$(get_connect_string $targetschema)" <<! | tee -a ${full_log_file}
+          $SQLCLI -S -L "$(get_connect_string $targetschema)" <<! | tee -a ${full_log_file}
             define VERSION="${version}"
             define MODE="${mode}"
 
@@ -422,7 +422,7 @@ clear_db_schemas_on_init() {
       local schema=${SCHEMAS[idx]}
       # On init mode schema content will be dropped
       echo "DROPING ALL OBJECTS on schema $schema" | write_log
-       exit | $SQLCLI -S "$(get_connect_string $schema)" @.dbFlow/lib/drop_all.sql ${full_log_file} ${version} ${mode} | tee -a ${full_log_file}
+       exit | $SQLCLI -S -L "$(get_connect_string $schema)" @.dbFlow/lib/drop_all.sql ${full_log_file} ${version} ${mode} | tee -a ${full_log_file}
     done
   fi
 }
@@ -463,7 +463,7 @@ install_db_schemas()
         sed -i -E "s:--$STAGE:Prompt uncommented cleanup for stage $STAGE\n:g" $db_install_file
 
         runfile=$db_install_file
-        $SQLCLI -S "$(get_connect_string $schema)" @$db_install_file ${version} ${mode} | tee -a ${full_log_file}
+        $SQLCLI -S -L "$(get_connect_string $schema)" @$db_install_file ${version} ${mode} | tee -a ${full_log_file}
         runfile=""
 
         if [[ $? -ne 0 ]]; then
@@ -515,7 +515,7 @@ set_rest_publish_state() {
         modules+=( ${mbase} )
       done
 
-      $SQLCLI -S "$(get_connect_string ${appschema})" <<! | tee -a ${full_log_file}
+      $SQLCLI -S -L "$(get_connect_string ${appschema})" <<! | tee -a ${full_log_file}
         set define off;
         set serveroutput on;
         $(
@@ -574,7 +574,7 @@ set_apps_unavailable() {
       fi
 
       echo "disabling APEX-App ${app_id} in workspace ${workspace} for schema ${appschema}..." | write_log
-      $SQLCLI -S "$(get_connect_string ${appschema})" <<! | tee -a ${full_log_file}
+      $SQLCLI -S -L "$(get_connect_string ${appschema})" <<! | tee -a ${full_log_file}
       set serveroutput on;
       set define off;
       Declare
@@ -641,7 +641,7 @@ set_apps_available() {
 
 
       echo "enabling APEX-App ${app_id} in workspace ${workspace} for schema ${appschema}..." | write_log
-      $SQLCLI -S "$(get_connect_string $appschema)" <<! | tee -a ${full_log_file}
+      $SQLCLI -S -L "$(get_connect_string $appschema)" <<! | tee -a ${full_log_file}
       set serveroutput on;
       set define off;
       Declare
@@ -714,7 +714,7 @@ install_apps() {
 
         echo "Installing $line Num: ${app_id} Workspace: ${workspace} Schema: $appschema" | write_log
         cd $line
-        $SQLCLI -S "$(get_connect_string $appschema)" <<! | tee -a ${full_log_file}
+        $SQLCLI -S -L "$(get_connect_string $appschema)" <<! | tee -a ${full_log_file}
           define VERSION="${version}"
           define MODE="${mode}"
 
@@ -798,7 +798,7 @@ install_rest() {
         fi
 
         echo "Installing REST-Services ${d}/${rest_install_file} on Schema $appschema" | write_log
-        $SQLCLI -s "$(get_connect_string $appschema)" <<! | tee -a ${full_log_file}
+        $SQLCLI -S -L "$(get_connect_string $appschema)" <<! | tee -a ${full_log_file}
 
         define VERSION="${version}"
         define MODE="${mode}"
@@ -850,7 +850,7 @@ process_changelog() {
         create_merged_report_file ${chlfile} ${tplfile} ${chlfile}.sql
 
         # and run
-        $SQLCLI -S "$(get_connect_string ${CHANGELOG_SCHEMA})" <<! | tee -a ${full_log_file}
+        $SQLCLI -S -L "$(get_connect_string ${CHANGELOG_SCHEMA})" <<! | tee -a ${full_log_file}
 
           Prompt executing changelog file ${chlfile}.sql
           @${chlfile}.sql
@@ -914,9 +914,6 @@ manage_result() {
   # remove colorcodes from file
   echo "Processing logs"
   cat ${full_log_file} | sed -r "s/\x1B\[([0-9]{1,3}((;[0-9]{1,3})*)?)?[m|K]//g" > ${full_log_file}.colorless
-  # if [[ ${this_os} != "Darwin" ]]; then
-  #   cat ${full_log_file} | .dbFlow/ansi2html.sh --bg=dark > ${full_log_file}.html
-  # fi
   rm ${full_log_file}
   mv ${full_log_file}.colorless ${full_log_file}
 
@@ -960,11 +957,8 @@ manage_result() {
 
   echo "| $versionmd | $deployed_at | $deployed_by |  $result " >> ${basepath}/version.md
 
-  # if [[ ${this_os} != "Darwin" ]]; then
-  #   finallog=$(basename ${full_log_file}.html)
-  # else
-    finallog=$(basename ${full_log_file})
-  # fi
+  finallog=$(basename ${full_log_file})
+
 
   if [[ $target_move == "success" ]]; then
     post_message_to_teams "Release ${version}" "4CCC3B" "Release ${version} has been successfully applied to stage: <b>${STAGE}</b>."

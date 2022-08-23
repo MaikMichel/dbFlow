@@ -207,7 +207,7 @@ install() {
           if [[ $EXTENSION == "sql" ]]; then
             cd ${level1_dir}
             echo "Calling ${level1_dir}/${file}"
-            exit | ${SQLCLI} -s ${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION} @${file}
+            exit | ${SQLCLI} -S -L ${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION} @${file}
             cd ../../..
           elif [[ $EXTENSION == "sh" ]]; then
             cd ${level1_dir}
@@ -230,7 +230,7 @@ install() {
               if [[ $EXTENSION == "sql" ]]; then
                 cd ${level2_dir}
                 echo "Calling ${level2_dir}/${file2}"
-                exit | ${SQLCLI} -s ${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION} @${file2}
+                exit | ${SQLCLI} -S -L ${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION} @${file2}
                 cd ../../../..
               elif [[ $EXTENSION == "sh" ]]; then
                 cd ${level2_dir}
@@ -544,7 +544,7 @@ generate() {
 } # generate
 
 is_any_schema_installed () {
-    ${SQLCLI} -s ${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION} <<!
+    ${SQLCLI} -S -L ${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION} <<!
     set heading off
     set feedback off
     set pages 0
