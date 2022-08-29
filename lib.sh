@@ -390,3 +390,10 @@ rem_trailing_slash() {
 force_trailing_slash() {
     echo "$(rem_trailing_slash "$1")/"
 }
+
+exists_in_list() {
+  LIST=$1
+  DELIMITER=$2
+  VALUE=$3
+  [[ "$LIST" =~ ($DELIMITER|^)$VALUE($DELIMITER|$) ]]
+}

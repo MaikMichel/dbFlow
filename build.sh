@@ -981,63 +981,72 @@ function check_push_to_depot() {
   local force_push=${1:-"FALSE"}
   local current_path=$(pwd)
 
-  if [[ $branch != "master" ]] && [[ $version != "install" ]]; then
-    cd $depotpath
+  prod_branches=( "master" "main" )
+  if [[ " ${prod_branches[@]} " =~ " ${branch} " ]]; then
+    if [[ $version != "install" ]]; then
 
-    if [[ -d ".git" ]]; then
-      if [[ "$force_push" == "FALSE" ]]; then
-        echo
-        echo "Do you wish to push changes to depot remote?"
-        echo "  Y - $targetpath.tar.gz will be commited and pushed"
-        echo "  N - Nothing will happen..."
+      cd "$(pwd)/$DEPOT_PATH"
+      if [[ -d ".git" ]]; then
 
-        read modus
+        if [[ "$force_push" == "FALSE" ]]; then
+          if [[ -n $(git status -s) ]]; then
 
-        shopt -s nocasematch
-        case "$modus" in
-          "Y" )
-            force_push="TRUE"
-            ;;
-          *)
-            echo "no push to depot"
-            ;;
-        esac
-      fi
+            echo
+            echo "Do you wish to push changes to depot remote?"
+            echo "  Y - $targetpath.tar.gz will be commited and pushed"
+            echo "  N - Nothing will happen..."
 
-      if [[ "$force_push" == "TRUE" ]]; then
-        git pull
-        git add $targetpath.tar.gz
-        git commit -m "Adds $targetpath.tar.gz"
-        git push
-      fi
+            read modus
 
-    fi # git path
+            shopt -s nocasematch
+            case "$modus" in
+              "Y" )
+                force_push="TRUE"
+                ;;
+              *)
+                echo "no push to depot"
+                ;;
+            esac
+          fi
 
-    cd $current_path
+          if [[ "$force_push" == "TRUE" ]]; then
+            git pull
+            git add $targetpath.tar.gz
+            git commit -m "Adds $targetpath.tar.gz"
+            git push
+          fi
+        fi
+      fi # git path
+
+      cd $current_path
+    fi
   fi
 }
 
 
 function check_make_new_version() {
   # on branch master ask if we should tag current version and conmmit
-  if [[ $branch == "master" ]] && [[ $version != "install" ]]; then
-    echo
-    echo "Do you wish to commit, tag and push the new version to origin"
-    echo "  Y - current version will be commited, tagged and pushed"
-    echo "  N - Nothing will happen, all generated files won't be touched"
+  prod_branches=( "master" "main" )
+  if [[ " ${prod_branches[@]} " =~ " ${branch} " ]]; then
+    if [[ $version != "install" ]]; then
+      echo
+      echo "Do you wish to commit, tag and push the new version to origin"
+      echo "  Y - current version will be commited, tagged and pushed"
+      echo "  N - Nothing will happen, all generated files won't be touched"
 
-    read modus
+      read modus
 
-    shopt -s nocasematch
-    case "$modus" in
-      "Y" )
-        make_a_new_version
-        check_push_to_depot
-        ;;
-      *)
-        echo "Nothing has happened"
-        ;;
-    esac
+      shopt -s nocasematch
+      case "$modus" in
+        "Y" )
+          make_a_new_version
+          check_push_to_depot
+          ;;
+        *)
+          echo "Nothing has happened"
+          ;;
+      esac
+    fi
   fi
 }
 
@@ -1051,6 +1060,11 @@ function call_apply_on_install() {
     echo -e "${LWHITE}just call ${NC}${BWHITE}.dbFlow/apply.sh --${mode} --version ${version}${NC} ${LWHITE}inside your instance folder${NC}"
   fi
 }
+
+###############################################################################################
+###############################################################################################
+###############################################################################################
+
 
 # validate and check existence of vars defined in build.env
 check_vars
@@ -1084,7 +1098,7 @@ manage_artifact
 # ask if artifact should be pushed
 check_push_to_depot
 
-# ask if this version should be there as tag too
+# # ask if this version should be there as tag too
 check_make_new_version
 
 # if you name vour version install, then just do it
