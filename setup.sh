@@ -17,16 +17,11 @@ usage() {
   echo -e "                                             schemas/users will be dropped if exists"
   echo -e "                                             and recreated"
   echo
-  # echo -e "  export <target-schema>|ALL                 exports targetschema or ${BWHITE}ALL${NC} to filesystem  ${BWHITE}*required${NC}"
-  # echo -e "    -o                                       specific object (emp)"
-  # echo
   echo
 
   echo -e "${BWHITE}EXAMPLE${NC}"
   echo -e "  $0 generate example"
   echo -e "  $0 install"
-  # echo -e "  $0 export ALL"
-  # echo -e "  $0 export hr_data -o dept"
   echo
   echo
   exit 1
@@ -697,38 +692,6 @@ else
 
       ;;
 
-    export)
-      [[ -z ${1-} ]] \
-        && echo_error "ERROR: You have to specify a target-schema or ALL" \
-        && exit 1
-      targetschema=$1; shift
-
-      object=""
-      # Process package options
-      while getopts ":o:" opt; do
-        case ${opt} in
-          o )
-            object=$OPTARG
-            if [[ $targetschema == "ALL" ]]; then
-              echo_error  "specific object export requires a target-schema"
-              exit 1
-            fi
-            ;;
-          \? )
-            echo_error  "Invalid Option: -$OPTARG"
-            usage
-            ;;
-          : )
-            echo_error  "Invalid Option: -$OPTARG requires an argument"
-            usage
-            ;;
-        esac
-      done
-      shift $((OPTIND -1))
-
-      export_schema $targetschema $object
-
-      ;;
     *)
       echo_error "Invalid Argument see help"
       usage
