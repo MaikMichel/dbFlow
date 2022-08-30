@@ -10,12 +10,13 @@ usage() {
   echo -e "  $0 <COMMAND>"
   echo
   echo -e "${BWHITE}COMMANDS${NC}"
-  echo -e "  generate <project-name>                    generates project structure                         ${BWHITE}*required${NC}"
+  echo -e "  generate <project-name>  ${BWHITE}*req${NC}    generates project structure"
+  echo -e "    -e (env files only)            only environment files will be created, no folders"
   echo -e ""
-  echo -e "  install                                    installs project dependencies to db"
-  echo -e "    -f (force overwrite)                     features will be reinstalled if exists"
-  echo -e "                                             schemas/users will be dropped if exists"
-  echo -e "                                             and recreated"
+  echo -e "  install                          installs project dependencies to db"
+  echo -e "    -f (force overwrite)           features will be reinstalled if exists"
+  echo -e "                                   ${RED}schemas/users will be dropped and recreated${NC}"
+
   echo
   echo
 
@@ -254,22 +255,25 @@ install() {
 
 generate() {
   local project_name=$1
+  local env_only=$2
 
   read -p "Would you like to have a single, multi or flex scheme app (S/M/F) [M]: " db_scheme_type
   db_scheme_type=${db_scheme_type:-"M"}
 
   # create directories
-  if [[ $(toLowerCase $db_scheme_type) == "m" ]]; then
-    mkdir -p db/{.hooks/{pre,post},${project_name}_data/{.hooks/{pre,post},sequences,tables/tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,mviews,tests/packages,ddl/{init,patch/{pre,post}},dml/{base,init,patch/{pre,post}}}}
-    mkdir -p db/{.hooks/{pre,post},${project_name}_logic/{.hooks/{pre,post},sequences,tables/tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,mviews,tests/packages,ddl/{init,patch/{pre,post}},dml/{base,init,patch/{pre,post}}}}
-    mkdir -p db/{.hooks/{pre,post},${project_name}_app/{.hooks/{pre,post},sequences,tables/tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,mviews,tests/packages,ddl/{init,patch/{pre,post}},dml/{base,init,patch/{pre,post}}}}
-  elif [[ $(toLowerCase $db_scheme_type) == "s" ]]; then
-    mkdir -p db/{.hooks/{pre,post},${project_name}/{.hooks/{pre,post},sequences,tables/tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,mviews,tests/packages,ddl/{init,patch/{pre,post}},dml/{base,init,patch/{pre,post}}}}
-  elif [[ $(toLowerCase $db_scheme_type) == "f" ]]; then
-    mkdir -p db/{.hooks/{pre,post},${project_name}_app/{.hooks/{pre,post},sequences,tables/tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,mviews,tests/packages,ddl/{init,patch/{pre,post}},dml/{base,init,patch/{pre,post}}}}
-  else
-    echo_error "unknown type ${db_scheme_type}"
-    exit 1
+  if [[ ${env_only} == "NO"]]; then
+    if [[ $(toLowerCase $db_scheme_type) == "m" ]]; then
+      mkdir -p db/{.hooks/{pre,post},${project_name}_data/{.hooks/{pre,post},sequences,tables/tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,mviews,tests/packages,ddl/{init,patch/{pre,post}},dml/{base,init,patch/{pre,post}}}}
+      mkdir -p db/{.hooks/{pre,post},${project_name}_logic/{.hooks/{pre,post},sequences,tables/tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,mviews,tests/packages,ddl/{init,patch/{pre,post}},dml/{base,init,patch/{pre,post}}}}
+      mkdir -p db/{.hooks/{pre,post},${project_name}_app/{.hooks/{pre,post},sequences,tables/tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,mviews,tests/packages,ddl/{init,patch/{pre,post}},dml/{base,init,patch/{pre,post}}}}
+    elif [[ $(toLowerCase $db_scheme_type) == "s" ]]; then
+      mkdir -p db/{.hooks/{pre,post},${project_name}/{.hooks/{pre,post},sequences,tables/tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,mviews,tests/packages,ddl/{init,patch/{pre,post}},dml/{base,init,patch/{pre,post}}}}
+    elif [[ $(toLowerCase $db_scheme_type) == "f" ]]; then
+      mkdir -p db/{.hooks/{pre,post},${project_name}_app/{.hooks/{pre,post},sequences,tables/tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,mviews,tests/packages,ddl/{init,patch/{pre,post}},dml/{base,init,patch/{pre,post}}}}
+    else
+      echo_error "unknown type ${db_scheme_type}"
+      exit 1
+    fi
   fi
 
   # write .env files
@@ -327,16 +331,19 @@ generate() {
       chl_schema=${project_name}
     fi
     echo "CHANGELOG_SCHEMA=${chl_schema:-${project_name}_app}" >> build.env
-    echo "INTENT_PREFIXES=( Feat Fix )" >> build.env
-    echo "INTENT_NAMES=( Features Fixes )" >> build.env
-    echo "INTENT_ELSE=\"Others\"" >> build.env
-    echo "TICKET_MATCH=\"[A-Z]\+-[0-9]\+\"" >> build.env
-    echo "TICKET_URL=\"https://url-to-your-issue-tracker-like-jira/browse\"" >> build.env
 
-    chltemplate=reports/changelog/template.sql
-    if [[ ! -f ${chltemplate} ]]; then
-      [[ -d reports/changelog ]] || mkdir -p reports/changelog
-      cp ".dbFlow/scripts/changelog_template.sql" ${chltemplate}
+    if [[ ${env_only} == "NO"]]; then
+      echo "INTENT_PREFIXES=( Feat Fix )" >> build.env
+      echo "INTENT_NAMES=( Features Fixes )" >> build.env
+      echo "INTENT_ELSE=\"Others\"" >> build.env
+      echo "TICKET_MATCH=\"[A-Z]\+-[0-9]\+\"" >> build.env
+      echo "TICKET_URL=\"https://url-to-your-issue-tracker-like-jira/browse\"" >> build.env
+
+      chltemplate=reports/changelog/template.sql
+      if [[ ! -f ${chltemplate} ]]; then
+        [[ -d reports/changelog ]] || mkdir -p reports/changelog
+        cp ".dbFlow/scripts/changelog_template.sql" ${chltemplate}
+      fi
     fi
   else
     echo "# copy template to reports/changelog folder"
@@ -437,102 +444,103 @@ generate() {
     write_line_if_not_exists $depot_path .gitignore
   fi
 
+  if [[ ${env_only} == "NO"]]; then
+    # create targetpath directory
+    mkdir -p ${targetpath}/{tablespaces,directories,users,features,workspaces/${project_name},acls}
+    mkdir -p ${depot_path}
 
-  # create targetpath directory
-  mkdir -p ${targetpath}/{tablespaces,directories,users,features,workspaces/${project_name},acls}
-  mkdir -p ${depot_path}
+    # copy some examples into it
+    cp -rf .dbFlow/scripts/setup/workspaces/workspace/* ${targetpath}/workspaces/${project_name}
+    cp -rf .dbFlow/scripts/setup/workspaces/*.* ${targetpath}/workspaces
+    cp -rf .dbFlow/scripts/setup/acls/* ${targetpath}/acls
 
-  # copy some examples into it
-  cp -rf .dbFlow/scripts/setup/workspaces/workspace/* ${targetpath}/workspaces/${project_name}
-  cp -rf .dbFlow/scripts/setup/workspaces/*.* ${targetpath}/workspaces
-  cp -rf .dbFlow/scripts/setup/acls/* ${targetpath}/acls
+    # cp -rf ${targetpath}/workspaces/workspace ${targetpath}/workspaces/${project_name}
 
-  # cp -rf ${targetpath}/workspaces/workspace ${targetpath}/workspaces/${project_name}
-
-  if [[ $(toLowerCase $with_tools) == "y" ]]; then
-    cp -rf .dbFlow/scripts/setup/features/* ${targetpath}/features
-    chmod +x ${targetpath}/features/*.sh
-  else
-    mkdir -p ${targetpath}/features
-  fi
-
-
-  # create gen_users..
-  if [[ $(toLowerCase $db_scheme_type) == "m" ]]; then
-    sed "s/\^db_app_user/${project_name}_depl/g" .dbFlow/scripts/setup/users/00_depl.sql > ${targetpath}/users/00_create_${project_name}_depl.sql
-
-    sed "s/\^schema_name/${project_name}_data/g" .dbFlow/scripts/setup/users/01_schema.sql > ${targetpath}/users/01_create_${project_name}_data.sql
-    sed "s/\^schema_name/${project_name}_logic/g" .dbFlow/scripts/setup/users/01_schema.sql > ${targetpath}/users/02_create_${project_name}_logic.sql
-    sed "s/\^schema_name/${project_name}_app/g" .dbFlow/scripts/setup/users/01_schema.sql > ${targetpath}/users/03_create_${project_name}_app.sql
-
-    sed -i "s/\^db_app_user/${project_name}_depl/g" ${targetpath}/users/01_create_${project_name}_data.sql
-    sed -i "s/\^db_app_user/${project_name}_depl/g" ${targetpath}/users/02_create_${project_name}_logic.sql
-    sed -i "s/\^db_app_user/${project_name}_depl/g" ${targetpath}/users/03_create_${project_name}_app.sql
-
-
-  elif [[ $(toLowerCase $db_scheme_type) == "s" ]]; then
-    sed "s/\^db_app_user/${project_name}/g" .dbFlow/scripts/setup/users/00_depl.sql > ${targetpath}/users/00_create_${project_name}.sql
-    sed "s/\^schema_name/${project_name}/g" .dbFlow/scripts/setup/users/02_grants.sql >> ${targetpath}/users/00_create_${project_name}.sql
-  elif [[ $(toLowerCase $db_scheme_type) == "f" ]]; then
-    sed "s/\^db_app_user/${project_name}_depl/g" .dbFlow/scripts/setup/users/00_depl.sql > ${targetpath}/users/00_create_${project_name}_depl.sql
-    sed "s/\^schema_name/${project_name}_app/g" .dbFlow/scripts/setup/users/01_schema.sql > ${targetpath}/users/01_create_${project_name}_app.sql
-    sed -i "s/\^db_app_user/${project_name}_depl/g" ${targetpath}/users/01_create_${project_name}_app.sql
-  fi
-
-
-  mkdir -p {apex,static,rest,reports,.hooks/{pre,post}}
-  if [[ $(toLowerCase $db_scheme_type) == "f" ]]; then
-    mkdir -p apex/${project_name}_app/${project_name}
-    mkdir -p static/${project_name}_app/${project_name}
-    mkdir -p rest/${project_name}_app
-  fi
-
-
-  # ask for application IDs
-  apex_ids=""
-  read -p "Enter application IDs (comma separated) you wish to use initialy (100,101,...): " apex_ids
-
-  # split ids gen directories
-  apexids=(`echo $apex_ids | sed 's/,/\n/g'`)
-  apexidsquotes="\""${apex_ids/,/"\",\""}"\""
-  for apxID in "${apexids[@]}"
-  do
-    if [[ $(toLowerCase $db_scheme_type) == "f" ]]; then
-      mkdir -p apex/${project_name}_app/${project_name}/f"$apxID"
-      mkdir -p static/${project_name}_app/${project_name}/f"$apxID"/{dist/{css,img,js},src/{css,img,js}}
+    if [[ $(toLowerCase $with_tools) == "y" ]]; then
+      cp -rf .dbFlow/scripts/setup/features/* ${targetpath}/features
+      chmod +x ${targetpath}/features/*.sh
     else
-      mkdir -p apex/f"$apxID"
-      mkdir -p static/f"$apxID"/{dist/{css,img,js},src/{css,img,js}}
+      mkdir -p ${targetpath}/features
     fi
-  done
 
-  # ask for restful Modulsa
-  rest_modules=""
-  read -p "Enter restful Moduls (comma separated) you wish to use initialy (api,test,...): " rest_modules
 
-  # split modules
-  restmodules=(`echo $rest_modules | sed 's/,/\n/g'`)
-  restmodulesquotes="\""${rest_modules/,/"\",\""}"\""
-  for restMOD in "${restmodules[@]}"
-  do
+    # create gen_users..
+    if [[ $(toLowerCase $db_scheme_type) == "m" ]]; then
+      sed "s/\^db_app_user/${project_name}_depl/g" .dbFlow/scripts/setup/users/00_depl.sql > ${targetpath}/users/00_create_${project_name}_depl.sql
+
+      sed "s/\^schema_name/${project_name}_data/g" .dbFlow/scripts/setup/users/01_schema.sql > ${targetpath}/users/01_create_${project_name}_data.sql
+      sed "s/\^schema_name/${project_name}_logic/g" .dbFlow/scripts/setup/users/01_schema.sql > ${targetpath}/users/02_create_${project_name}_logic.sql
+      sed "s/\^schema_name/${project_name}_app/g" .dbFlow/scripts/setup/users/01_schema.sql > ${targetpath}/users/03_create_${project_name}_app.sql
+
+      sed -i "s/\^db_app_user/${project_name}_depl/g" ${targetpath}/users/01_create_${project_name}_data.sql
+      sed -i "s/\^db_app_user/${project_name}_depl/g" ${targetpath}/users/02_create_${project_name}_logic.sql
+      sed -i "s/\^db_app_user/${project_name}_depl/g" ${targetpath}/users/03_create_${project_name}_app.sql
+
+
+    elif [[ $(toLowerCase $db_scheme_type) == "s" ]]; then
+      sed "s/\^db_app_user/${project_name}/g" .dbFlow/scripts/setup/users/00_depl.sql > ${targetpath}/users/00_create_${project_name}.sql
+      sed "s/\^schema_name/${project_name}/g" .dbFlow/scripts/setup/users/02_grants.sql >> ${targetpath}/users/00_create_${project_name}.sql
+    elif [[ $(toLowerCase $db_scheme_type) == "f" ]]; then
+      sed "s/\^db_app_user/${project_name}_depl/g" .dbFlow/scripts/setup/users/00_depl.sql > ${targetpath}/users/00_create_${project_name}_depl.sql
+      sed "s/\^schema_name/${project_name}_app/g" .dbFlow/scripts/setup/users/01_schema.sql > ${targetpath}/users/01_create_${project_name}_app.sql
+      sed -i "s/\^db_app_user/${project_name}_depl/g" ${targetpath}/users/01_create_${project_name}_app.sql
+    fi
+
+
+    mkdir -p {apex,static,rest,reports,.hooks/{pre,post}}
     if [[ $(toLowerCase $db_scheme_type) == "f" ]]; then
-      mkdir -p rest/${project_name}_app/modules/"$restMOD"
-      mkdir -p rest/${project_name}_app/access/{privileges,roles,mapping}
-    else
-      mkdir -p rest/modules/"$restMOD"
-      mkdir -p rest/access/{privileges,roles,mapping}
+      mkdir -p apex/${project_name}_app/${project_name}
+      mkdir -p static/${project_name}_app/${project_name}
+      mkdir -p rest/${project_name}_app
     fi
-  done
 
-  # workspace files
-  sed -i "s/\^workspace/${project_name}/g" ${targetpath}/workspaces/${project_name}/create_00_workspace.sql
-  sed -i "s/\^workspace/${project_name}/g" ${targetpath}/workspaces/${project_name}/create_01_user_wsadmin.sql
-  if [[ $(toLowerCase $db_scheme_type) == "s" ]]; then
-    sed -i "s/\^app_schema/${project_name}/g" ${targetpath}/workspaces/${project_name}/create_00_workspace.sql
-    sed -i "s/\^app_schema/${project_name}/g" ${targetpath}/workspaces/${project_name}/create_01_user_wsadmin.sql
-  else
-    sed -i "s/\^app_schema/${project_name}_app/g" ${targetpath}/workspaces/${project_name}/create_00_workspace.sql
-    sed -i "s/\^app_schema/${project_name}_app/g" ${targetpath}/workspaces/${project_name}/create_01_user_wsadmin.sql
+
+    # ask for application IDs
+    apex_ids=""
+    read -p "Enter application IDs (comma separated) you wish to use initialy (100,101,...): " apex_ids
+
+    # split ids gen directories
+    apexids=(`echo $apex_ids | sed 's/,/\n/g'`)
+    apexidsquotes="\""${apex_ids/,/"\",\""}"\""
+    for apxID in "${apexids[@]}"
+    do
+      if [[ $(toLowerCase $db_scheme_type) == "f" ]]; then
+        mkdir -p apex/${project_name}_app/${project_name}/f"$apxID"
+        mkdir -p static/${project_name}_app/${project_name}/f"$apxID"/{dist/{css,img,js},src/{css,img,js}}
+      else
+        mkdir -p apex/f"$apxID"
+        mkdir -p static/f"$apxID"/{dist/{css,img,js},src/{css,img,js}}
+      fi
+    done
+
+    # ask for restful Modulsa
+    rest_modules=""
+    read -p "Enter restful Moduls (comma separated) you wish to use initialy (api,test,...): " rest_modules
+
+    # split modules
+    restmodules=(`echo $rest_modules | sed 's/,/\n/g'`)
+    restmodulesquotes="\""${rest_modules/,/"\",\""}"\""
+    for restMOD in "${restmodules[@]}"
+    do
+      if [[ $(toLowerCase $db_scheme_type) == "f" ]]; then
+        mkdir -p rest/${project_name}_app/modules/"$restMOD"
+        mkdir -p rest/${project_name}_app/access/{privileges,roles,mapping}
+      else
+        mkdir -p rest/modules/"$restMOD"
+        mkdir -p rest/access/{privileges,roles,mapping}
+      fi
+    done
+
+    # workspace files
+    sed -i "s/\^workspace/${project_name}/g" ${targetpath}/workspaces/${project_name}/create_00_workspace.sql
+    sed -i "s/\^workspace/${project_name}/g" ${targetpath}/workspaces/${project_name}/create_01_user_wsadmin.sql
+    if [[ $(toLowerCase $db_scheme_type) == "s" ]]; then
+      sed -i "s/\^app_schema/${project_name}/g" ${targetpath}/workspaces/${project_name}/create_00_workspace.sql
+      sed -i "s/\^app_schema/${project_name}/g" ${targetpath}/workspaces/${project_name}/create_01_user_wsadmin.sql
+    else
+      sed -i "s/\^app_schema/${project_name}_app/g" ${targetpath}/workspaces/${project_name}/create_00_workspace.sql
+      sed -i "s/\^app_schema/${project_name}_app/g" ${targetpath}/workspaces/${project_name}/create_01_user_wsadmin.sql
+    fi
   fi
 
   show_generate_summary ${project_name}
@@ -645,6 +653,7 @@ else
   case "$subcommand" in
     # Parse options to the install sub command
     generate)
+      envonly="NO"
       [[ -z ${1-} ]] \
         && echo -e  "${RED}ERROR: You have to specify a project${NC}" \
         && exit 1 \
@@ -652,10 +661,10 @@ else
       project=$1; shift  # Remove 'generate' from the argument list
 
       # Process package options
-      while getopts ":t:" opt; do
+      while getopts ":e" opt; do
         case ${opt} in
-          t )
-            target=$OPTARG
+          e )
+            envonly="YES"
             ;;
           \? )
             echo_error  "Invalid Option: -$OPTARG"
@@ -668,8 +677,8 @@ else
         esac
       done
       shift $((OPTIND -1))
-
-      generate $project
+      #echo "generate $project $envonly"
+      generate $project $envonly
       ;;
     install)
       force="NO"
