@@ -261,7 +261,7 @@ generate() {
   db_scheme_type=${db_scheme_type:-"M"}
 
   # create directories
-  if [[ ${env_only} == "NO"]]; then
+  if [[ ${env_only} == "NO" ]]; then
     if [[ $(toLowerCase $db_scheme_type) == "m" ]]; then
       mkdir -p db/{.hooks/{pre,post},${project_name}_data/{.hooks/{pre,post},sequences,tables/tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,mviews,tests/packages,ddl/{init,patch/{pre,post}},dml/{base,init,patch/{pre,post}}}}
       mkdir -p db/{.hooks/{pre,post},${project_name}_logic/{.hooks/{pre,post},sequences,tables/tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,mviews,tests/packages,ddl/{init,patch/{pre,post}},dml/{base,init,patch/{pre,post}}}}
@@ -332,7 +332,7 @@ generate() {
     fi
     echo "CHANGELOG_SCHEMA=${chl_schema:-${project_name}_app}" >> build.env
 
-    if [[ ${env_only} == "NO"]]; then
+    if [[ ${env_only} == "NO" ]]; then
       echo "INTENT_PREFIXES=( Feat Fix )" >> build.env
       echo "INTENT_NAMES=( Features Fixes )" >> build.env
       echo "INTENT_ELSE=\"Others\"" >> build.env
@@ -444,7 +444,7 @@ generate() {
     write_line_if_not_exists $depot_path .gitignore
   fi
 
-  if [[ ${env_only} == "NO"]]; then
+  if [[ ${env_only} == "NO" ]]; then
     # create targetpath directory
     mkdir -p ${targetpath}/{tablespaces,directories,users,features,workspaces/${project_name},acls}
     mkdir -p ${depot_path}
