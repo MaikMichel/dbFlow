@@ -99,13 +99,11 @@ show_generate_summary() {
   printf "|-- %-22b %b\n" ${DEPOT_PATH} ">> Path to store your build artifacts"
   printf "|-- ${CYAN}%-22b${NC} %b\n" ".dbFlow" ">> ${CYAN}dbFlow itself${NC}"
   printf "|-- %-22b %b\n" ".hooks" ">> Scripts/Tasks to run pre or post deployment"
-  printf "|-- %-22b %b\n" "apex" ">> APEX applications"
-  if [[ ${PROJECT_MODE} != "FLEX" ]]; then
-    printf "|   %-22b %b\n" "|-- f123" ">> APEX application 123 for Example"
-  else
+  printf "|-- %-22b %b\n" "apex" ">> APEX applications in subfolders (f123)"
+  if [[ ${PROJECT_MODE} = "FLEX" ]]; then
     printf "|   %-22b %b\n" "|-- ${PROJECT}_app" ">> Example DB Schema assigned to workspace"
     printf "|   %-22b %b\n" "|   |-- ${PROJECT}" ">> Example Workspace assigned to apps"
-    printf "|   %-22b %b\n" "|   |   |-- f123" ">> APEX application 123 for Example"
+    printf "|   %-22b %b\n" "|   |   |-- f123" ">> Example Application 123 as subfolder"
   fi
   printf "|-- %-22b %b\n" "db" ">> All DB Schemas used"
   printf "|   %-22b %b\n" "|-- _setup" ">> Scripts to create schemas, features, workspaces, ..."
