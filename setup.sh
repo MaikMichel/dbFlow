@@ -264,8 +264,7 @@ copytopath() {
   cp ./apply.env ${target_path}
 
   echo "initialize git and add dbFlow as submodule"
-  # cp -r .dbFlow ${target_path}
-  # cp .gitmodules ${target_path}
+  cp .gitignore ${target_path}
   cd ${target_path}
   git init
   git submodule add https://github.com/MaikMichel/dbFlow.git .dbFlow
