@@ -509,37 +509,38 @@ set_rest_publish_state() {
         appschema=${fldr/\/modules/}
       fi
       modules=()
-      for mods in $(find rest/$fldr -maxdepth 1 -mindepth 1 -type d)
-      do
-        mbase=$(basename $mods)
-        modules+=( ${mbase} )
-      done
+      if [[ -d "rest/$fldr" ]]; then
+        for mods in $(find rest/$fldr -maxdepth 1 -mindepth 1 -type d)
+        do
+          mbase=$(basename $mods)
+          modules+=( ${mbase} )
+        done
 
-      $SQLCLI -S -L "$(get_connect_string ${appschema})" <<! | tee -a ${full_log_file}
-        set define off;
-        set serveroutput on;
-        $(
-          for element in "${modules[@]}"
-          do
-            echo "Declare"
-            echo "  ex_schema_not_enabled exception;"
-            echo "  PRAGMA EXCEPTION_INIT(ex_schema_not_enabled, -20012);"
-            echo "Begin"
-            echo "  dbms_output.put_line('setting publish state to ${publish} for REST module ${element} for schema ${appschema}...');"
-            echo "  ords.publish_module(p_module_name  => '${element}',"
-            echo "                      p_status       => '${publish}');"
-            echo "Exception"
-            echo "  when ex_schema_not_enabled then"
-            echo "    dbms_output.put_line((chr(27) || '[31m') || sqlerrm || (chr(27) || '[0m'));"
-            echo "  when no_data_found then"
-            echo "    dbms_output.put_line((chr(27) || '[31m') || 'REST Modul: ${element} not found!' || (chr(27) || '[0m'));"
-            echo "End;"
-            echo "/"
-          done
-        )
+        $SQLCLI -S -L "$(get_connect_string ${appschema})" <<! | tee -a ${full_log_file}
+          set define off;
+          set serveroutput on;
+          $(
+            for element in "${modules[@]}"
+            do
+              echo "Declare"
+              echo "  ex_schema_not_enabled exception;"
+              echo "  PRAGMA EXCEPTION_INIT(ex_schema_not_enabled, -20012);"
+              echo "Begin"
+              echo "  dbms_output.put_line('setting publish state to ${publish} for REST module ${element} for schema ${appschema}...');"
+              echo "  ords.publish_module(p_module_name  => '${element}',"
+              echo "                      p_status       => '${publish}');"
+              echo "Exception"
+              echo "  when ex_schema_not_enabled then"
+              echo "    dbms_output.put_line((chr(27) || '[31m') || sqlerrm || (chr(27) || '[0m'));"
+              echo "  when no_data_found then"
+              echo "    dbms_output.put_line((chr(27) || '[31m') || 'REST Modul: ${element} not found!' || (chr(27) || '[0m'));"
+              echo "End;"
+              echo "/"
+            done
+          )
 
 !
-
+      fi
     done
   else
     echo "Directory rest does not exist" | write_log $warning
