@@ -16,7 +16,8 @@ usage() {
   echo -e "  install                          installs project dependencies to db"
   echo -e "    -f (force overwrite)           features will be reinstalled if exists"
   echo -e "                                   ${RED}schemas/users will be dropped and recreated${NC}"
-
+  echo -e ""
+  echo -e "  copyto <target-path>      ${BWHITE}*req${NC}   copy db/_setup, env files, and .dbFlow to target"
   echo
   echo
 
@@ -250,6 +251,31 @@ install() {
   echo_success "Installation done"
 
 } # install
+
+copytopath() {
+  local target_path=${1}
+
+  [[ -d "${target_path}/db/_setup" ]] || mkdir -p "${target_path}/db"
+  echo "copy db/_setup to "${target_path}
+  cp -r ./db/_setup ${target_path}/db
+
+  echo "copy env files to "${target_path}
+  cp ./build.env ${target_path}
+  cp ./apply.env ${target_path}
+
+  echo "initialize git and add dbFlow as submodule"
+  # cp -r .dbFlow ${target_path}
+  # cp .gitmodules ${target_path}
+  cd ${target_path}
+  git init
+  git submodule add https://github.com/MaikMichel/dbFlow.git .dbFlow
+  ls -la
+  cd ${basepath}
+
+  echo "After changing your database connection you just have to execute:"
+  echo -e "${YELLOW}.dbFlow/setup.sh install${NC}"
+  echo "to install your base dependencies"
+}
 
 generate() {
   local project_name=$1
@@ -677,6 +703,30 @@ else
       shift $((OPTIND -1))
       #echo "generate $project $envonly"
       generate $project $envonly
+      ;;
+    copyto)
+      [[ -z ${1-} ]] \
+        && echo -e  "${RED}ERROR: You have to specify a project${NC}" \
+        && exit 1 \
+
+      tfldr=${1}; shift  # Remove 'copyto' from the argument list
+
+      # Process package options
+      while getopts ":f" opt; do
+        case ${opt} in
+          \? )
+            echo_error  "Invalid Option: -$OPTARG"
+            usage
+            ;;
+          : )
+            echo_error "Invalid Option: -$OPTARG requires an argument" 1>&2
+            usage
+            ;;
+        esac
+      done
+      shift $((OPTIND -1))
+      #echo "generate $tfldr
+      copytopath $tfldr
       ;;
     install)
       force="NO"
