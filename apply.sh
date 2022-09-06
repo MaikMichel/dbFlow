@@ -207,54 +207,56 @@ function check_params() {
 
   touch $log_file
   full_log_file="$( cd "$( dirname "${log_file}" )" >/dev/null 2>&1 && pwd )/${log_file}"
+
+  exec &> >(tee -a "$log_file")
 }
 
 
 
 print_info()
 {
-  echo -e "Installing    ${BWHITE}${mode} ${version}${NC}" | write_log
-  echo -e "----------------------------------------------------------" | write_log
-  echo -e "Mode:         ${BWHITE}$mode${NC}" | write_log
-  echo -e "Version:      ${BWHITE}${version}${NC}" | write_log
-  echo -e "Log File:     ${BWHITE}$log_file${NC}" | write_log
-  echo -e "Extract:      ${BWHITE}$must_extract${NC}" | write_log
+  timelog "Installing    ${BWHITE}${mode} ${version}${NC}"
+  timelog "----------------------------------------------------------"
+  timelog "Mode:         ${BWHITE}$mode${NC}"
+  timelog "Version:      ${BWHITE}${version}${NC}"
+  timelog "Log File:     ${BWHITE}$log_file${NC}"
+  timelog "Extract:      ${BWHITE}$must_extract${NC}"
   if [[ $oldlogfile != "" ]]; then
-    echo -e "Redolog:      ${BWHITE}$oldlogfile${NC}" | write_log
+    timelog "Redolog:      ${BWHITE}$oldlogfile${NC}"
   fi
-  echo -e "----------------------------------------------------------" | write_log
-  echo -e "Project:             ${BWHITE}${PROJECT}${NC}" | write_log
+  timelog "----------------------------------------------------------"
+  timelog "Project:             ${BWHITE}${PROJECT}${NC}"
   if [[ ${PROJECT_MODE} != "FLEX" ]]; then
-    echo -e "Application Schema:  ${BWHITE}${APP_SCHEMA}${NC}" | write_log
+    timelog "Application Schema:  ${BWHITE}${APP_SCHEMA}${NC}"
     if [[ ${PROJECT_MODE} != "SINGLE" ]]; then
-      echo -e "Data Schema:         ${BWHITE}${DATA_SCHEMA}${NC}" | write_log
-      echo -e "Logic Schema:        ${BWHITE}${LOGIC_SCHEMA}${NC}" | write_log
+      timelog "Data Schema:         ${BWHITE}${DATA_SCHEMA}${NC}"
+      timelog "Logic Schema:        ${BWHITE}${LOGIC_SCHEMA}${NC}"
     fi
-    echo -e "Workspace:           ${BWHITE}${WORKSPACE}${NC}" | write_log
+    timelog "Workspace:           ${BWHITE}${WORKSPACE}${NC}"
   fi
-  echo -e "Schemas:             ${BWHITE}${SCHEMAS[@]}${NC}" | write_log
+  timelog "Schemas:             ${BWHITE}${SCHEMAS[@]}${NC}"
   if [[ -n ${CHANGELOG_SCHEMA} ]]; then
-    echo -e "----------------------------------------------------------" | write_log
-    echo -e "Changelog Schema: ${BWHITE}${CHANGELOG_SCHEMA}${NC}" | write_log
-    echo -e "Intent Prefixes:  ${BWHITE}${INTENT_PREFIXES[@]}${NC}" | write_log
-    echo -e "Intent Names:     ${BWHITE}${INTENT_NAMES[@]}${NC}" | write_log
-    echo -e "Intent Else:      ${BWHITE}${INTENT_ELSE}${NC}" | write_log
-    echo -e "Ticket Match:     ${BWHITE}${TICKET_MATCH}${NC}" | write_log
-    echo -e "Ticket URL:       ${BWHITE}${TICKET_URL}${NC}" | write_log
+    timelog "----------------------------------------------------------"
+    timelog "Changelog Schema: ${BWHITE}${CHANGELOG_SCHEMA}${NC}"
+    timelog "Intent Prefixes:  ${BWHITE}${INTENT_PREFIXES[@]}${NC}"
+    timelog "Intent Names:     ${BWHITE}${INTENT_NAMES[@]}${NC}"
+    timelog "Intent Else:      ${BWHITE}${INTENT_ELSE}${NC}"
+    timelog "Ticket Match:     ${BWHITE}${TICKET_MATCH}${NC}"
+    timelog "Ticket URL:       ${BWHITE}${TICKET_URL}${NC}"
   fi
 
   if [[ -n ${TEAMS_WEBHOOK_URL} ]]; then
-    echo -e "Teams WebHook:    ${BWHITE}TRUE${NC}" | write_log
+    timelog "Teams WebHook:    ${BWHITE}TRUE${NC}"
   fi
 
-  echo -e "----------------------------------------------------------" | write_log
-  echo -e "Stage:               ${BWHITE}${STAGE}${NC}" | write_log
-  echo -e "Depot:               ${BWHITE}${DEPOT_PATH}${NC}" | write_log
-  echo -e "Application Offset:  ${BWHITE}${APP_OFFSET}${NC}" | write_log
-  echo -e "Deployment User:     ${BWHITE}${DB_APP_USER}${NC}" | write_log
-  echo -e "DB Connection:       ${BWHITE}${DB_TNS}${NC}" | write_log
-  echo -e "----------------------------------------------------------" | write_log
-  echo -e | write_log
+  timelog "----------------------------------------------------------"
+  timelog "Stage:               ${BWHITE}${STAGE}${NC}"
+  timelog "Depot:               ${BWHITE}${DEPOT_PATH}${NC}"
+  timelog "Application Offset:  ${BWHITE}${APP_OFFSET}${NC}"
+  timelog "Deployment User:     ${BWHITE}${DB_APP_USER}${NC}"
+  timelog "DB Connection:       ${BWHITE}${DB_TNS}${NC}"
+  timelog "----------------------------------------------------------"
+  timelog
 }
 
 
@@ -263,30 +265,30 @@ extract_patchfile()
   if [[ $must_extract == "TRUE" ]]; then
     # check if patch exists
     if [[ -e $install_source_file ]]; then
-      echo "$install_source_file exists" | write_log
+      timelog "$install_source_file exists"
 
       # copy patch to _installed
       mv $install_source_file $install_target_path/
     else
       if [[ -e $install_target_file ]]; then
-        echo "$install_target_file allready copied" | write_log
+        timelog "$install_target_file allready copied"
       else
-        echo_error "$install_target_file not found, nothing to install" | write_log $failure
+        timelog "$install_target_file not found, nothing to install" $failure
         manage_result "failure"
       fi
     fi
 
     # extract file
-    echo "extracting file $install_target_file" | write_log
+    timelog "extracting file $install_target_file"
     tar -zxf $install_target_file
   else
-    echo "artifact will not be extracted from depot" | write_log
+    timelog "artifact will not be extracted from depot"
   fi
 }
 
 prepare_redo(){
   if [[ -f ${oldlogfile} ]]; then
-    echo "parsing redolog ${oldlogfile}" | write_log
+    timelog "parsing redolog ${oldlogfile}"
 
     this_os=$(uname)
 
@@ -306,7 +308,7 @@ prepare_redo(){
 
     declare -A map
     while IFS= read -r line; do
-      echo " ... Skipping line $line" | write_log
+      timelog " ... Skipping line $line"
       map[$line]=$line
     done < ${redo_file}
 
@@ -341,7 +343,7 @@ read_db_pass()
     ask4pwd "Enter Password for deployment user ${DB_APP_USER} on ${DB_TNS}: "
     DB_APP_PWD=${pass}
   else
-    echo "Password has already been set" | write_log
+    timelog "Password has already been set"
   fi
 }
 
@@ -349,15 +351,15 @@ read_db_pass()
 
 remove_dropped_files()
 {
-  echo "Check if any file should be removed ..." | write_log
+  timelog "Check if any file should be removed ..."
   if [[ -e $remove_old_files ]]; then
     # loop throug content
     while IFS= read -r line; do
-      echo "Removing file $line" | write_log
+      timelog "Removing file $line"
       rm -f $line
     done < "$remove_old_files"
   else
-    echo "No files to remove" | write_log
+    timelog "No files to remove"
   fi
 }
 
@@ -365,7 +367,7 @@ execute_global_hook_scripts() {
   local entrypath=$1    # pre or post
   local targetschema=""
 
-  echo "checking hook ${entrypath}" | write_log
+  timelog "checking hook ${entrypath}"
 
   if [[ -d "${entrypath}" ]]; then
     for file in $(ls ${entrypath} | sort )
@@ -376,7 +378,7 @@ execute_global_hook_scripts() {
         runfile="${entrypath}/${file}"
 
         if [[ ${targetschema} != "_" ]]; then
-          echo "executing hook file ${runfile} in ${targetschema}" | write_log
+          timelog "executing hook file ${runfile} in ${targetschema}"
           $SQLCLI -S -L "$(get_connect_string $targetschema)" <<! | tee -a ${full_log_file}
             define VERSION="${version}"
             define MODE="${mode}"
@@ -401,14 +403,14 @@ execute_global_hook_scripts() {
 !
 
         else
-          echo_warning "no schema found to execute hook file ${runfile} target schema has to be a part of filename" | write_log
+          timelog "no schema found to execute hook file ${runfile} target schema has to be a part of filename" ${warning}
         fi
       fi
     done
 
 
     if [[ $? -ne 0 ]]; then
-      echo_error "ERROR when executing ${entrypath}/${file}" | write_log $failure
+      timelog "ERROR when executing ${entrypath}/${file}" ${failure}
       manage_result "failure"
     fi
   fi
@@ -416,12 +418,12 @@ execute_global_hook_scripts() {
 
 clear_db_schemas_on_init() {
   if [[ "${mode}" == "init" ]]; then
-    echo "INIT - Mode, Schemas will be cleared" | write_log
+    timelog "INIT - Mode, Schemas will be cleared"
     # loop through schemas reverse
     for (( idx=${#SCHEMAS[@]}-1 ; idx>=0 ; idx-- )) ; do
       local schema=${SCHEMAS[idx]}
       # On init mode schema content will be dropped
-      echo "DROPING ALL OBJECTS on schema $schema" | write_log
+      timelog "DROPING ALL OBJECTS on schema $schema"
        exit | $SQLCLI -S -L "$(get_connect_string $schema)" @.dbFlow/lib/drop_all.sql ${full_log_file} ${version} ${mode} | tee -a ${full_log_file}
     done
   fi
@@ -446,7 +448,7 @@ install_db_schemas()
 
   cd db
 
-  echo "Start installing schemas" | write_log
+  timelog "Start installing schemas"
   # loop through schemas
   for schema in "${DBFOLDERS[@]}"
   do
@@ -457,7 +459,7 @@ install_db_schemas()
       db_install_file=${mode}_${schema}_${version}.sql
       # exists db install file
       if [[ -e $db_install_file ]]; then
-        echo "Installing schema $schema to ${DB_APP_USER} on ${DB_TNS}"  | write_log
+        timelog "Installing schema $schema to ${DB_APP_USER} on ${DB_TNS}"
 
         # uncomment cleaning scripts specific to this stage/branch ex:--test or --acceptance
         sed -i -E "s:--$STAGE:Prompt uncommented cleanup for stage $STAGE\n:g" $db_install_file
@@ -467,12 +469,12 @@ install_db_schemas()
         runfile=""
 
         if [[ $? -ne 0 ]]; then
-          echo "ERROR when executing db/$schema/$db_install_file" | write_log $failure
+          timelog "ERROR when executing db/$schema/$db_install_file" ${failure}
           manage_result "failure"
         fi
 
       else
-        echo "File db/$schema/$db_install_file does not exist" | write_log
+        timelog "File db/$schema/$db_install_file does not exist"
       fi
 
       cd ..
@@ -543,7 +545,7 @@ set_rest_publish_state() {
       fi
     done
   else
-    echo "Directory rest does not exist" | write_log $warning
+    timelog "Directory rest does not exist" $warning
   fi
 
   cd ${basepath}
@@ -574,7 +576,7 @@ set_apps_unavailable() {
         appschema=$(basename $(dirname $(dirname ${d})))
       fi
 
-      echo "disabling APEX-App ${app_id} in workspace ${workspace} for schema ${appschema}..." | write_log
+      timelog "disabling APEX-App ${app_id} in workspace ${workspace} for schema ${appschema}..."
       $SQLCLI -S -L "$(get_connect_string ${appschema})" <<! | tee -a ${full_log_file}
       set serveroutput on;
       set define off;
@@ -612,7 +614,7 @@ End;
 
     done
   else
-    echo "Directory apex does not exist" | write_log $warning
+    timelog "Directory apex does not exist" $warning
   fi
 
 }
@@ -641,7 +643,7 @@ set_apps_available() {
       fi
 
 
-      echo "enabling APEX-App ${app_id} in workspace ${workspace} for schema ${appschema}..." | write_log
+      timelog "enabling APEX-App ${app_id} in workspace ${workspace} for schema ${appschema}..."
       $SQLCLI -S -L "$(get_connect_string $appschema)" <<! | tee -a ${full_log_file}
       set serveroutput on;
       set define off;
@@ -687,7 +689,7 @@ set_apps_available() {
 
     done
   else
-    echo "Directory apex does not exist" | write_log $warning
+    timelog "Directory apex does not exist" ${warning}
   fi
 
 }
@@ -699,7 +701,7 @@ install_apps() {
   # app install
   # exists app_install_file
   if [[ -e $app_install_file ]]; then
-    echo "Installing APEX-Apps ..." | write_log
+    timelog "Installing APEX-Apps ..."
     # loop throug content
     while IFS= read -r line; do
       if [[ -e $line/install.sql ]]; then
@@ -713,7 +715,7 @@ install_apps() {
           appschema=$(basename $(dirname $(dirname ${line})))
         fi
 
-        echo "Installing $line Num: ${app_id} Workspace: ${workspace} Schema: $appschema" | write_log
+        timelog "Installing $line Num: ${app_id} Workspace: ${workspace} Schema: $appschema"
         cd $line
         $SQLCLI -S -L "$(get_connect_string $appschema)" <<! | tee -a ${full_log_file}
           define VERSION="${version}"
@@ -757,7 +759,7 @@ install_apps() {
 
 
         if [[ $? -ne 0 ]]; then
-          echo "ERROR when executing $line" | write_log $failure
+          timelog "ERROR when executing $line" $failure
           manage_result "failure"
         fi
 
@@ -765,7 +767,7 @@ install_apps() {
       fi
     done < "$app_install_file"
   else
-    echo "File $app_install_file does not exist" | write_log $warning
+    timelog "File $app_install_file does not exist" $warning
   fi
 
   cd ${basepath}
@@ -798,7 +800,7 @@ install_rest() {
           appschema=$(basename ${d})
         fi
 
-        echo "Installing REST-Services ${d}/${rest_install_file} on Schema $appschema" | write_log
+        timelog "Installing REST-Services ${d}/${rest_install_file} on Schema $appschema"
         $SQLCLI -S -L "$(get_connect_string $appschema)" <<! | tee -a ${full_log_file}
 
         define VERSION="${version}"
@@ -817,7 +819,7 @@ install_rest() {
 
         if [ $? -ne 0 ]
         then
-          echo "ERROR when executing $line" | write_log $failure
+          timelog "ERROR when executing $line" $failure
           exit 1
         fi
       fi
@@ -826,7 +828,7 @@ install_rest() {
     done
 
   else
-    echo "Directory rest does not exist" | write_log
+    timelog "Directory rest does not exist"
   fi
 
   cd ${basepath}
@@ -839,13 +841,13 @@ process_changelog() {
   chlfile=changelog_${mode}_${version}.md
   tplfile=reports/changelog/template.sql
   if [[ -f ${chlfile} ]]; then
-    echo "changelog found" | write_log
+    timelog "changelog found"
 
     if [[ -f ${tplfile} ]]; then
-      echo "templatefile found" | write_log
+      timelog "templatefile found"
 
       if [[ -n ${CHANGELOG_SCHEMA} ]]; then
-        echo "changelog schema '${CHANGELOG_SCHEMA}' is configured" | write_log
+        timelog "changelog schema '${CHANGELOG_SCHEMA}' is configured"
 
         # now gen merged sql file
         create_merged_report_file ${chlfile} ${tplfile} ${chlfile}.sql
@@ -860,19 +862,19 @@ process_changelog() {
 
         if [ $? -ne 0 ]
         then
-          echo "ERROR when runnin ${chlfile}.sql" | write_log $failure
+          timelog "ERROR when runnin ${chlfile}.sql" $failure
           exit 1
         else
           rm ${chlfile}.sql
         fi
       else
-        echo_warning "changelog schema is NOT configured" | write_log
+        timelog "changelog schema is NOT configured"
       fi
     else
-      echo "No templatefile found" | write_log
+      timelog "No templatefile found"
     fi
   else
-    echo "No changelog ${chlfile} found" | write_log
+    timelog "No changelog ${chlfile} found"
   fi
 }
 
@@ -885,17 +887,28 @@ post_message_to_teams() {
 
   if [ -z ${TEAMS_WEBHOOK_URL} ]
   then
-    echo "No webhook_url specified."  | write_log
+    timelog "No webhook_url specified."
   else
     # Convert formating.
     MESSAGE=$( echo ${TEXT} | sed 's/"/\"/g' | sed "s/'/\'/g" )
     JSON="{\"title\": \"${TITLE}\", \"themeColor\": \"${COLOR}\", \"text\": \"${MESSAGE}\" }"
 
-    echo "Posting to url: ${JSON} "  | write_log
+    timelog "Posting to url: ${JSON} "
     # Post to Microsoft Teams.
     curl -H "Content-Type: application/json" -d "${JSON}" "${TEAMS_WEBHOOK_URL}"
 
   fi
+}
+
+process_logs() {
+  # remove colorcodes from file
+  echo "Processing logs"
+  cat ${full_log_file} | sed -r "s/\x1B\[([0-9]{1,3}((;[0-9]{1,3})*)?)?[m|K]//g" > ${full_log_file}.colorless
+  rm ${full_log_file}
+  mv ${full_log_file}.colorless ${full_log_file}
+
+  # move all logs
+  mv *${mode}*${version}* ${target_finalize_path}
 }
 
 manage_result() {
@@ -909,17 +922,9 @@ manage_result() {
   [ -d ${target_finalize_path} ] || mkdir -p ${target_finalize_path}
 
   # notify
-  echo "${mode} ${version} moved to ${target_finalize_path}" | write_log ${target_move}
-  echo "Done with ${target_move}" | write_log ${target_move}
+  timelog "${mode} ${version} moved to ${target_finalize_path}" ${target_move}
+  timelog "Done with ${target_move}" ${target_move}
 
-  # remove colorcodes from file
-  echo "Processing logs"
-  cat ${full_log_file} | sed -r "s/\x1B\[([0-9]{1,3}((;[0-9]{1,3})*)?)?[m|K]//g" > ${full_log_file}.colorless
-  rm ${full_log_file}
-  mv ${full_log_file}.colorless ${full_log_file}
-
-  # move all logs
-  mv *${mode}*${version}* ${target_finalize_path}
 
   # move apex lst
   [[ -f apex_files_${version}.lst ]] && mv apex_files_${version}.lst ${target_finalize_path}
@@ -965,6 +970,8 @@ manage_result() {
     post_message_to_teams "Release ${version}" "4CCC3B" "Release ${version} has been successfully applied to stage: <b>${STAGE}</b>."
 
     echo "view output: $DEPOT_PATH/$STAGE/$target_move/$version/${finallog}"
+
+    process_logs;
     exit 0
   else
     redolog=$(basename ${full_log_file})
@@ -978,6 +985,8 @@ manage_result() {
     echo_debug "redolog parameter. This will not repeat the steps that have already been successfully executed."
     echo_debug "${WHITE}$0 --${mode} --version ${version} --redolog ${target_relative_path}/${redolog}${NC}"
     echo_debug "view output: $DEPOT_PATH/$STAGE/$target_move/$version/${finallog}"
+
+    process_logs
     exit 1
   fi
 }
@@ -989,9 +998,9 @@ notify() {
     # ie. Slack webhook, Github commit/PR etc.
     if [[ $1 -gt 2 ]]; then
       if [[ "${runfile}" != "" ]]; then
-        echo "ERROR when executing ${runfile}" | write_log $failure
+        timelog "ERROR when executing ${runfile}" $failure
       else
-        echo "ERROR in last statement" | write_log $failure
+        timelog "ERROR in last statement" $failure
       fi
 
       manage_result "failure"

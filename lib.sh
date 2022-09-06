@@ -11,6 +11,8 @@ set -o errtrace         # Make sure any error trap is inherited
 # set -o nounset          # Disallow expansion of unset variables
 set -o pipefail         # Use last non-zero exit code in a pipeline
 
+# null value in array
+shopt -s nullglob
 
 # Reset
 NC="\033[0m"       # Text Reset
@@ -149,9 +151,12 @@ esac
 failure="failure"
 success="success"
 warning="warning"
+info="info"
 
-write_log() {
-  local type=${1:-""}
+timelog () {
+  local text=${1:-""}
+  local type=${2:-""}
+
   case "$type" in
     ${failure})
       color=${RED}
@@ -165,23 +170,19 @@ write_log() {
       color=${YELLOW}
       reset=${NC}
       ;;
+    ${info})
+      color=${CYAN}
+      reset=${NC}
+      ;;
     *)
       color=${WHITE}
       reset=${NC}
   esac
 
-
-  while read text
-  do
-    LOGTIME=`date "+%Y-%m-%d %H:%M:%S"`
-    # If log file is not defined, just echo the output
-    if [[ "$full_log_file" == "" ]]; then
-      echo -e "${LWHITE}$LOGTIME${NC}: ${color}${text}${reset}";
-    else
-      echo -e "${LWHITE}$LOGTIME${NC}: ${color}${text}${reset}" | tee -a $full_log_file;
-    fi
-  done
+  LOGTIME=`date "+%Y-%m-%d %H:%M:%S"`
+  echo -e "${LWHITE}$LOGTIME${NC}: ${color}${text}${reset}";
 }
+
 
 function check_admin_connection() {
   sql_output=`${SQLCLI} -S -L "${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION}" <<EOF
