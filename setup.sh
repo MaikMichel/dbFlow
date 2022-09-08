@@ -34,7 +34,12 @@ source ./.dbFlow/lib.sh
 
 # target environment
 [ ! -f ./build.env ] || source ./build.env
-[ ! -f ./apply.env ] || source ./apply.env
+
+if [[ -e ./apply.env ]]; then
+  source ./apply.env
+
+  validate_passes
+fi
 
 # name of setup directory
 targetpath="db/_setup"
@@ -389,14 +394,14 @@ generate() {
   db_admin_user=${db_admin_user:-"sys"}
 
   ask4pwd "Enter password for ${db_admin_user} [leave blank and you will be asked for]: "
-  db_admin_pwd=${pass}
+  db_admin_pwd=`echo ${pass} | base64`
 
   if [[ $(toLowerCase $db_scheme_type) != "s" ]]; then
     ask4pwd "Enter password for deployment_user (proxyuser: ${project_name}_depl) [leave blank and you will be asked for]: "
   else
     ask4pwd "Enter password for application_user (user: ${project_name}) [leave blank and you will be asked for]: "
   fi
-  db_app_pwd=${pass}
+  db_app_pwd=`echo ${pass} | base64`
 
 
   read -p "Enter path to depot [_depot]: " depot_path
@@ -418,11 +423,11 @@ generate() {
   else
     echo "DB_APP_USER=${project_name}" >> apply.env
   fi
-  echo "DB_APP_PWD=${db_app_pwd}" >> apply.env
+  echo "DB_APP_PWD=\"!${db_app_pwd}\"" >> apply.env
   echo "" >> apply.env
   echo "# SYS/ADMIN Pass" >> apply.env
   echo "DB_ADMIN_USER=${db_admin_user}" >> apply.env
-  echo "DB_ADMIN_PWD=${db_admin_pwd}" >> apply.env
+  echo "DB_ADMIN_PWD=\"!${db_admin_pwd}\"" >> apply.env
   echo "" >> apply.env
   echo "# Path to Depot" >> apply.env
   echo "DEPOT_PATH=${depot_path}" >> apply.env

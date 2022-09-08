@@ -398,3 +398,28 @@ exists_in_list() {
   VALUE=$3
   [[ "$LIST" =~ ($DELIMITER|^)$VALUE($DELIMITER|$) ]]
 }
+
+
+function validate_passes() {
+   # decode when starting with a !
+  if [[ $DB_APP_PWD == !* ]]; then
+    DB_APP_PWD=`echo ${DB_APP_PWD:1} | base64 --decode`
+  else
+    # write back encoded
+    if [[ -n $DB_APP_PWD ]]; then
+      pwd_enc=`echo ${DB_APP_PWD} | base64`
+      sed -i "/^DB_APP_PWD=/s/=.*/=\"\!$pwd_enc\"/" ./apply.env
+    fi
+  fi
+
+  # decode when starting with a !
+  if [[ $DB_ADMIN_PWD == !* ]]; then
+    DB_ADMIN_PWD=`echo ${DB_ADMIN_PWD:1} | base64 --decode`
+  else
+    # write back encoded
+    if [[ -n $DB_ADMIN_PWD ]]; then
+      pwd_enc=`echo ${DB_ADMIN_PWD} | base64`
+      sed -i "/^DB_ADMIN_PWD=/s/=.*/=\"\!$pwd_enc\"/" ./apply.env
+    fi
+  fi
+}

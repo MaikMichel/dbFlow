@@ -40,7 +40,10 @@ fi
 # set target-env settings from file if exists
 if [[ -e ./apply.env ]]; then
   source ./apply.env
+
+  validate_passes
 fi
+
 
 # get unavalable text
 if [[ -e ./apex/maintence.html ]]; then

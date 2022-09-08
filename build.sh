@@ -49,8 +49,9 @@ fi
 # exist in both files
 if [[ -e ./apply.env ]]; then
   source ./apply.env
-fi
 
+  validate_passes
+fi
 
 
 function check_vars() {
