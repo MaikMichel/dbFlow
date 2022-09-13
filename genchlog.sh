@@ -60,7 +60,7 @@ if [[ -e ./build.env ]]; then
 fi
 
 function check_vars() {
-  echo_debug "Checking Vars" | write_log
+  timelog "Checking Vars" ${info}
 
   # check require vars from build.env
   do_exit="NO"
@@ -122,7 +122,7 @@ function check_params() {
   if git cat-file -e $end 2> /dev/null; then
     current_tag=$end
   else
-    echo_error "End Commit or Tag $end not found" | write_log
+    timelog "End Commit or Tag $end not found" ${failure}
     exit 1
   fi
 
@@ -130,7 +130,7 @@ function check_params() {
     if git cat-file -e $start 2> /dev/null; then
       previous_tag=$start
     else
-      echo_error "Start Commit or Tag $start not found" | write_log
+      timelog "Start Commit or Tag $start not found" ${failure}
       exit 1
     fi
   else
@@ -155,7 +155,7 @@ function check_params() {
 
 
 function gen_changelog() {
-  echo_debug "Generating Changelog ${current_tag}...${previous_tag}" | write_log
+  timelog "Generating Changelog ${current_tag}...${previous_tag}" ${info}
 
   # define log
   changetime=`date "+%Y%m%d%H%M%S"`
@@ -236,7 +236,7 @@ function gen_changelog() {
 
 
   mv ${logf} ${targetfile}
-  echo_success "Changelog written to ${targetfile}" | write_log
+  timelog "Changelog written to ${targetfile}" ${success}
 }
 
 

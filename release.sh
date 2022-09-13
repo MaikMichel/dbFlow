@@ -148,6 +148,7 @@ build_release() {
     # build diff patch
     log "build patch upgrade $version_next (current version)"
     .dbFlow/build.sh -p -v $version_next $keep
+    build_patch_worked=$?
     apply_tasks+=( ".dbFlow/apply.sh -p -v $version_next" )
 
     # when buildtest then test new initial patch
@@ -156,6 +157,18 @@ build_release() {
       log "building initial install $version_next (current version)"
       .dbFlow/build.sh -i -v $version_next $keep
       apply_tasks+=( ".dbFlow/apply.sh -i -v $version_next" )
+    else
+      # not on build branch
+      # for master and main branch the build script asks to push
+      # for all others we will push here
+      if [ $build_patch_worked -eq 0 ]; then
+        prod_branches=( "master" "main" )
+        if [[ ! " ${prod_branches[@]} " =~ " ${RLS_TARGET_BRANCH} " ]]; then
+          if branchrev=$(git rev-parse -q --verify origin/${RLS_TARGET_BRANCH}); then
+            git push
+          fi
+        fi
+      fi
     fi
   fi
 

@@ -11,6 +11,8 @@ set -o errtrace         # Make sure any error trap is inherited
 # set -o nounset          # Disallow expansion of unset variables
 set -o pipefail         # Use last non-zero exit code in a pipeline
 
+# null value in array
+shopt -s nullglob
 
 # Reset
 NC="\033[0m"       # Text Reset
@@ -149,9 +151,12 @@ esac
 failure="failure"
 success="success"
 warning="warning"
+info="info"
 
-write_log() {
-  local type=${1:-""}
+timelog () {
+  local text=${1:-""}
+  local type=${2:-""}
+
   case "$type" in
     ${failure})
       color=${RED}
@@ -165,26 +170,22 @@ write_log() {
       color=${YELLOW}
       reset=${NC}
       ;;
+    ${info})
+      color=${CYAN}
+      reset=${NC}
+      ;;
     *)
       color=${WHITE}
       reset=${NC}
   esac
 
-
-  while read text
-  do
-    LOGTIME=`date "+%Y-%m-%d %H:%M:%S"`
-    # If log file is not defined, just echo the output
-    if [[ "$full_log_file" == "" ]]; then
-      echo -e "${LWHITE}$LOGTIME${NC}: ${color}${text}${reset}";
-    else
-      echo -e "${LWHITE}$LOGTIME${NC}: ${color}${text}${reset}" | tee -a $full_log_file;
-    fi
-  done
+  LOGTIME=`date "+%Y-%m-%d %H:%M:%S"`
+  echo -e "${LWHITE}$LOGTIME${NC}: ${color}${text}${reset}";
 }
 
+
 function check_admin_connection() {
-  sql_output=`${SQLCLI} -S "${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION}" <<EOF
+  sql_output=`${SQLCLI} -S -L "${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION}" <<EOF
   select 'connected as '||user t from dual;
   exit
 EOF
@@ -201,7 +202,7 @@ EOF
 
 function check_connection() {
   local CONN_STR=$(get_connect_string $1)
-  sql_output=`${SQLCLI} -S "${CONN_STR}" <<EOF
+  sql_output=`${SQLCLI} -S -L "${CONN_STR}" <<EOF
   select 'connected to schema '||user t from dual;
   exit
 EOF
@@ -389,4 +390,36 @@ rem_trailing_slash() {
 
 force_trailing_slash() {
     echo "$(rem_trailing_slash "$1")/"
+}
+
+exists_in_list() {
+  LIST=$1
+  DELIMITER=$2
+  VALUE=$3
+  [[ "$LIST" =~ ($DELIMITER|^)$VALUE($DELIMITER|$) ]]
+}
+
+
+function validate_passes() {
+   # decode when starting with a !
+  if [[ $DB_APP_PWD == !* ]]; then
+    DB_APP_PWD=`echo ${DB_APP_PWD:1} | base64 --decode`
+  else
+    # write back encoded
+    if [[ -n $DB_APP_PWD ]]; then
+      pwd_enc=`echo ${DB_APP_PWD} | base64`
+      sed -i "/^DB_APP_PWD=/s/=.*/=\"\!$pwd_enc\"/" ./apply.env
+    fi
+  fi
+
+  # decode when starting with a !
+  if [[ $DB_ADMIN_PWD == !* ]]; then
+    DB_ADMIN_PWD=`echo ${DB_ADMIN_PWD:1} | base64 --decode`
+  else
+    # write back encoded
+    if [[ -n $DB_ADMIN_PWD ]]; then
+      pwd_enc=`echo ${DB_ADMIN_PWD} | base64`
+      sed -i "/^DB_ADMIN_PWD=/s/=.*/=\"\!$pwd_enc\"/" ./apply.env
+    fi
+  fi
 }
