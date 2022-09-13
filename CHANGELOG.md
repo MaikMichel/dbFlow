@@ -1,6 +1,15 @@
 # Change Log
 
 
+## [1.0.0 - 2022-09-13]
+- Add Obfuscate passwords in apply.env
+- Tuned logging peformance
+- Add copyto command to setup.sg to generate an instance directory
+- Add parameter -e to generate command, to generate env files olnly
+- Remove export feature. This is now part of dbFlux
+- Remove ansi2html because on Mac it's not working out of the box
+- Some small improvements
+
 ## [0.10.0 - 2022-08-22]
 - Add TEAMS_WEBHOOK_URL to post to on success
 - Fixed some small bugs

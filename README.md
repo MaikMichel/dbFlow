@@ -1,6 +1,5 @@
 <div align='center'>
-  <img src="docs/images/logo.jpg" align="center" width="100px"/>
-  <h1>dbFLow</h1>
+  <img src="docs/images/logo.png" align="center" width="400px"/>
 
   > Deployment framework for Oracle Database Applications
 
@@ -25,14 +24,14 @@
 
 ## Features
 
-- create an Oracle Database / APEX Project per command line
-- install dependent features (Logger, utPLSQL, ...)
-- use a fully customizable deployment flow based on Git diffs
-- configure your project dependencies
-- generate and process changelogs
-- create and test nightlybuilds
-- build artifacts based on Git diffs
-- deploy patches to target instances
+- Create an Oracle Database / APEX Project per command line
+- Install dependent features like Logger, utPLSQL, teplsql, ...
+- Use a fully customizable deployment flow based on Git Flow
+- Configure your project dependencies
+- Generate and process changelogs
+- Create and test nightlybuilds
+- Build artifacts / patches based on Git diffs
+- Deploy patches to target instances
 
 
 ### Generate project
