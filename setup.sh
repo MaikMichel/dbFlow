@@ -394,14 +394,18 @@ generate() {
   db_admin_user=${db_admin_user:-"sys"}
 
   ask4pwd "Enter password for ${db_admin_user} [leave blank and you will be asked for]: "
-  db_admin_pwd=`echo ${pass} | base64`
+  if [[ ${pass} != "" ]]; then
+    db_admin_pwd=`echo ${pass} | base64`
+  fi
 
   if [[ $(toLowerCase $db_scheme_type) != "s" ]]; then
     ask4pwd "Enter password for deployment_user (proxyuser: ${project_name}_depl) [leave blank and you will be asked for]: "
   else
     ask4pwd "Enter password for application_user (user: ${project_name}) [leave blank and you will be asked for]: "
   fi
-  db_app_pwd=`echo ${pass} | base64`
+  if [[ ${pass} != "" ]]; then
+    db_app_pwd=`echo ${pass} | base64`
+  fi
 
 
   read -p "Enter path to depot [_depot]: " depot_path
@@ -423,11 +427,19 @@ generate() {
   else
     echo "DB_APP_USER=${project_name}" >> apply.env
   fi
-  echo "DB_APP_PWD=\"!${db_app_pwd}\"" >> apply.env
+  if [[ ${db_app_pwd} != "" ]]; then
+    echo "DB_APP_PWD=\"!${db_app_pwd}\"" >> apply.env
+  else
+    echo "DB_APP_PWD=" >> apply.env
+  fi
   echo "" >> apply.env
   echo "# SYS/ADMIN Pass" >> apply.env
   echo "DB_ADMIN_USER=${db_admin_user}" >> apply.env
-  echo "DB_ADMIN_PWD=\"!${db_admin_pwd}\"" >> apply.env
+  if [[ ${db_app_pwd} != "" ]]; then
+    echo "DB_ADMIN_PWD=\"!${db_admin_pwd}\"" >> apply.env
+  else
+    echo "DB_ADMIN_PWD=" >> apply.env
+  fi
   echo "" >> apply.env
   echo "# Path to Depot" >> apply.env
   echo "DEPOT_PATH=${depot_path}" >> apply.env
