@@ -408,7 +408,13 @@ function validate_passes() {
     # write back encoded
     if [[ -n $DB_APP_PWD ]]; then
       pwd_enc=`echo ${DB_APP_PWD} | base64`
-      sed -i "/^DB_APP_PWD=/s/=.*/=\"\!$pwd_enc\"/" ./apply.env
+      
+      # sed syntax is different in macos
+      if [[ $(uname) == "Darwin" ]]; then
+        sed -i"y" "/^DB_APP_PWD=/s/=.*/=\"\!$pwd_enc\"/" ./apply.env
+      else
+        sed -i "/^DB_APP_PWD=/s/=.*/=\"\!$pwd_enc\"/" ./apply.env
+      fi
     fi
   fi
 
@@ -419,7 +425,13 @@ function validate_passes() {
     # write back encoded
     if [[ -n $DB_ADMIN_PWD ]]; then
       pwd_enc=`echo ${DB_ADMIN_PWD} | base64`
-      sed -i "/^DB_ADMIN_PWD=/s/=.*/=\"\!$pwd_enc\"/" ./apply.env
+
+      # sed syntax is different in macos
+      if [[ $(uname) == "Darwin" ]]; then
+        sed -i"y" "/^DB_ADMIN_PWD=/s/=.*/=\"\!$pwd_enc\"/" ./apply.env
+      else
+        sed -i "/^DB_ADMIN_PWD=/s/=.*/=\"\!$pwd_enc\"/" ./apply.env
+      fi
     fi
   fi
 }
