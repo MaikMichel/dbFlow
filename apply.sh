@@ -382,7 +382,7 @@ execute_global_hook_scripts() {
 
         if [[ ${targetschema} != "_" ]]; then
           timelog "executing hook file ${runfile} in ${targetschema}"
-          $SQLCLI -S -L "$(get_connect_string $targetschema)" <<! | tee -a ${full_log_file}
+          $SQLCLI -S -L "$(get_connect_string $targetschema)" <<!
             define VERSION="${version}"
             define MODE="${mode}"
 
@@ -427,7 +427,7 @@ clear_db_schemas_on_init() {
       local schema=${SCHEMAS[idx]}
       # On init mode schema content will be dropped
       timelog "DROPING ALL OBJECTS on schema $schema"
-       exit | $SQLCLI -S -L "$(get_connect_string $schema)" @.dbFlow/lib/drop_all.sql ${full_log_file} ${version} ${mode} | tee -a ${full_log_file}
+       exit | $SQLCLI -S -L "$(get_connect_string $schema)" @.dbFlow/lib/drop_all.sql ${full_log_file} ${version} ${mode}
     done
   fi
 }
@@ -468,7 +468,7 @@ install_db_schemas()
         sed -i -E "s:--$STAGE:Prompt uncommented cleanup for stage $STAGE\n:g" $db_install_file
 
         runfile=$db_install_file
-        $SQLCLI -S -L "$(get_connect_string $schema)" @$db_install_file ${version} ${mode} | tee -a ${full_log_file}
+        $SQLCLI -S -L "$(get_connect_string $schema)" @$db_install_file ${version} ${mode}
         runfile=""
 
         if [[ $? -ne 0 ]]; then
@@ -521,7 +521,7 @@ set_rest_publish_state() {
           modules+=( ${mbase} )
         done
 
-        $SQLCLI -S -L "$(get_connect_string ${appschema})" <<! | tee -a ${full_log_file}
+        $SQLCLI -S -L "$(get_connect_string ${appschema})" <<!
           set define off;
           set serveroutput on;
           $(
@@ -580,7 +580,7 @@ set_apps_unavailable() {
       fi
 
       timelog "disabling APEX-App ${app_id} in workspace ${workspace} for schema ${appschema}..."
-      $SQLCLI -S -L "$(get_connect_string ${appschema})" <<! | tee -a ${full_log_file}
+      $SQLCLI -S -L "$(get_connect_string ${appschema})" <<!
       set serveroutput on;
       set define off;
       Declare
@@ -647,7 +647,7 @@ set_apps_available() {
 
 
       timelog "enabling APEX-App ${app_id} in workspace ${workspace} for schema ${appschema}..."
-      $SQLCLI -S -L "$(get_connect_string $appschema)" <<! | tee -a ${full_log_file}
+      $SQLCLI -S -L "$(get_connect_string $appschema)" <<!
       set serveroutput on;
       set define off;
       Declare
@@ -720,7 +720,7 @@ install_apps() {
 
         timelog "Installing $line Num: ${app_id} Workspace: ${workspace} Schema: $appschema"
         cd $line
-        $SQLCLI -S -L "$(get_connect_string $appschema)" <<! | tee -a ${full_log_file}
+        $SQLCLI -S -L "$(get_connect_string $appschema)" <<!
           define VERSION="${version}"
           define MODE="${mode}"
 
@@ -804,7 +804,7 @@ install_rest() {
         fi
 
         timelog "Installing REST-Services ${d}/${rest_install_file} on Schema $appschema"
-        $SQLCLI -S -L "$(get_connect_string $appschema)" <<! | tee -a ${full_log_file}
+        $SQLCLI -S -L "$(get_connect_string $appschema)" <<!
 
         define VERSION="${version}"
         define MODE="${mode}"
@@ -856,7 +856,7 @@ process_changelog() {
         create_merged_report_file ${chlfile} ${tplfile} ${chlfile}.sql
 
         # and run
-        $SQLCLI -S -L "$(get_connect_string ${CHANGELOG_SCHEMA})" <<! | tee -a ${full_log_file}
+        $SQLCLI -S -L "$(get_connect_string ${CHANGELOG_SCHEMA})" <<!
 
           Prompt executing changelog file ${chlfile}.sql
           @${chlfile}.sql
