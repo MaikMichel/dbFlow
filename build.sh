@@ -296,7 +296,7 @@ function setup_env() {
       timelog "logic_schema:  ${BWHITE}${LOGIC_SCHEMA}${NC}"
     fi
   fi
-  timelog "schemas:      (${BWHITE}${SCHEMAS[@]}${NC})"
+  timelog "schemas:      (${BWHITE}${SCHEMAS[*]}${NC})"
   timelog "----------------------------------------------------------"
   timelog "depotpath:     ${BWHITE}${depotpath}${NC}"
   timelog "targetpath:    ${BWHITE}${targetpath}${NC}"

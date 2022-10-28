@@ -972,7 +972,7 @@ manage_result() {
   if [[ $target_move == "success" ]]; then
     post_message_to_teams "Release ${version}" "4CCC3B" "Release ${version} has been successfully applied to stage: <b>${STAGE}</b>."
 
-    echo "view output: ${basepath}$DEPOT_PATH/$STAGE/$target_move/$version/${finallog}"
+    echo "view output: ${basepath}/$DEPOT_PATH/$STAGE/$target_move/$version/${finallog}"
 
     process_logs;
     exit 0
@@ -987,7 +987,7 @@ manage_result() {
     echo_debug "possibility to specifiy the log file ${WHITE}${target_relative_path}/${log_file}${NC} as "
     echo_debug "redolog parameter. This will not repeat the steps that have already been successfully executed."
     echo_debug "${WHITE}$0 --${mode} --version ${version} --redolog ${target_relative_path}/${redolog}${NC}"
-    echo_debug "view output: ${basepath}$DEPOT_PATH/$STAGE/$target_move/$version/${finallog}"
+    echo_debug "view output: ${basepath}/$DEPOT_PATH/$STAGE/$target_move/$version/${finallog}"
 
     process_logs
     exit 1
