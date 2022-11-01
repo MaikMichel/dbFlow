@@ -278,29 +278,33 @@ function setup_env() {
 
   timelog "Building ${BWHITE}${mode}${NC} deployment version: ${BWHITE}${version}${NC}"
   timelog "----------------------------------------------------------"
-  timelog "project:       ${BWHITE}${PROJECT}${NC}"
-  timelog "branch:        ${BWHITE}${branch}${NC}"
+  timelog "Mode:         ${BWHITE}${mode}${NC}"
+  timelog "Version       ${BWHITE}${version}${NC}"
+  timelog "Log File:     ${BWHITE}${log_file}${NC}"
+  timelog "Branch:       ${BWHITE}${branch}${NC}"
   if [[ $mode == "patch" ]];then
     display_from=`git rev-parse --short ${from_commit}`
     display_until=`git rev-parse --short ${until_commit}`
-    timelog "from:          ${BWHITE}${from_commit} (${display_from})${NC}"
-    timelog "until:         ${BWHITE}${until_commit} (${display_until})${NC}"
-    timelog "shipall:       ${BWHITE}${SHIP_ALL}${NC}"
+  timelog "from:         ${BWHITE}${from_commit} (${display_from})${NC}"
+  timelog "until:        ${BWHITE}${until_commit} (${display_until})${NC}"
+  timelog "shipall:      ${BWHITE}${SHIP_ALL}${NC}"
   fi
-  timelog "keepfolder:    ${BWHITE}${KEEP_FOLDER}${NC}"
   timelog "----------------------------------------------------------"
+  timelog "Project              ${BWHITE}${PROJECT}${NC}"
   if [[ ${PROJECT_MODE} != "FLEX" ]]; then
-    timelog "app_schema:    ${BWHITE}${APP_SCHEMA}${NC}"
-    if [[ ${PROJECT_MODE} == "MULTI" ]]; then
-      timelog "data_schema:   ${BWHITE}${DATA_SCHEMA}${NC}"
-      timelog "logic_schema:  ${BWHITE}${LOGIC_SCHEMA}${NC}"
+      timelog "Application Schema:  ${BWHITE}${APP_SCHEMA}${NC}"
+    if [[ ${PROJECT_MODE} != "SINGLE" ]]; then
+      timelog "Data Schema:         ${BWHITE}${DATA_SCHEMA}${NC}"
+      timelog "Logic Schema:        ${BWHITE}${LOGIC_SCHEMA}${NC}"
     fi
+    timelog "Workspace:           ${BWHITE}${WORKSPACE}${NC}"
   fi
-  timelog "schemas:      (${BWHITE}${SCHEMAS[@]}${NC})"
+     timelog "Schemas:             (${BWHITE}${SCHEMAS[*]}${NC})"
   timelog "----------------------------------------------------------"
-  timelog "depotpath:     ${BWHITE}${depotpath}${NC}"
-  timelog "targetpath:    ${BWHITE}${targetpath}${NC}"
-  timelog "sourcepath:    ${BWHITE}${sourcepath}${NC}"
+  timelog "Depotpath:     ${BWHITE}${depotpath}${NC}"
+  timelog "Targetpath:    ${BWHITE}${targetpath}${NC}"
+  timelog "Sourcepath:    ${BWHITE}${sourcepath}${NC}"
+  timelog "Keepfolder:    ${BWHITE}${KEEP_FOLDER}${NC}"
   timelog "----------------------------------------------------------"
   timelog "----------------------------------------------------------"
   timelog "----------------------------------------------------------"
