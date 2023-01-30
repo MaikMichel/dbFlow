@@ -305,52 +305,9 @@ generate() {
   fi
 
   # write .env files
-  # build.env
-  echo "# project name" > build.env
-  echo "PROJECT=${project_name}" >> build.env
-  echo "" >> build.env
-  echo "" >> build.env
-  if [[ $(toLowerCase "${db_scheme_type}") == "m" ]]; then
-    echo "# In MultiSchema Mode, we have a classic 3 Tier model" >> build.env
-    echo "PROJECT_MODE=MULTI" >> build.env
-    echo "APP_SCHEMA=${project_name}_app" >> build.env
-    echo "DATA_SCHEMA=${project_name}_data" >> build.env
-    echo "LOGIC_SCHEMA=${project_name}_logic" >> build.env
-  elif [[ $(toLowerCase "${db_scheme_type}") == "s" ]]; then
-    echo "# In SingleSchema Mode, we have a only one schema" >> build.env
-    echo "PROJECT_MODE=SINGLE" >> build.env
-    echo "APP_SCHEMA=${project_name}" >> build.env
-  elif [[ $(toLowerCase "${db_scheme_type}") == "f" ]]; then
-    echo "# In FlexSchema Mode, you have to create the schemas by your own" >> build.env
-    echo "# and don't forget to grant connect through proxy_user " >> build.env
-    echo "PROJECT_MODE=FLEX" >> build.env
-  fi
-  echo "" >> build.env
-
-  if [[ $(toLowerCase "${db_scheme_type}") != "f" ]]; then
-    echo "" >> build.env
-    echo "# workspace app belongs to" >> build.env
-    echo "WORKSPACE=${project_name}" >> build.env
-    echo "" >> build.env
-  fi
-
   read -p "When running release tests, what is your prefered branch name [build]: " build_branch
-  echo "" >> build.env
-  echo "# Name of the branch, where release tests are build" >> build.env
-  echo "BUILD_BRANCH=${build_branch:-build}" >> build.env
-  echo "" >> build.env
-
-
-  echo "" >> build.env
-  echo "# Generate a changelog with these settings" >> build.env
-  echo "# When template.sql file found in reports/changelog then it will be" >> build.env
-  echo "# executed on apply with the CHANGELOG_SCHEMA ." >> build.env
-  echo "# The changelog itself is structured using INTENT_PREFIXES to look" >> build.env
-  echo "# for in commits and to place them in corresponding INTENT_NAMES inside" >> build.env
-  echo "# the file itself. You can define a regexp in TICKET_MATCH to look for" >> build.env
-  echo "# keys to link directly to your ticketsystem using TICKET_URL" >> build.env
-
   read -p "Would you like to process changelogs during deployment [Y]: " create_changelogs
+
   if [[ $(toLowerCase" ${create_changelogs:-y}") == "y" ]]; then
     if [[ $(toLowerCase "${db_scheme_type}") != "s" ]]; then
       read -p "What is the schema name the changelog are processed with [${project_name}_app]: " chl_schema
@@ -358,33 +315,83 @@ generate() {
       # when SingleSchema then there is only one possibility
       chl_schema=${project_name}
     fi
-    echo "CHANGELOG_SCHEMA=${chl_schema:-${project_name}_app}" >> build.env
-
-    if [[ ${env_only} == "NO" ]]; then
-      echo "INTENT_PREFIXES=( Feat Fix )" >> build.env
-      echo "INTENT_NAMES=( Features Fixes )" >> build.env
-      echo "INTENT_ELSE=\"Others\"" >> build.env
-      echo "TICKET_MATCH=\"[A-Z]\+-[0-9]\+\"" >> build.env
-      echo "TICKET_URL=\"https://url-to-your-issue-tracker-like-jira/browse\"" >> build.env
-
-      chltemplate=reports/changelog/template.sql
-      if [[ ! -f ${chltemplate} ]]; then
-        [[ -d reports/changelog ]] || mkdir -p reports/changelog
-        cp ".dbFlow/scripts/changelog_template.sql" ${chltemplate}
-      fi
-    fi
-  else
-    echo "# copy template to reports/changelog folder"
-    echo "# cp .dbFlow/scripts/changelog_template.sql ${chltemplate}"
-    echo "# CHANGELOG_SCHEMA=${project_name}_app}" >> build.env
-    echo "# INTENT_PREFIXES=( Feat Fix )" >> build.env
-    echo "# INTENT_NAMES=( Features Fixes )" >> build.env
-    echo "# INTENT_ELSE=\"Others\"" >> build.env
-    echo "# TICKET_MATCH=\"[A-Z]\+-[0-9]\+\"" >> build.env
-    echo "# TICKET_URL=\"https://url-to-your-issue-tracker-like-jira/browse\"" >> build.env
   fi
-  echo "" >> build.env
 
+  # build.env
+  {
+    echo "# project name"
+    echo "PROJECT=${project_name}"
+    echo ""
+    echo ""
+    if [[ $(toLowerCase "${db_scheme_type}") == "m" ]]; then
+      echo "# In MultiSchema Mode, we have a classic 3 Tier model"
+      echo "PROJECT_MODE=MULTI"
+      echo "APP_SCHEMA=${project_name}_app"
+      echo "DATA_SCHEMA=${project_name}_data"
+      echo "LOGIC_SCHEMA=${project_name}_logic"
+    elif [[ $(toLowerCase "${db_scheme_type}") == "s" ]]; then
+      echo "# In SingleSchema Mode, we have a only one schema"
+      echo "PROJECT_MODE=SINGLE"
+      echo "APP_SCHEMA=${project_name}"
+    elif [[ $(toLowerCase "${db_scheme_type}") == "f" ]]; then
+      echo "# In FlexSchema Mode, you have to create the schemas by your own"
+      echo "# and don't forget to grant connect through proxy_user "
+      echo "PROJECT_MODE=FLEX"
+    fi
+    echo ""
+
+    if [[ $(toLowerCase "${db_scheme_type}") != "f" ]]; then
+      echo ""
+      echo "# workspace app belongs to"
+      echo "WORKSPACE=${project_name}"
+      echo ""
+    fi
+
+
+    echo ""
+    echo "# Name of the branch, where release tests are build"
+    echo "BUILD_BRANCH=${build_branch:-build}"
+    echo ""
+
+
+    echo ""
+    echo "# Generate a changelog with these settings"
+    echo "# When template.sql file found in reports/changelog then it will be"
+    echo "# executed on apply with the CHANGELOG_SCHEMA ."
+    echo "# The changelog itself is structured using INTENT_PREFIXES to look"
+    echo "# for in commits and to place them in corresponding INTENT_NAMES inside"
+    echo "# the file itself. You can define a regexp in TICKET_MATCH to look for"
+    echo "# keys to link directly to your ticketsystem using TICKET_URL"
+
+
+    if [[ $(toLowerCase" ${create_changelogs:-y}") == "y" ]]; then
+      echo "CHANGELOG_SCHEMA=${chl_schema:-${project_name}_app}"
+
+      if [[ ${env_only} == "NO" ]]; then
+        echo "INTENT_PREFIXES=( Feat Fix )"
+        echo "INTENT_NAMES=( Features Fixes )"
+        echo "INTENT_ELSE=\"Others\""
+        echo "TICKET_MATCH=\"[A-Z]\+-[0-9]\+\""
+        echo "TICKET_URL=\"https://url-to-your-issue-tracker-like-jira/browse\""
+
+        chltemplate=reports/changelog/template.sql
+        if [[ ! -f ${chltemplate} ]]; then
+          [[ -d reports/changelog ]] || mkdir -p reports/changelog
+          cp ".dbFlow/scripts/changelog_template.sql" ${chltemplate}
+        fi
+      fi
+    else
+      echo "# copy template to reports/changelog folder"
+      echo "# cp .dbFlow/scripts/changelog_template.sql ${chltemplate}"
+      echo "# CHANGELOG_SCHEMA=${project_name}_app}"
+      echo "# INTENT_PREFIXES=( Feat Fix )"
+      echo "# INTENT_NAMES=( Features Fixes )"
+      echo "# INTENT_ELSE=\"Others\""
+      echo "# TICKET_MATCH=\"[A-Z]\+-[0-9]\+\""
+      echo "# TICKET_URL=\"https://url-to-your-issue-tracker-like-jira/browse\""
+    fi
+    echo ""
+  } > build.env
 
   # ask for some vars to put into file
   read -p "Enter database connections [localhost:1521/xepdb1]: " db_tns
@@ -417,49 +424,51 @@ generate() {
   read -p "Do you wish to generate and install default tooling? (Logger, utPLSQL, teplsql, tapi) [Y]: " with_tools
   with_tools=${with_tools:-"Y"}
 
-  # apply.env
-  echo "# DB Connection" > apply.env
-  echo "DB_TNS=${db_tns}" >> apply.env
-  echo "" >> apply.env
-  echo "# Deployment User" >> apply.env
-  if [[ $(toLowerCase "${db_scheme_type}") != "s" ]]; then
-    echo "DB_APP_USER=${project_name}_depl" >> apply.env
-  else
-    echo "DB_APP_USER=${project_name}" >> apply.env
-  fi
-  if [[ ${db_app_pwd} != "" ]]; then
-    echo "DB_APP_PWD=\"!${db_app_pwd}\"" >> apply.env
-  else
-    echo "DB_APP_PWD=" >> apply.env
-  fi
-  echo "" >> apply.env
-  echo "# SYS/ADMIN Pass" >> apply.env
-  echo "DB_ADMIN_USER=${db_admin_user}" >> apply.env
-  if [[ ${db_app_pwd} != "" ]]; then
-    echo "DB_ADMIN_PWD=\"!${db_admin_pwd}\"" >> apply.env
-  else
-    echo "DB_ADMIN_PWD=" >> apply.env
-  fi
-  echo "" >> apply.env
-  echo "# Path to Depot" >> apply.env
-  echo "DEPOT_PATH=${depot_path}" >> apply.env
-  echo "" >> apply.env
-  echo "# Stage mapped to source branch ( develop test master )" >> apply.env
-  echo "# this is used to get artifacts from depot_path" >> apply.env
-  echo "STAGE=${stage}" >> apply.env
-  echo "" >> apply.env
-  echo "" >> apply.env
-  echo "# ADD this to original APP-NUM" >> apply.env
-  echo "APP_OFFSET=0" >> apply.env
-  echo "" >> apply.env
   read -p "Install with sql(cl) or sqlplus? [sqlplus]: " SQLCLI
   SQLCLI=${SQLCLI:-"sqlplus"}
-  echo "# Scripts are executed with" >> apply.env
-  echo "SQLCLI=${SQLCLI}" >> apply.env
-  echo "" >> apply.env
-  echo "# TEAMS Channel to Post to on success" >> apply.env
-  echo "TEAMS_WEBHOOK_URL=" >> apply.env
 
+  # apply.env
+  {
+    echo "# DB Connection"
+    echo "DB_TNS=${db_tns}"
+    echo ""
+    echo "# Deployment User"
+    if [[ $(toLowerCase "${db_scheme_type}") != "s" ]]; then
+      echo "DB_APP_USER=${project_name}_depl"
+    else
+      echo "DB_APP_USER=${project_name}"
+    fi
+    if [[ ${db_app_pwd} != "" ]]; then
+      echo "DB_APP_PWD=\"!${db_app_pwd}\""
+    else
+      echo "DB_APP_PWD="
+    fi
+    echo ""
+    echo "# SYS/ADMIN Pass"
+    echo "DB_ADMIN_USER=${db_admin_user}"
+    if [[ ${db_app_pwd} != "" ]]; then
+      echo "DB_ADMIN_PWD=\"!${db_admin_pwd}\""
+    else
+      echo "DB_ADMIN_PWD="
+    fi
+    echo ""
+    echo "# Path to Depot"
+    echo "DEPOT_PATH=${depot_path}"
+    echo ""
+    echo "# Stage mapped to source branch ( develop test master )"
+    echo "# this is used to get artifacts from depot_path"
+    echo "STAGE=${stage}"
+    echo ""
+    echo ""
+    echo "# ADD this to original APP-NUM"
+    echo "APP_OFFSET=0"
+    echo ""
+    echo "# Scripts are executed with"
+    echo "SQLCLI=${SQLCLI}"
+    echo ""
+    echo "# TEAMS Channel to Post to on success"
+    echo "TEAMS_WEBHOOK_URL="
+  } > apply.env
 
   # write gitignore
   [[ -f .gitignore ]] || touch .gitignore
