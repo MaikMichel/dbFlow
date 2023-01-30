@@ -161,7 +161,7 @@ install() {
   fi
 
   if [[ -z "$DB_ADMIN_USER" ]]; then
-    read -p "Enter username of admin user (admin, sys, ...) [sys]: " DB_ADMIN_USER
+    read -p -r "Enter username of admin user (admin, sys, ...) [sys]: " DB_ADMIN_USER
     DB_ADMIN_USER=${DB_ADMIN_USER:-"sys"}
   fi
 
@@ -205,12 +205,12 @@ install() {
           EXTENSION="${BASEFL##*.}"
 
           if [[ $EXTENSION == "sql" ]]; then
-            cd "${level1_dir}"
+            cd "${level1_dir}" || exit
             echo "Calling ${level1_dir}/${file}"
             exit | ${SQLCLI} -S -L "${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION}" @"${file}"
             cd ../../..
           elif [[ $EXTENSION == "sh" ]]; then
-            cd "${level1_dir}"
+            cd "${level1_dir}" || exit
             echo "Executing ${level1_dir}/${file}"
             ./"${file}" "${yes}" "${DB_ADMIN_PWD}"
             cd ../../..
@@ -228,12 +228,12 @@ install() {
               EXTENSION="${BASEFL##*.}"
 
               if [[ $EXTENSION == "sql" ]]; then
-                cd "${level2_dir}"
+                cd "${level2_dir}" || exit
                 echo "Calling ${level2_dir}/${file2}"
                 exit | ${SQLCLI} -S -L "${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION}" @"${file2}"
                 cd ../../../..
               elif [[ $EXTENSION == "sh" ]]; then
-                cd "${level2_dir}"
+                cd "${level2_dir}" || exit
                 echo "Executing ${level2_dir}/${file2}"
                 ./"${file2}" "${yes}" "${DB_ADMIN_PWD}"
                 cd ../../../..
@@ -270,11 +270,11 @@ copytopath() {
 
   echo "initialize git and add dbFlow as submodule"
   cp .gitignore "${target_path}"
-  cd "${target_path}"
+  cd "${target_path}" || exit
   git init
   git submodule add https://github.com/MaikMichel/dbFlow.git .dbFlow
   ls -la
-  cd "${basepath}"
+  cd "${basepath}" || exit
 
   echo "After changing your database connection you just have to execute:"
   echo -e "${YELLOW}.dbFlow/setup.sh install${NC}"
@@ -285,7 +285,7 @@ generate() {
   local project_name=$1
   local env_only=$2
 
-  read -p "Would you like to have a single, multi or flex scheme app (S/M/F) [M]: " db_scheme_type
+  read -p -r "Would you like to have a single, multi or flex scheme app (S/M/F) [M]: " db_scheme_type
   db_scheme_type=${db_scheme_type:-"M"}
 
   # create directories
@@ -305,12 +305,12 @@ generate() {
   fi
 
   # write .env files
-  read -p "When running release tests, what is your prefered branch name [build]: " build_branch
-  read -p "Would you like to process changelogs during deployment [Y]: " create_changelogs
+  read -p -r "When running release tests, what is your prefered branch name [build]: " build_branch
+  read -p -r "Would you like to process changelogs during deployment [Y]: " create_changelogs
 
   if [[ $(toLowerCase" ${create_changelogs:-y}") == "y" ]]; then
     if [[ $(toLowerCase "${db_scheme_type}") != "s" ]]; then
-      read -p "What is the schema name the changelog are processed with [${project_name}_app]: " chl_schema
+      read -p -r "What is the schema name the changelog are processed with [${project_name}_app]: " chl_schema
     else
       # when SingleSchema then there is only one possibility
       chl_schema=${project_name}
@@ -394,10 +394,10 @@ generate() {
   } > build.env
 
   # ask for some vars to put into file
-  read -p "Enter database connections [localhost:1521/xepdb1]: " db_tns
+  read -p -r "Enter database connections [localhost:1521/xepdb1]: " db_tns
   db_tns=${db_tns:-"localhost:1521/xepdb1"}
 
-  read -p "Enter username of admin user (admin, sys, ...) [sys]: " db_admin_user
+  read -p -r "Enter username of admin user (admin, sys, ...) [sys]: " db_admin_user
   db_admin_user=${db_admin_user:-"sys"}
 
   ask4pwd "Enter password for ${db_admin_user} [leave blank and you will be asked for]: "
@@ -415,16 +415,16 @@ generate() {
   fi
 
 
-  read -p "Enter path to depot [_depot]: " depot_path
+  read -p -r "Enter path to depot [_depot]: " depot_path
   depot_path=${depot_path:-"_depot"}
 
-  read -p "Enter stage of this configuration mapped to branch (develop, test, master) [develop]: " stage
+  read -p -r "Enter stage of this configuration mapped to branch (develop, test, master) [develop]: " stage
   stage=${stage:-"develop"}
 
-  read -p "Do you wish to generate and install default tooling? (Logger, utPLSQL, teplsql, tapi) [Y]: " with_tools
+  read -p -r "Do you wish to generate and install default tooling? (Logger, utPLSQL, teplsql, tapi) [Y]: " with_tools
   with_tools=${with_tools:-"Y"}
 
-  read -p "Install with sql(cl) or sqlplus? [sqlplus]: " SQLCLI
+  read -p -r "Install with sql(cl) or sqlplus? [sqlplus]: " SQLCLI
   SQLCLI=${SQLCLI:-"sqlplus"}
 
   # apply.env
@@ -544,11 +544,10 @@ generate() {
 
     # ask for application IDs
     apex_ids=""
-    read -p "Enter application IDs (comma separated) you wish to use initialy (100,101,...): " apex_ids
+    read -p -r "Enter application IDs (comma separated) you wish to use initialy (100,101,...): " apex_ids
 
     # split ids gen directories
     apexids=(`echo "${apex_ids}" | sed 's/,/\n/g'`)
-    apexidsquotes="\""${apex_ids/,/"\",\""}"\""
     for apxID in "${apexids[@]}"
     do
       if [[ $(toLowerCase "${db_scheme_type}") == "f" ]]; then
@@ -562,11 +561,10 @@ generate() {
 
     # ask for restful Modulsa
     rest_modules=""
-    read -p "Enter restful Moduls (comma separated) you wish to use initialy (api,test,...): " rest_modules
+    read -p -r "Enter restful Moduls (comma separated) you wish to use initialy (api,test,...): " rest_modules
 
     # split modules
     restmodules=(`echo $"{rest_modules}" | sed 's/,/\n/g'`)
-    restmodulesquotes="\""${rest_modules/,/"\",\""}"\""
     for restMOD in "${restmodules[@]}"
     do
       if [[ $(toLowerCase "${db_scheme_type}") == "f" ]]; then
@@ -612,7 +610,7 @@ export_schema() {
 
 
   # when defined get it
-  ALL_SCHEMAS=( ${DATA_SCHEMA} ${LOGIC_SCHEMA} ${APP_SCHEMA} )
+  ALL_SCHEMAS=( "${DATA_SCHEMA}" "${LOGIC_SCHEMA}" "${APP_SCHEMA}" )
   SCHEMAS=($(printf "%s\n" "${ALL_SCHEMAS[@]}" | sort -u))
   # if length is equal than ALL_SCHEMAS, otherwise distinct
   if [[ ${#SCHEMAS[@]} == ${#ALL_SCHEMAS[@]} ]]; then
