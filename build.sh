@@ -808,93 +808,93 @@ function write_install_rest() {
   fi
 }
 
-# function gen_changelog() {
-#   local current_tag=${1}
-#   local previous_tag=${2}
-#   local targetfile=${3}
-#   timelog "Generating Changelog ${current_tag}...${previous_tag} to ${targetfile}" ${info}
+function gen_changelog() {
+  local current_tag=${1}
+  local previous_tag=${2}
+  local targetfile=${3}
+  timelog "Generating Changelog ${current_tag}...${previous_tag} to ${targetfile}" ${info}
 
-#   # define log
-#   changetime=`date "+%Y%m%d%H%M%S"`
-#   logf=changelog_${changetime}.md
-#   tag_date=$(git log -1 --pretty=format:'%ad' --date=short ${current_tag})
+  # define log
+  changetime=`date "+%Y%m%d%H%M%S"`
+  logf=changelog_${changetime}.md
+  tag_date=$(git log -1 --pretty=format:'%ad' --date=short ${current_tag})
 
-#   printf "# ${PROJECT} - Changelog\n\n" > ${logf}
-#   printf "## ${current_tag} (${tag_date})\n\n" >> ${logf}
+  printf "# ${PROJECT} - Changelog\n\n" > ${logf}
+  printf "## ${current_tag} (${tag_date})\n\n" >> ${logf}
 
-#   if [[ -n ${INTENT_PREFIXES} ]]; then
-#     for intent in "${!INTENT_PREFIXES[@]}"; do
-#       readarray -t fixes <<< $(git log ${current_tag}...${previous_tag} --pretty="%s" --reverse | grep -v Merge | grep "^${INTENT_PREFIXES[$intent]}: *")
-#       eval fixes=($(printf "%q\n" "${fixes[@]}" | sort -u))
+  if [[ -n ${INTENT_PREFIXES} ]]; then
+    for intent in "${!INTENT_PREFIXES[@]}"; do
+      readarray -t fixes <<< $(git log ${current_tag}...${previous_tag} --pretty="%s" --reverse | grep -v Merge | grep "^${INTENT_PREFIXES[$intent]}: *")
+      eval fixes=($(printf "%q\n" "${fixes[@]}" | sort -u))
 
-#       if [[ ${#fixes[@]} -gt 0 ]] && [[ ${fixes[0]} != "" ]]; then
-#         printf "### ${INTENT_NAMES[$intent]}\n\n" >> ${logf}
+      if [[ ${#fixes[@]} -gt 0 ]] && [[ ${fixes[0]} != "" ]]; then
+        printf "### ${INTENT_NAMES[$intent]}\n\n" >> ${logf}
 
-#         for fix in "${fixes[@]}"; do
-#           fix_line=${fix/"${INTENT_PREFIXES[$intent]}: "/}
-#           fix_issue=""
+        for fix in "${fixes[@]}"; do
+          fix_line=${fix/"${INTENT_PREFIXES[$intent]}: "/}
+          fix_issue=""
 
-#           if [[ -n ${TICKET_MATCH} ]]; then
-#             fix_issue=$(echo "${fix_line}" | grep -e "${TICKET_MATCH}" -o || true)
-#           fi
+          if [[ -n ${TICKET_MATCH} ]]; then
+            fix_issue=$(echo "${fix_line}" | grep -e "${TICKET_MATCH}" -o || true)
+          fi
 
-#           echo_line=""
-#           if [[ $fix_issue != "" ]] && [[ -n ${TICKET_URL} ]]; then
-#             echo_line="* ${fix_line} [View]($(force_trailing_slash ${TICKET_URL})${fix_issue})" >> ${logf}
-#           else
-#             echo_line="* ${fix_line}" >> ${logf}
-#           fi
+          echo_line=""
+          if [[ $fix_issue != "" ]] && [[ -n ${TICKET_URL} ]]; then
+            echo_line="* ${fix_line} [View]($(force_trailing_slash ${TICKET_URL})${fix_issue})" >> ${logf}
+          else
+            echo_line="* ${fix_line}" >> ${logf}
+          fi
 
-#           grep -qxF "${echo_line}" ${logf} || echo "${echo_line}" >> ${logf}
-#         done
-#         printf "\n\n" >> ${logf}
-#       fi;
+          grep -qxF "${echo_line}" ${logf} || echo "${echo_line}" >> ${logf}
+        done
+        printf "\n\n" >> ${logf}
+      fi;
 
-#     done
-#   fi
+    done
+  fi
 
-#   # when INTENT_ELSE is defined output goes here
-#   if [[ -n ${INTENT_ELSE} ]]; then
-#     intent_pipes=$(printf '%s|' "${INTENT_PREFIXES[@]}" | sed 's/|$//')
+  # when INTENT_ELSE is defined output goes here
+  if [[ -n ${INTENT_ELSE} ]]; then
+    intent_pipes=$(printf '%s|' "${INTENT_PREFIXES[@]}" | sed 's/|$//')
 
-#     readarray -t fixes <<< $(git log ${current_tag}...${previous_tag} --pretty="%s" --reverse | grep -v Merge | grep -v -E "^${intent_pipes}: *")
-#     eval fixes=($(printf "%q\n" "${fixes[@]}" | sort -u))
+    readarray -t fixes <<< $(git log ${current_tag}...${previous_tag} --pretty="%s" --reverse | grep -v Merge | grep -v -E "^${intent_pipes}: *")
+    eval fixes=($(printf "%q\n" "${fixes[@]}" | sort -u))
 
-#     if [[ ${#fixes[@]} -gt 0 ]] && [[ ${fixes[0]} != "" ]]; then
-#       if [[ -n ${INTENT_PREFIXES} ]]; then
-#         printf "### ${INTENT_ELSE}\n\n" >> ${logf}
-#       fi
+    if [[ ${#fixes[@]} -gt 0 ]] && [[ ${fixes[0]} != "" ]]; then
+      if [[ -n ${INTENT_PREFIXES} ]]; then
+        printf "### ${INTENT_ELSE}\n\n" >> ${logf}
+      fi
 
-#       for fix in "${fixes[@]}"; do
-#         fix_line=${fix}
-#         fix_issue=$(echo "${fix_line}" | grep -e "${TICKET_MATCH}" -o || true)
+      for fix in "${fixes[@]}"; do
+        fix_line=${fix}
+        fix_issue=$(echo "${fix_line}" | grep -e "${TICKET_MATCH}" -o || true)
 
-#         if [[ $fix_issue != "" ]]; then
-#           printf "* ${fix_line} [View]($(force_trailing_slash ${TICKET_URL})${fix_issue})\n" >> ${logf}
-#         else
-#           printf "* ${fix_line}\n" >> ${logf}
-#         fi
-#       done
-#       printf "\n\n" >> ${logf}
-#     fi;
-#   fi
+        if [[ $fix_issue != "" ]]; then
+          printf "* ${fix_line} [View]($(force_trailing_slash ${TICKET_URL})${fix_issue})\n" >> ${logf}
+        else
+          printf "* ${fix_line}\n" >> ${logf}
+        fi
+      done
+      printf "\n\n" >> ${logf}
+    fi;
+  fi
 
-#   echo "---" >> ${logf}
-
-
-#   if [[ -f ${targetfile} ]]; then
-#     # remove first line
-#     sed -i '1d' ${targetfile}
-
-#     # append to new output
-#     cat ${targetfile} >> ${logf}
-#     rm ${targetfile}
-#   fi
+  echo "---" >> ${logf}
 
 
-#   mv ${logf} ${targetfile}
-#   timelog "Changelog written to ${targetfile}" ${success}
-# }
+  if [[ -f ${targetfile} ]]; then
+    # remove first line
+    sed -i '1d' ${targetfile}
+
+    # append to new output
+    cat ${targetfile} >> ${logf}
+    rm ${targetfile}
+  fi
+
+
+  mv ${logf} ${targetfile}
+  timelog "Changelog written to ${targetfile}" ${success}
+}
 
 function write_changelog() {
   timelog ""
