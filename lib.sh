@@ -123,7 +123,7 @@ get_connect_string() {
   fi
 
   # when connection user != target schema then use proxy
-  if [[ $DB_APP_USER != $dbschema ]]; then
+  if [[ $DB_APP_USER != "${dbschema}" ]]; then
     echo "$DB_APP_USER[$dbschema]/$DB_APP_PWD@$DB_TNS"
   else
     echo "$DB_APP_USER/$DB_APP_PWD@$DB_TNS"
@@ -158,19 +158,19 @@ timelog () {
   local type=${2:-""}
 
   case "$type" in
-    ${failure})
+    "${failure}")
       color=${RED}
       reset=${NC}
       ;;
-    ${success})
+    "${success}")
       color=${GREEN}
       reset=${NC}
       ;;
-    ${warning})
+    "${warning}")
       color=${YELLOW}
       reset=${NC}
       ;;
-    ${info})
+    "${info}")
       color=${CYAN}
       reset=${NC}
       ;;
@@ -201,7 +201,7 @@ EOF
 }
 
 function check_connection() {
-  local CONN_STR=$(get_connect_string $1)
+  local CONN_STR=$(get_connect_string "${1}")
   sql_output=`${SQLCLI} -S -L "${CONN_STR}" <<EOF
   select 'connected to schema '||user t from dual;
   exit
@@ -229,7 +229,7 @@ function get_schema_from_folder_name() {
     dbschema=${dbfolder/$firstpart"_"/""}
   fi
 
-  echo $dbschema
+  echo "${dbschema}"
 }
 
 function get_schema_from_file_name() {
@@ -243,7 +243,7 @@ function get_schema_from_file_name() {
       break
     fi
   done
-  echo $schema
+  echo "${schema}"
 }
 
 
@@ -255,10 +255,10 @@ DBSCHEMAS=()
   if [[ -d "db" ]]; then
     for d in $(find db -maxdepth 1 -mindepth 1 -type d | sort -f)
     do
-      folder=$(basename $d)
+      folder=$(basename "${d}")
       if [[ ${folder} != "_setup" ]] && [[ ${folder} != ".hooks" ]]; then
         DBFOLDERS+=( ${folder} )
-        DBSCHEMAS+=( $(get_schema_from_folder_name ${folder}) )
+        DBSCHEMAS+=( $(get_schema_from_folder_name $"{folder}") )
       fi
     done
   fi
@@ -272,7 +272,7 @@ function write_line_if_not_exists () {
   if  grep -qxF "$line" "$file" ; then
     : # echo "$line exists in $file"
   else
-    echo $line >> $file
+    echo "$line" >> "$file"
   fi
 }
 
@@ -283,50 +283,50 @@ create_merged_report_file() {
   local base64_file=${source_file}.base64.txt
 
   # gen base64 from input
-  base64 -w 1000 ${source_file} > ${base64_file}
+  base64 -w 1000 "${source_file}" > "${base64_file}"
 
   ## write the output sql
-  echo "set serveroutput on" > ${output_file}
-  echo "declare" >> ${output_file}
-  echo "  l_b64         clob;" >> ${output_file}
-  echo "  l_bin         blob;" >> ${output_file}
-  echo "  l_file_name   varchar2(2000) := '${source_file}';  " >> ${output_file}
-  echo "" >> ${output_file}
-  echo "  gc_red           varchar2(7) := chr(27) || '[31m';" >> ${output_file}
-  echo "  gc_green         varchar2(7) := chr(27) || '[32m';" >> ${output_file}
-  echo "  gc_yellow        varchar2(7) := chr(27) || '[33m';" >> ${output_file}
-  echo "  gc_blue          varchar2(7) := chr(27) || '[34m';" >> ${output_file}
-  echo "  gc_cyan          varchar2(7) := chr(27) || '[36m';" >> ${output_file}
-  echo "  gc_reset         varchar2(7) := chr(27) || '[0m';" >> ${output_file}
-  echo "" >> ${output_file}
+  echo "set serveroutput on" > "${output_file}"
+  echo "declare" >> "${output_file}"
+  echo "  l_b64         clob;" >> "${output_file}"
+  echo "  l_bin         blob;" >> "${output_file}"
+  echo "  l_file_name   varchar2(2000) := '${source_file}';  " >> "${output_file}"
+  echo "" >> "${output_file}"
+  echo "  gc_red           varchar2(7) := chr(27) || '[31m';" >> "${output_file}"
+  echo "  gc_green         varchar2(7) := chr(27) || '[32m';" >> "${output_file}"
+  echo "  gc_yellow        varchar2(7) := chr(27) || '[33m';" >> "${output_file}"
+  echo "  gc_blue          varchar2(7) := chr(27) || '[34m';" >> "${output_file}"
+  echo "  gc_cyan          varchar2(7) := chr(27) || '[36m';" >> "${output_file}"
+  echo "  gc_reset         varchar2(7) := chr(27) || '[0m';" >> "${output_file}"
+  echo "" >> "${output_file}"
 
-  echo "begin" >> ${output_file}
-  echo "  dbms_lob.createtemporary(l_b64, true, dbms_lob.session);" >> ${output_file}
-  echo  >> ${output_file}
+  echo "begin" >> "${output_file}"
+  echo "  dbms_lob.createtemporary(l_b64, true, dbms_lob.session);" >> "${output_file}"
+  echo  >> "${output_file}"
   while IFS= read -r line
   do
-    echo "  dbms_lob.append(l_b64, '$line');" >> ${output_file}
+    echo "  dbms_lob.append(l_b64, '$line');" >> "${output_file}"
   done < "${base64_file}"
 
-  echo >> ${output_file}
-  echo "  l_bin := apex_web_service.clobbase642blob(l_b64);" >> ${output_file}
-  echo >> ${output_file}
+  echo >> "${output_file}"
+  echo "  l_bin := apex_web_service.clobbase642blob(l_b64);" >> "${output_file}"
+  echo >> "${output_file}"
 
-  echo "-------------" >> ${output_file}
-  cat ${template_file} >> ${output_file}
-  echo "-------------" >> ${output_file}
+  echo "-------------" >> "${output_file}"
+  cat "${template_file} ">> "${output_file}"
+  echo "-------------" >> "${output_file}"
 
-  echo "  commit;" >> ${output_file}
-  echo "exception" >> ${output_file}
-  echo "  when others then" >> ${output_file}
-  echo "    dbms_output.put_line(gc_red||sqlerrm || gc_reset);" >> ${output_file}
-  echo "    raise;" >> ${output_file}
+  echo "  commit;" >> "${output_file}"
+  echo "exception" >> "${output_file}"
+  echo "  when others then" >> "${output_file}"
+  echo "    dbms_output.put_line(gc_red||sqlerrm || gc_reset);" >> "${output_file}"
+  echo "    raise;" >> "${output_file}"
 
-  echo "end;" >> ${output_file}
-  echo "/" >> ${output_file}
-  echo >> ${output_file}
+  echo "end;" >> "${output_file}"
+  echo "/" >> "${output_file}"
+  echo >> "${output_file}"
 
-  rm ${base64_file}
+  rm "${base64_file}"
 }
 
 getopts_long() {
@@ -403,12 +403,12 @@ exists_in_list() {
 function validate_passes() {
    # decode when starting with a !
   if [[ $DB_APP_PWD == !* ]]; then
-    DB_APP_PWD=`echo ${DB_APP_PWD:1} | base64 --decode`
+    DB_APP_PWD=`echo "${DB_APP_PWD:1}" | base64 --decode`
   else
     # write back encoded
     if [[ -n $DB_APP_PWD ]]; then
-      pwd_enc=`echo ${DB_APP_PWD} | base64`
-      
+      pwd_enc=`echo" ${DB_APP_PWD}" | base64`
+
       # sed syntax is different in macos
       if [[ $(uname) == "Darwin" ]]; then
         sed -i"y" "/^DB_APP_PWD=/s/=.*/=\"\!$pwd_enc\"/" ./apply.env
@@ -420,11 +420,11 @@ function validate_passes() {
 
   # decode when starting with a !
   if [[ $DB_ADMIN_PWD == !* ]]; then
-    DB_ADMIN_PWD=`echo ${DB_ADMIN_PWD:1} | base64 --decode`
+    DB_ADMIN_PWD=`echo "${DB_ADMIN_PWD:1}" | base64 --decode`
   else
     # write back encoded
     if [[ -n $DB_ADMIN_PWD ]]; then
-      pwd_enc=`echo ${DB_ADMIN_PWD} | base64`
+      pwd_enc=`echo "${DB_ADMIN_PWD}" | base64`
 
       # sed syntax is different in macos
       if [[ $(uname) == "Darwin" ]]; then
