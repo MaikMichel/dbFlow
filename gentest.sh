@@ -113,13 +113,11 @@ function check_params() {
   if [[ -z $i ]] && [[ -z $p ]]; then
     echo_error "Missing build mode, init or patch using flags -i or -p"
     usage
-    exit 1
   fi
 
   if [[ $i == "y" ]] && [[ $p == "y" ]]; then
     echo_error "Build mode can only be init or patch, not both"
     usage
-    exit 1
   fi
 
   # now check dependent params
@@ -146,7 +144,7 @@ function gen_init_scripts() {
     # check every path in given order
     for path in "${init_folders[@]}"
     do
-      [[ -d db/${schema}/${path} ]] || mkdir -p db/${schema}/${path}
+      [[ -d db/${schema}/${path} ]] || mkdir -p "db/${schema}/${path}"
       echo "insert into dbflow_test(dft_mainfolder, dft_mode, dft_schema, dft_file) values ('db', '${mode}', '${schema}', 'db/${schema}/${path}');" > "db/${schema}/${path}/${mode}_dbflow_test.sql"
 
       ((CNT_IDX_INIT=CNT_IDX_INIT+1))
@@ -163,14 +161,14 @@ function gen_patch_scripts() {
   for schema in "${SCHEMAS[@]}"
   do
     # remove init hooks, to keep test clean
-    rm -f db/${schema}/.hooks/pre/init_dbflow_test.sql
-    rm -f db/${schema}/.hooks/post/init_dbflow_test.sql
+    rm -f "db/${schema}/.hooks/pre/init_dbflow_test.sql"
+    rm -f "db/${schema}/.hooks/post/init_dbflow_test.sql"
 
     CNT_IDX_PATCH=0
     # check every path in given order
     for path in "${patch_folders[@]}"
     do
-      [[ -d db/${schema}/${path} ]] || mkdir -p db/${schema}/${path}
+      [[ -d db/${schema}/${path} ]] || mkdir -p "db/${schema}/${path}"
       echo "insert into dbflow_test(dft_mainfolder, dft_mode, dft_schema, dft_file) values ('db', '${mode}', '${schema}', 'db/${schema}/${path}');" > "db/${schema}/${path}/${mode}_dbflow_test.sql"
 
       ((CNT_IDX_PATCH=CNT_IDX_PATCH+1))
