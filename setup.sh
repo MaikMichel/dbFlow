@@ -7,7 +7,7 @@ usage() {
 
   echo
   echo -e "${BWHITE}USAGE${NC}"
-  echo -e "  $0 <COMMAND>"
+  echo -e "  ${0} <COMMAND>"
   echo
   echo -e "${BWHITE}COMMANDS${NC}"
   echo -e "  generate <project-name>  ${BWHITE}*req${NC}    generates project structure"
@@ -49,7 +49,7 @@ basepath=$(pwd)
 array=( tablespaces directories users features workspaces acls )
 
 notify() {
-    [[ $1 = 0 ]] || echo ❌ EXIT $1
+    [[ ${1} = 0 ]] || echo ❌ EXIT "${1}"
     # you can notify some external services here,
     # ie. Slack webhook, Github commit/PR etc.
     remove2envsql
@@ -60,30 +60,30 @@ trap '(exit 143)' TERM
 trap 'rc=$?; notify $rc; exit $rc' EXIT
 
 print2envsql() {
-  echo define project=${PROJECT} > $targetpath/env.sql
+  echo define project="${PROJECT}" > "${targetpath}/env.sql"
 
   if [[ -n ${APP_SCHEMA} ]]; then
-    echo define app_schema=${APP_SCHEMA} >> $targetpath/env.sql
+    echo define app_schema="${APP_SCHEMA}" >> "${targetpath}/env.sql"
   fi
   if [[ -n ${DATA_SCHEMA} ]]; then
-    echo define data_schema=${DATA_SCHEMA} >> $targetpath/env.sql
+    echo define data_schema="${DATA_SCHEMA}" >> "${targetpath}/env.sql"
   fi
   if [[ -n ${LOGIC_SCHEMA} ]]; then
-    echo define logic_schema=${LOGIC_SCHEMA} >> $targetpath/env.sql
+    echo define logic_schema="${LOGIC_SCHEMA}" >> "${targetpath}/env.sql"
   fi
   if [[ -n ${WORKSPACE} ]]; then
-    echo define workspace=${WORKSPACE} >> $targetpath/env.sql
+    echo define workspace="${WORKSPACE}" >> "${targetpath}/env.sql"
   fi
   if [[ -n ${DB_APP_PWD} ]]; then
-    echo define db_app_pwd=${DB_APP_PWD} >> $targetpath/env.sql
+    echo define db_app_pwd="${DB_APP_PWD}" >> "${targetpath}/env.sql"
   fi
 
-  echo define db_app_user=${DB_APP_USER} >> $targetpath/env.sql
+  echo define db_app_user="${DB_APP_USER}" >> "${targetpath}/env.sql"
 
   if [[ ${DB_ADMIN_USER} != "sys" ]]; then
-    echo define deftablespace=data >> $targetpath/env.sql
+    echo define deftablespace=data >> "${targetpath}/env.sql"
   else
-    echo define deftablespace=users >> $targetpath/env.sql
+    echo define deftablespace=users >> "${targetpath}/env.sql"
   fi
 }
 
@@ -102,7 +102,7 @@ show_generate_summary() {
 
   echo
   echo -e "${BWHITE}${PROJECT} - directory structure${NC}"
-  printf "|-- %-22b %b\n" ${DEPOT_PATH} ">> Path to store your build artifacts"
+  printf "|-- %-22b %b\n" "${DEPOT_PATH}" ">> Path to store your build artifacts"
   printf "|-- ${CYAN}%-22b${NC} %b\n" ".dbFlow" ">> ${CYAN}dbFlow itself${NC}"
   printf "|-- %-22b %b\n" ".hooks" ">> Scripts/Tasks to run pre or post deployment"
   printf "|-- %-22b %b\n" "apex" ">> APEX applications in subfolders (f123)"
@@ -150,7 +150,7 @@ show_generate_summary() {
 
 
 remove2envsql() {
-  rm -f ${basepath}/${targetpath}/env.sql
+  rm -f "${basepath}/${targetpath}/env.sql"
 }
 
 install() {
@@ -165,18 +165,18 @@ install() {
     DB_ADMIN_USER=${DB_ADMIN_USER:-"sys"}
   fi
 
-  if [[ $(toLowerCase $DB_ADMIN_USER) != "sys" ]]; then
+  if [[ $(toLowerCase "${DB_ADMIN_USER}") != "sys" ]]; then
    DBA_OPTION=""
   fi
 
   if [[ -z "$DB_ADMIN_PWD" ]]; then
     ask4pwd "Enter password für user ${DB_ADMIN_USER}: "
-    DB_ADMIN_PWD=${pass}
+    DB_ADMIN_PWD="${pass}"
   fi
 
   if [[ -z "$DB_APP_PWD" ]]; then
     ask4pwd "Enter password für user ${DB_APP_USER}: "
-    DB_APP_PWD=${pass}
+    DB_APP_PWD="${pass}"
   fi
 
   # validate connection and exit when not working
@@ -205,14 +205,14 @@ install() {
           EXTENSION="${BASEFL##*.}"
 
           if [[ $EXTENSION == "sql" ]]; then
-            cd ${level1_dir}
+            cd "${level1_dir}"
             echo "Calling ${level1_dir}/${file}"
-            exit | ${SQLCLI} -S -L ${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION} @${file}
+            exit | ${SQLCLI} -S -L "${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION}" @"${file}"
             cd ../../..
           elif [[ $EXTENSION == "sh" ]]; then
-            cd ${level1_dir}
+            cd "${level1_dir}"
             echo "Executing ${level1_dir}/${file}"
-            ./${file} ${yes} ${DB_ADMIN_PWD}
+            ./"${file}" "${yes}" "${DB_ADMIN_PWD}"
             cd ../../..
           fi
 
@@ -228,14 +228,14 @@ install() {
               EXTENSION="${BASEFL##*.}"
 
               if [[ $EXTENSION == "sql" ]]; then
-                cd ${level2_dir}
+                cd "${level2_dir}"
                 echo "Calling ${level2_dir}/${file2}"
-                exit | ${SQLCLI} -S -L ${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION} @${file2}
+                exit | ${SQLCLI} -S -L "${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION}" @"${file2}"
                 cd ../../../..
               elif [[ $EXTENSION == "sh" ]]; then
-                cd ${level2_dir}
+                cd "${level2_dir}"
                 echo "Executing ${level2_dir}/${file2}"
-                ./${file2} ${yes} ${DB_ADMIN_PWD}
+                ./"${file2}" "${yes}" "${DB_ADMIN_PWD}"
                 cd ../../../..
               fi
             fi
@@ -261,20 +261,20 @@ copytopath() {
   local target_path=${1}
 
   [[ -d "${target_path}/db/_setup" ]] || mkdir -p "${target_path}/db"
-  echo "copy db/_setup to "${target_path}
-  cp -r ./db/_setup ${target_path}/db
+  echo "copy db/_setup to ${target_path}"
+  cp -r ./db/_setup "${target_path}"/db
 
-  echo "copy env files to "${target_path}
-  cp ./build.env ${target_path}
-  cp ./apply.env ${target_path}
+  echo "copy env files to ${target_path}"
+  cp ./build.env "${target_path}"
+  cp ./apply.env "${target_path}"
 
   echo "initialize git and add dbFlow as submodule"
-  cp .gitignore ${target_path}
-  cd ${target_path}
+  cp .gitignore "${target_path}"
+  cd "${target_path}"
   git init
   git submodule add https://github.com/MaikMichel/dbFlow.git .dbFlow
   ls -la
-  cd ${basepath}
+  cd "${basepath}"
 
   echo "After changing your database connection you just have to execute:"
   echo -e "${YELLOW}.dbFlow/setup.sh install${NC}"
@@ -290,14 +290,14 @@ generate() {
 
   # create directories
   if [[ ${env_only} == "NO" ]]; then
-    if [[ $(toLowerCase $db_scheme_type) == "m" ]]; then
-      mkdir -p db/{.hooks/{pre,post},${project_name}_data/{.hooks/{pre,post},sequences,tables/tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,mviews,tests/packages,ddl/{init,patch/{pre,post}},dml/{base,init,patch/{pre,post}}}}
-      mkdir -p db/{.hooks/{pre,post},${project_name}_logic/{.hooks/{pre,post},sequences,tables/tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,mviews,tests/packages,ddl/{init,patch/{pre,post}},dml/{base,init,patch/{pre,post}}}}
-      mkdir -p db/{.hooks/{pre,post},${project_name}_app/{.hooks/{pre,post},sequences,tables/tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,mviews,tests/packages,ddl/{init,patch/{pre,post}},dml/{base,init,patch/{pre,post}}}}
-    elif [[ $(toLowerCase $db_scheme_type) == "s" ]]; then
-      mkdir -p db/{.hooks/{pre,post},${project_name}/{.hooks/{pre,post},sequences,tables/tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,mviews,tests/packages,ddl/{init,patch/{pre,post}},dml/{base,init,patch/{pre,post}}}}
-    elif [[ $(toLowerCase $db_scheme_type) == "f" ]]; then
-      mkdir -p db/{.hooks/{pre,post},${project_name}_app/{.hooks/{pre,post},sequences,tables/tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,mviews,tests/packages,ddl/{init,patch/{pre,post}},dml/{base,init,patch/{pre,post}}}}
+    if [[ $(toLowerCase "${db_scheme_type}") == "m" ]]; then
+      mkdir -p db/{.hooks/{pre,post},"${project_name}"_data/{.hooks/{pre,post},sequences,tables/tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,mviews,tests/packages,ddl/{init,patch/{pre,post}},dml/{base,init,patch/{pre,post}}}}
+      mkdir -p db/{.hooks/{pre,post},"${project_name}"_logic/{.hooks/{pre,post},sequences,tables/tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,mviews,tests/packages,ddl/{init,patch/{pre,post}},dml/{base,init,patch/{pre,post}}}}
+      mkdir -p db/{.hooks/{pre,post},"${project_name}"_app/{.hooks/{pre,post},sequences,tables/tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,mviews,tests/packages,ddl/{init,patch/{pre,post}},dml/{base,init,patch/{pre,post}}}}
+    elif [[ $(toLowerCase "${db_scheme_type}") == "s" ]]; then
+      mkdir -p db/{.hooks/{pre,post},"${project_name}"/{.hooks/{pre,post},sequences,tables/tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,mviews,tests/packages,ddl/{init,patch/{pre,post}},dml/{base,init,patch/{pre,post}}}}
+    elif [[ $(toLowerCase "${db_scheme_type}") == "f" ]]; then
+      mkdir -p db/{.hooks/{pre,post},"${project_name}"_app/{.hooks/{pre,post},sequences,tables/tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,mviews,tests/packages,ddl/{init,patch/{pre,post}},dml/{base,init,patch/{pre,post}}}}
     else
       echo_error "unknown type ${db_scheme_type}"
       exit 1
@@ -310,24 +310,24 @@ generate() {
   echo "PROJECT=${project_name}" >> build.env
   echo "" >> build.env
   echo "" >> build.env
-  if [[ $(toLowerCase $db_scheme_type) == "m" ]]; then
+  if [[ $(toLowerCase "${db_scheme_type}") == "m" ]]; then
     echo "# In MultiSchema Mode, we have a classic 3 Tier model" >> build.env
     echo "PROJECT_MODE=MULTI" >> build.env
     echo "APP_SCHEMA=${project_name}_app" >> build.env
     echo "DATA_SCHEMA=${project_name}_data" >> build.env
     echo "LOGIC_SCHEMA=${project_name}_logic" >> build.env
-  elif [[ $(toLowerCase $db_scheme_type) == "s" ]]; then
+  elif [[ $(toLowerCase "${db_scheme_type}") == "s" ]]; then
     echo "# In SingleSchema Mode, we have a only one schema" >> build.env
     echo "PROJECT_MODE=SINGLE" >> build.env
     echo "APP_SCHEMA=${project_name}" >> build.env
-  elif [[ $(toLowerCase $db_scheme_type) == "f" ]]; then
+  elif [[ $(toLowerCase "${db_scheme_type}") == "f" ]]; then
     echo "# In FlexSchema Mode, you have to create the schemas by your own" >> build.env
     echo "# and don't forget to grant connect through proxy_user " >> build.env
     echo "PROJECT_MODE=FLEX" >> build.env
   fi
   echo "" >> build.env
 
-  if [[ $(toLowerCase $db_scheme_type) != "f" ]]; then
+  if [[ $(toLowerCase "${db_scheme_type}") != "f" ]]; then
     echo "" >> build.env
     echo "# workspace app belongs to" >> build.env
     echo "WORKSPACE=${project_name}" >> build.env
@@ -351,8 +351,8 @@ generate() {
   echo "# keys to link directly to your ticketsystem using TICKET_URL" >> build.env
 
   read -p "Would you like to process changelogs during deployment [Y]: " create_changelogs
-  if [[ $(toLowerCase ${create_changelogs:-y}) == "y" ]]; then
-    if [[ $(toLowerCase $db_scheme_type) != "s" ]]; then
+  if [[ $(toLowerCase" ${create_changelogs:-y}") == "y" ]]; then
+    if [[ $(toLowerCase "${db_scheme_type}") != "s" ]]; then
       read -p "What is the schema name the changelog are processed with [${project_name}_app]: " chl_schema
     else
       # when SingleSchema then there is only one possibility
@@ -395,16 +395,16 @@ generate() {
 
   ask4pwd "Enter password for ${db_admin_user} [leave blank and you will be asked for]: "
   if [[ ${pass} != "" ]]; then
-    db_admin_pwd=`echo ${pass} | base64`
+    db_admin_pwd=`echo "${pass}" | base64`
   fi
 
-  if [[ $(toLowerCase $db_scheme_type) != "s" ]]; then
+  if [[ $(toLowerCase "${db_scheme_type}") != "s" ]]; then
     ask4pwd "Enter password for deployment_user (proxyuser: ${project_name}_depl) [leave blank and you will be asked for]: "
   else
     ask4pwd "Enter password for application_user (user: ${project_name}) [leave blank and you will be asked for]: "
   fi
   if [[ ${pass} != "" ]]; then
-    db_app_pwd=`echo ${pass} | base64`
+    db_app_pwd=`echo "${pass}" | base64`
   fi
 
 
@@ -422,7 +422,7 @@ generate() {
   echo "DB_TNS=${db_tns}" >> apply.env
   echo "" >> apply.env
   echo "# Deployment User" >> apply.env
-  if [[ $(toLowerCase $db_scheme_type) != "s" ]]; then
+  if [[ $(toLowerCase "${db_scheme_type}") != "s" ]]; then
     echo "DB_APP_USER=${project_name}_depl" >> apply.env
   else
     echo "DB_APP_USER=${project_name}" >> apply.env
@@ -468,7 +468,7 @@ generate() {
 
   echo "" >> .gitignore
   write_line_if_not_exists "# static files" .gitignore
-  if [[ $(toLowerCase $db_scheme_type) == "f" ]]; then
+  if [[ $(toLowerCase "${db_scheme_type}") == "f" ]]; then
     write_line_if_not_exists "static/**/f*/dist" .gitignore
   else
     write_line_if_not_exists "static/f*/dist" .gitignore
@@ -478,60 +478,58 @@ generate() {
   write_line_if_not_exists "# vscode configuration" .gitignore
   write_line_if_not_exists ".vscode" .gitignore
 
-  if [[ $depot_path != ".."* ]]; then
+  if [[ ${depot_path} != ".."* ]]; then
     echo "" >> .gitignore
     write_line_if_not_exists "# depot inside wording dir" .gitignore
-    write_line_if_not_exists $depot_path .gitignore
+    write_line_if_not_exists "${depot_path}" .gitignore
   fi
 
   if [[ ${env_only} == "NO" ]]; then
     # create targetpath directory
-    mkdir -p ${targetpath}/{tablespaces,directories,users,features,workspaces/${project_name},acls}
-    mkdir -p ${depot_path}
+    mkdir -p "${targetpath}"/{tablespaces,directories,users,features,workspaces/"${project_name}",acls}
+    mkdir -p "${depot_path}"
 
     # copy some examples into it
-    cp -rf .dbFlow/scripts/setup/workspaces/workspace/* ${targetpath}/workspaces/${project_name}
-    cp -rf .dbFlow/scripts/setup/workspaces/*.* ${targetpath}/workspaces
-    cp -rf .dbFlow/scripts/setup/acls/* ${targetpath}/acls
+    cp -rf .dbFlow/scripts/setup/workspaces/workspace/* "${targetpath}/workspaces/${project_name}"
+    cp -rf .dbFlow/scripts/setup/workspaces/*.* "${targetpath}/workspaces"
+    cp -rf .dbFlow/scripts/setup/acls/* "${targetpath}/acls"
 
-    # cp -rf ${targetpath}/workspaces/workspace ${targetpath}/workspaces/${project_name}
-
-    if [[ $(toLowerCase $with_tools) == "y" ]]; then
-      cp -rf .dbFlow/scripts/setup/features/* ${targetpath}/features
-      chmod +x ${targetpath}/features/*.sh
+    if [[ $(toLowerCase "${with_tools}") == "y" ]]; then
+      cp -rf .dbFlow/scripts/setup/features/* "${targetpath}/features"
+      chmod +x "${targetpath}"/features/*.sh
     else
-      mkdir -p ${targetpath}/features
+      mkdir -p "${targetpath}"/features
     fi
 
 
     # create gen_users..
-    if [[ $(toLowerCase $db_scheme_type) == "m" ]]; then
-      sed "s/\^db_app_user/${project_name}_depl/g" .dbFlow/scripts/setup/users/00_depl.sql > ${targetpath}/users/00_create_${project_name}_depl.sql
+    if [[ $(toLowerCase "${db_scheme_type}") == "m" ]]; then
+      sed "s/\^db_app_user/${project_name}_depl/g" .dbFlow/scripts/setup/users/00_depl.sql > "${targetpath}/users/00_create_${project_name}_depl.sql"
 
-      sed "s/\^schema_name/${project_name}_data/g" .dbFlow/scripts/setup/users/01_schema.sql > ${targetpath}/users/01_create_${project_name}_data.sql
-      sed "s/\^schema_name/${project_name}_logic/g" .dbFlow/scripts/setup/users/01_schema.sql > ${targetpath}/users/02_create_${project_name}_logic.sql
-      sed "s/\^schema_name/${project_name}_app/g" .dbFlow/scripts/setup/users/01_schema.sql > ${targetpath}/users/03_create_${project_name}_app.sql
+      sed "s/\^schema_name/${project_name}_data/g" .dbFlow/scripts/setup/users/01_schema.sql > "${targetpath}/users/01_create_${project_name}_data.sql"
+      sed "s/\^schema_name/${project_name}_logic/g" .dbFlow/scripts/setup/users/01_schema.sql > "${targetpath}/users/02_create_${project_name}_logic.sql"
+      sed "s/\^schema_name/${project_name}_app/g" .dbFlow/scripts/setup/users/01_schema.sql > "${targetpath}/users/03_create_${project_name}_app.sql"
 
-      sed -i "s/\^db_app_user/${project_name}_depl/g" ${targetpath}/users/01_create_${project_name}_data.sql
-      sed -i "s/\^db_app_user/${project_name}_depl/g" ${targetpath}/users/02_create_${project_name}_logic.sql
-      sed -i "s/\^db_app_user/${project_name}_depl/g" ${targetpath}/users/03_create_${project_name}_app.sql
+      sed -i "s/\^db_app_user/${project_name}_depl/g" "${targetpath}/users/01_create_${project_name}_data.sql"
+      sed -i "s/\^db_app_user/${project_name}_depl/g" "${targetpath}/users/02_create_${project_name}_logic.sql"
+      sed -i "s/\^db_app_user/${project_name}_depl/g" "${targetpath}/users/03_create_${project_name}_app.sql"
 
 
-    elif [[ $(toLowerCase $db_scheme_type) == "s" ]]; then
-      sed "s/\^db_app_user/${project_name}/g" .dbFlow/scripts/setup/users/00_depl.sql > ${targetpath}/users/00_create_${project_name}.sql
-      sed "s/\^schema_name/${project_name}/g" .dbFlow/scripts/setup/users/02_grants.sql >> ${targetpath}/users/00_create_${project_name}.sql
-    elif [[ $(toLowerCase $db_scheme_type) == "f" ]]; then
-      sed "s/\^db_app_user/${project_name}_depl/g" .dbFlow/scripts/setup/users/00_depl.sql > ${targetpath}/users/00_create_${project_name}_depl.sql
-      sed "s/\^schema_name/${project_name}_app/g" .dbFlow/scripts/setup/users/01_schema.sql > ${targetpath}/users/01_create_${project_name}_app.sql
-      sed -i "s/\^db_app_user/${project_name}_depl/g" ${targetpath}/users/01_create_${project_name}_app.sql
+    elif [[ $(toLowerCase "${db_scheme_type}") == "s" ]]; then
+      sed "s/\^db_app_user/${project_name}/g" .dbFlow/scripts/setup/users/00_depl.sql > "${targetpath}/users/00_create_${project_name}.sql"
+      sed "s/\^schema_name/${project_name}/g" .dbFlow/scripts/setup/users/02_grants.sql >> "${targetpath}/users/00_create_${project_name}.sql"
+    elif [[ $(toLowerCase "${db_scheme_type}") == "f" ]]; then
+      sed "s/\^db_app_user/${project_name}_depl/g" .dbFlow/scripts/setup/users/00_depl.sql > "${targetpath}/users/00_create_${project_name}_depl.sql"
+      sed "s/\^schema_name/${project_name}_app/g" .dbFlow/scripts/setup/users/01_schema.sql > "${targetpath}/users/01_create_${project_name}_app.sql"
+      sed -i "s/\^db_app_user/${project_name}_depl/g" "${targetpath}/users/01_create_${project_name}_app.sql"
     fi
 
 
     mkdir -p {apex,static,rest,reports,.hooks/{pre,post}}
-    if [[ $(toLowerCase $db_scheme_type) == "f" ]]; then
-      mkdir -p apex/${project_name}_app/${project_name}
-      mkdir -p static/${project_name}_app/${project_name}
-      mkdir -p rest/${project_name}_app
+    if [[ $(toLowerCase "${db_scheme_type}") == "f" ]]; then
+      mkdir -p apex/"${project_name}"_app/"${project_name}"
+      mkdir -p static/"${project_name}"_app/"${project_name}"
+      mkdir -p rest/"${project_name}"_app
     fi
 
 
@@ -540,16 +538,16 @@ generate() {
     read -p "Enter application IDs (comma separated) you wish to use initialy (100,101,...): " apex_ids
 
     # split ids gen directories
-    apexids=(`echo $apex_ids | sed 's/,/\n/g'`)
+    apexids=(`echo "${apex_ids}" | sed 's/,/\n/g'`)
     apexidsquotes="\""${apex_ids/,/"\",\""}"\""
     for apxID in "${apexids[@]}"
     do
-      if [[ $(toLowerCase $db_scheme_type) == "f" ]]; then
-        mkdir -p apex/${project_name}_app/${project_name}/f"$apxID"
-        mkdir -p static/${project_name}_app/${project_name}/f"$apxID"/{dist/{css,img,js},src/{css,img,js}}
+      if [[ $(toLowerCase "${db_scheme_type}") == "f" ]]; then
+        mkdir -p apex/"${project_name}"_app/"${project_name}"/f"${apxID}"
+        mkdir -p static/"${project_name}"_app/"${project_name}"/f"${apxID}"/{dist/{css,img,js},src/{css,img,js}}
       else
-        mkdir -p apex/f"$apxID"
-        mkdir -p static/f"$apxID"/{dist/{css,img,js},src/{css,img,js}}
+        mkdir -p apex/f"${apxID}"
+        mkdir -p static/f"${apxID}"/{dist/{css,img,js},src/{css,img,js}}
       fi
     done
 
@@ -558,42 +556,42 @@ generate() {
     read -p "Enter restful Moduls (comma separated) you wish to use initialy (api,test,...): " rest_modules
 
     # split modules
-    restmodules=(`echo $rest_modules | sed 's/,/\n/g'`)
+    restmodules=(`echo $"{rest_modules}" | sed 's/,/\n/g'`)
     restmodulesquotes="\""${rest_modules/,/"\",\""}"\""
     for restMOD in "${restmodules[@]}"
     do
-      if [[ $(toLowerCase $db_scheme_type) == "f" ]]; then
-        mkdir -p rest/${project_name}_app/modules/"$restMOD"
-        mkdir -p rest/${project_name}_app/access/{privileges,roles,mapping}
+      if [[ $(toLowerCase "${db_scheme_type}") == "f" ]]; then
+        mkdir -p rest/"${project_name}"_app/modules/"${restMOD}"
+        mkdir -p rest/"${project_name}"_app/access/{privileges,roles,mapping}
       else
-        mkdir -p rest/modules/"$restMOD"
+        mkdir -p rest/modules/"${restMOD}"
         mkdir -p rest/access/{privileges,roles,mapping}
       fi
     done
 
     # workspace files
-    sed -i "s/\^workspace/${project_name}/g" ${targetpath}/workspaces/${project_name}/create_00_workspace.sql
-    sed -i "s/\^workspace/${project_name}/g" ${targetpath}/workspaces/${project_name}/create_01_user_wsadmin.sql
-    if [[ $(toLowerCase $db_scheme_type) == "s" ]]; then
-      sed -i "s/\^app_schema/${project_name}/g" ${targetpath}/workspaces/${project_name}/create_00_workspace.sql
-      sed -i "s/\^app_schema/${project_name}/g" ${targetpath}/workspaces/${project_name}/create_01_user_wsadmin.sql
+    sed -i "s/\^workspace/${project_name}/g" "${targetpath}/workspaces/${project_name}/create_00_workspace.sql"
+    sed -i "s/\^workspace/${project_name}/g" "${targetpath}/workspaces/${project_name}/create_01_user_wsadmin.sql"
+    if [[ $(toLowerCase "${db_scheme_type}") == "s" ]]; then
+      sed -i "s/\^app_schema/${project_name}/g" "${targetpath}/workspaces/${project_name}/create_00_workspace.sql"
+      sed -i "s/\^app_schema/${project_name}/g" "${targetpath}/workspaces/${project_name}/create_01_user_wsadmin.sql"
     else
-      sed -i "s/\^app_schema/${project_name}_app/g" ${targetpath}/workspaces/${project_name}/create_00_workspace.sql
-      sed -i "s/\^app_schema/${project_name}_app/g" ${targetpath}/workspaces/${project_name}/create_01_user_wsadmin.sql
+      sed -i "s/\^app_schema/${project_name}_app/g" "${targetpath}/workspaces/${project_name}/create_00_workspace.sql"
+      sed -i "s/\^app_schema/${project_name}_app/g" "${targetpath}/workspaces/${project_name}/create_01_user_wsadmin.sql"
     fi
   fi
 
-  show_generate_summary ${project_name}
+  show_generate_summary "${project_name}"
 } # generate
 
 is_any_schema_installed () {
-    ${SQLCLI} -S -L ${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION} <<!
+    ${SQLCLI} -S -L "${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION}" <<!
     set heading off
     set feedback off
     set pages 0
     with checksql as (select count(1) cnt
   from all_users
- where username in (upper('$DATA_SCHEMA'), upper('$LOGIC_SCHEMA'), upper('$APP_SCHEMA') ))
+ where username in (upper('${DATA_SCHEMA}'), upper('${LOGIC_SCHEMA}'), upper('${APP_SCHEMA}') ))
  select case when cnt > 1 then 'true' else 'false' end ding
    from checksql;
 !
@@ -611,14 +609,14 @@ export_schema() {
   if [[ ${#SCHEMAS[@]} == ${#ALL_SCHEMAS[@]} ]]; then
     SCHEMAS=(${ALL_SCHEMAS[@]})
   fi
-  if [[ $targetschema != "ALL" ]]; then
+  if [[ ${targetschema} != "ALL" ]]; then
     if [[ ! " ${SCHEMAS[@]} " =~ " ${targetschema} " ]]; then
-      echo_error "ERROR: unknown targetschema $targetschema (use ALL or anything of: ${SCHEMAS[*]})"
+      echo_error "ERROR: unknown targetschema ${targetschema} (use ALL or anything of: ${SCHEMAS[*]})"
       exit 1
     fi
   fi
 
-  echo "targetschema: $targetschema"
+  echo "targetschema: ${targetschema}"
   echo "object_name:  $object_name"
 
   # export file wegräumen
@@ -633,24 +631,26 @@ export_schema() {
     DB_APP_PWD=${pass}
   fi
 
-  if [[ $targetschema == "ALL" ]]; then
+  if [[ ${targetschema} == "ALL" ]]; then
     for schema in "${SCHEMAS[@]}"
     do
-      echo_warning " ... exporting $schema"
-      exit | sql -s "$(get_connect_string $schema)" @.dbFlow/scripts/schema_export/export.sql ${object_name}
-      if [[ -f "db/$schema.exp.zip" ]]; then
-        unzip -qo "db/$schema.exp.zip" -d "db/${schema}"
-        rm "db/$schema.exp.zip"
+      echo_warning " ... exporting ${schema}"
+      # shellcheck disable=SC2086
+      exit | sql -s "$(get_connect_string ${schema})" @.dbFlow/scripts/schema_export/export.sql "${object_name}"
+      if [[ -f "db/${schema}.exp.zip" ]]; then
+        unzip -qo "db/${schema}.exp.zip" -d "db/${schema}"
+        rm "db/${schema}.exp.zip"
       else
         echo_error "no export artifacts found!"
       fi
     done
   else
-    echo_warning " ... exporting $targetschema"
-    exit | sql -s "$(get_connect_string $targetschema)" @.dbFlow/scripts/schema_export/export.sql ${object_name}
-    if [[ -f "db/$targetschema.exp.zip" ]]; then
-      unzip -qo "db/$targetschema.exp.zip" -d "db/${targetschema}"
-      rm "db/$targetschema.exp.zip"
+    echo_warning " ... exporting ${targetschema}"
+    # shellcheck disable=SC2086
+    exit | sql -s "$(get_connect_string ${targetschema})" @.dbFlow/scripts/schema_export/export.sql "${object_name}"
+    if [[ -f "db/${targetschema}.exp.zip" ]]; then
+      unzip -qo "db/${targetschema}.exp.zip" -d "db/${targetschema}"
+      rm "db/${targetschema}.exp.zip"
     else
       echo_error "no export artifacts found!"
     fi
@@ -670,7 +670,6 @@ export_schema() {
 if [[ $# -lt 1 ]]; then
   echo -e "${RED}No parameters found${NC}" 1>&2
   usage
-  exit 1
 else
 
   # Parse options to the `setup` command
@@ -678,12 +677,10 @@ else
     case ${opt} in
       h | help)
         usage
-        exit 0
         ;;
       \? )
         echo -e  "${RED}Invalid Option: -$OPTARG${NC}" 1>&2
         usage
-        exit 1
       ;;
     esac
   done
@@ -717,8 +714,8 @@ else
         esac
       done
       shift $((OPTIND -1))
-      #echo "generate $project $envonly"
-      generate $project $envonly
+
+      generate "${project}" $envonly
       ;;
     copyto)
       [[ -z ${1-} ]] \
@@ -742,7 +739,7 @@ else
       done
       shift $((OPTIND -1))
       #echo "generate $tfldr
-      copytopath $tfldr
+      copytopath "${tfldr}"
       ;;
     install)
       force="NO"
