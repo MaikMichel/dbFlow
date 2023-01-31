@@ -123,15 +123,15 @@ get_connect_string() {
   fi
 
   # when connection user != target schema then use proxy
-  if [[ $DB_APP_USER != "${dbschema}" ]]; then
-    echo "$DB_APP_USER[$dbschema]/$DB_APP_PWD@$DB_TNS"
+  if [[ ${DB_APP_USER} != "${dbschema}" ]]; then
+    echo "${DB_APP_USER}[${dbschema}]/${DB_APP_PWD}@$7"
   else
-    echo "$DB_APP_USER/$DB_APP_PWD@$DB_TNS"
+    echo "${DB_APP_USER}/${DB_APP_PWD}@${DB_TNS}"
   fi
 }
 
 function toLowerCase() {
-  echo "$1" | tr '[:upper:]' '[:lower:]'
+  echo "${1}" | tr '[:upper:]' '[:lower:]'
 }
 
 #some env settings SQLCL needs

@@ -28,7 +28,7 @@ rm ${tag_name}.zip
 cd "tePLSQL-"${tag_name}/tePLSQL-${tag_name/v/} # remove v from tag-name
 
 if [[ -z "$DB_ADMIN_USER" ]]; then
-  read -p "Enter username of admin user (admin, sys, ...) [sys]: " DB_ADMIN_USER
+  read -r -p "Enter username of admin user (admin, sys, ...) [sys]: " DB_ADMIN_USER
   DB_ADMIN_USER=${DB_ADMIN_USER:-"sys"}
 fi
 
@@ -62,7 +62,7 @@ then
   if [[ $yes == "YES" ]]; then
     reinstall="Y"
   else
-    read -p "$(echo -e ${BWHITE}"TEPLSQL is allready installed. Would you like to reinstall? (Y/N) [Y]: "${NC})" reinstall
+    read -r -p "$(echo -e ${BWHITE}"TEPLSQL is allready installed. Would you like to reinstall? (Y/N) [Y]: "${NC})" reinstall
     reinstall=${reinstall:-"Y"}
   fi
 

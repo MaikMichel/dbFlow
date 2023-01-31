@@ -27,7 +27,7 @@ unzip logger_${tag_name}.zip -d logger
 rm logger_${tag_name}.zip
 
 if [[ -z "$DB_ADMIN_USER" ]]; then
-  read -p "Enter username of admin user (admin, sys, ...) [sys]: " DB_ADMIN_USER
+  read -r -p "Enter username of admin user (admin, sys, ...) [sys]: " DB_ADMIN_USER
   DB_ADMIN_USER=${DB_ADMIN_USER:-"sys"}
 fi
 
@@ -60,7 +60,7 @@ then
   if [[ $yes == "YES" ]]; then
     reinstall="Y"
   else
-    read -p "$(echo -e ${BWHITE}"Logger is allready installed. Would you like to reinstall? (Y/N) [Y]: "${NC})" reinstall
+    read -r -p "$(echo -e ${BWHITE}"Logger is allready installed. Would you like to reinstall? (Y/N) [Y]: "${NC})" reinstall
     reinstall=${reinstall:-"Y"}
   fi
 

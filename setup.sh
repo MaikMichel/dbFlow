@@ -133,7 +133,7 @@ show_generate_summary() {
   else
     printf "|   %-22b %b\n" "|-- schema" ">> DB Schema responible for running this RESTservice"
     printf "|   %-22b %b\n" "|   |-- access" ">> Place all your privileges, roles and clients here (plsql)"
-    printf "|   %-22b %b\n" "|   |-- module" ">> The REST modules inside seperate folders"
+    printf "|   %-22b %b\n" "|   |-- module" ">> The REST modules in subfolders (api)"
   fi
   printf "|-- %-22b %b\n" "static" ">> StaticFiles used to uploads go here (managed by dbFlux)"
   printf "%-26b %b\n" "apply.env" ">> Environment configuration added to .gitignore"
@@ -161,7 +161,7 @@ install() {
   fi
 
   if [[ -z "$DB_ADMIN_USER" ]]; then
-    read -p -r "Enter username of admin user (admin, sys, ...) [sys]: " DB_ADMIN_USER
+    read -r -p "Enter username of admin user (admin, sys, ...) [sys]: " DB_ADMIN_USER
     DB_ADMIN_USER=${DB_ADMIN_USER:-"sys"}
   fi
 
@@ -285,7 +285,7 @@ generate() {
   local project_name=$1
   local env_only=$2
 
-  read -p -r "Would you like to have a single, multi or flex scheme app (S/M/F) [M]: " db_scheme_type
+  read -r -p "Would you like to have a single, multi or flex scheme app (S/M/F) [M]: " db_scheme_type
   db_scheme_type=${db_scheme_type:-"M"}
 
   # create directories
@@ -305,15 +305,17 @@ generate() {
   fi
 
   # write .env files
-  read -p -r "When running release tests, what is your prefered branch name [build]: " build_branch
-  read -p -r "Would you like to process changelogs during deployment [Y]: " create_changelogs
+  read -r -p "When running release tests, what is your prefered branch name [build]: " build_branch
+  read -r -p "Would you like to process changelogs during deployment [Y]: " create_changelogs
 
-  if [[ $(toLowerCase" ${create_changelogs:-y}") == "y" ]]; then
-    if [[ $(toLowerCase "${db_scheme_type}") != "s" ]]; then
-      read -p -r "What is the schema name the changelog are processed with [${project_name}_app]: " chl_schema
-    else
+  if [[ $(toLowerCase "${create_changelogs:-y}") == "y" ]]; then
+    if [[ $(toLowerCase "${db_scheme_type}") == "s" ]]; then
       # when SingleSchema then there is only one possibility
       chl_schema=${project_name}
+    elif [[ $(toLowerCase "${db_scheme_type}") == "f" ]]; then
+      read -r -p "What is the schema name the changelog is processed with [${project_name}_app]: " chl_schema
+    elif [[ $(toLowerCase "${db_scheme_type}") == "m" ]]; then
+      read -r -p "What is the schema the changelog is processed with (${project_name}_data, ${project_name}_logic, ${project_name}_app) [${project_name}_app]: " chl_schema
     fi
   fi
 
@@ -364,7 +366,7 @@ generate() {
     echo "# keys to link directly to your ticketsystem using TICKET_URL"
 
 
-    if [[ $(toLowerCase" ${create_changelogs:-y}") == "y" ]]; then
+    if [[ $(toLowerCase "${create_changelogs:-y}") == "y" ]]; then
       echo "CHANGELOG_SCHEMA=${chl_schema:-${project_name}_app}"
 
       if [[ ${env_only} == "NO" ]]; then
@@ -394,10 +396,10 @@ generate() {
   } > build.env
 
   # ask for some vars to put into file
-  read -p -r "Enter database connections [localhost:1521/xepdb1]: " db_tns
+  read -r -p "Enter database connections [localhost:1521/xepdb1]: " db_tns
   db_tns=${db_tns:-"localhost:1521/xepdb1"}
 
-  read -p -r "Enter username of admin user (admin, sys, ...) [sys]: " db_admin_user
+  read -r -p "Enter username of admin user (admin, sys, ...) [sys]: " db_admin_user
   db_admin_user=${db_admin_user:-"sys"}
 
   ask4pwd "Enter password for ${db_admin_user} [leave blank and you will be asked for]: "
@@ -415,16 +417,16 @@ generate() {
   fi
 
 
-  read -p -r "Enter path to depot [_depot]: " depot_path
+  read -r -p "Enter path to depot [_depot]: " depot_path
   depot_path=${depot_path:-"_depot"}
 
-  read -p -r "Enter stage of this configuration mapped to branch (develop, test, master) [develop]: " stage
+  read -r -p "Enter stage of this configuration mapped to branch (develop, test, master) [develop]: " stage
   stage=${stage:-"develop"}
 
-  read -p -r "Do you wish to generate and install default tooling? (Logger, utPLSQL, teplsql, tapi) [Y]: " with_tools
+  read -r -p "Do you wish to generate and install default tooling? (Logger, utPLSQL, teplsql, tapi) [Y]: " with_tools
   with_tools=${with_tools:-"Y"}
 
-  read -p -r "Install with sql(cl) or sqlplus? [sqlplus]: " SQLCLI
+  read -r -p "Install with sql(cl) or sqlplus? [sqlplus]: " SQLCLI
   SQLCLI=${SQLCLI:-"sqlplus"}
 
   # apply.env
@@ -544,7 +546,7 @@ generate() {
 
     # ask for application IDs
     apex_ids=""
-    read -p -r "Enter application IDs (comma separated) you wish to use initialy (100,101,...): " apex_ids
+    read -r -p "Enter application IDs (comma separated) you wish to use initialy (100,101,...): " apex_ids
 
     # split ids gen directories
     apexids=(`echo "${apex_ids}" | sed 's/,/\n/g'`)
@@ -561,10 +563,10 @@ generate() {
 
     # ask for restful Modulsa
     rest_modules=""
-    read -p -r "Enter restful Moduls (comma separated) you wish to use initialy (api,test,...): " rest_modules
+    read -r -p "Enter restful Moduls (comma separated) you wish to use initialy (api,test,...): " rest_modules
 
     # split modules
-    restmodules=(`echo $"{rest_modules}" | sed 's/,/\n/g'`)
+    restmodules=(`echo "${rest_modules}" | sed 's/,/\n/g'`)
     for restMOD in "${restmodules[@]}"
     do
       if [[ $(toLowerCase "${db_scheme_type}") == "f" ]]; then
