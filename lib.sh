@@ -111,7 +111,7 @@ DBA_OPTION=" as sysdba"
 
 # Function return connect string
 #########################################
-get_connect_string() {
+function get_connect_string() {
   local dbfolder=$1
   local dbschema=$dbfolder
   local firstpart=${dbfolder%%_*}
@@ -124,7 +124,7 @@ get_connect_string() {
 
   # when connection user != target schema then use proxy
   if [[ ${DB_APP_USER} != "${dbschema}" ]]; then
-    echo "${DB_APP_USER}[${dbschema}]/${DB_APP_PWD}@$7"
+    echo "${DB_APP_USER}[${dbschema}]/${DB_APP_PWD}@${DB_TNS}"
   else
     echo "${DB_APP_USER}/${DB_APP_PWD}@${DB_TNS}"
   fi
@@ -194,14 +194,15 @@ EOF
   if [[ $sql_output == *"connected as"* ]]; then
     echo_success "Connection as ${DB_ADMIN_USER} is working"
   else
-    echo_fatal "Error to connect as ${DB_ADMIN_USER}"
+    echo_fatal "Error to connect as ${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION}"
     echo_error "${sql_output}"
     exit 2
   fi
 }
 
 function check_connection() {
-  local CONN_STR=$(get_connect_string "${1}")
+  local CONN_STR="$(get_connect_string "${1}")"
+
   sql_output=`${SQLCLI} -S -L "${CONN_STR}" <<EOF
   select 'connected to schema '||user t from dual;
   exit
@@ -258,7 +259,7 @@ DBSCHEMAS=()
       folder=$(basename "${d}")
       if [[ ${folder} != "_setup" ]] && [[ ${folder} != ".hooks" ]]; then
         DBFOLDERS+=( ${folder} )
-        DBSCHEMAS+=( $(get_schema_from_folder_name $"{folder}") )
+        DBSCHEMAS+=( $(get_schema_from_folder_name "${folder}") )
       fi
     done
   fi
@@ -313,7 +314,7 @@ create_merged_report_file() {
   echo >> "${output_file}"
 
   echo "-------------" >> "${output_file}"
-  cat "${template_file} ">> "${output_file}"
+  cat "${template_file}" >> "${output_file}"
   echo "-------------" >> "${output_file}"
 
   echo "  commit;" >> "${output_file}"

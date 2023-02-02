@@ -410,7 +410,7 @@ generate() {
   if [[ $(toLowerCase "${db_scheme_type}") != "s" ]]; then
     ask4pwd "Enter password for deployment_user (proxyuser: ${project_name}_depl) [leave blank and you will be asked for]: "
   else
-    ask4pwd "Enter password for application_user (user: ${project_name}) [leave blank and you will be asked for]: "
+    ask4pwd "Enter password for user ${project_name} [leave blank and you will be asked for]: "
   fi
   if [[ ${pass} != "" ]]; then
     db_app_pwd=`echo "${pass}" | base64`
@@ -644,8 +644,7 @@ export_schema() {
     for schema in "${SCHEMAS[@]}"
     do
       echo_warning " ... exporting ${schema}"
-      # shellcheck disable=SC2086
-      exit | sql -s "$(get_connect_string ${schema})" @.dbFlow/scripts/schema_export/export.sql "${object_name}"
+      exit | sql -s "$(get_connect_string "${schema}")" @".dbFlow/scripts/schema_export/export.sql" "${object_name}"
       if [[ -f "db/${schema}.exp.zip" ]]; then
         unzip -qo "db/${schema}.exp.zip" -d "db/${schema}"
         rm "db/${schema}.exp.zip"
@@ -655,8 +654,7 @@ export_schema() {
     done
   else
     echo_warning " ... exporting ${targetschema}"
-    # shellcheck disable=SC2086
-    exit | sql -s "$(get_connect_string ${targetschema})" @.dbFlow/scripts/schema_export/export.sql "${object_name}"
+    exit | sql -s "$(get_connect_string "${targetschema}")" @".dbFlow/scripts/schema_export/export.sql" "${object_name}"
     if [[ -f "db/${targetschema}.exp.zip" ]]; then
       unzip -qo "db/${targetschema}.exp.zip" -d "db/${targetschema}"
       rm "db/${targetschema}.exp.zip"

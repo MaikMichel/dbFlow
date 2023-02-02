@@ -585,11 +585,14 @@ function write_install_schemas(){
             # pre folder-hooks (something like db/schema/.hooks/pre/tables)
             entries=("${targetpath}/db/${schema}/.hooks/pre/${path}"/*.*)
             for entry in "${entries[@]}"; do
-              file=$(basename "${entry}")
+              file=$(basename ${entry})
 
-              echo "Prompt >>> db/${schema}/.hooks/pre/${path}/${file}" >> "${target_install_file}"
-              echo "@@.hooks/pre/${path}/$file" >> "${target_install_file}"
-              echo "Prompt <<< db/${schema}/.hooks/pre/${path}/${file}" >> "${target_install_file}"
+              {
+              echo "Prompt >>> db/${schema}/.hooks/pre/${path}/${file}"
+              echo "@@.hooks/pre/${path}/${file}"
+              echo "Prompt <<< db/${schema}/.hooks/pre/${path}/${file}"
+              } >> "${target_install_file}"
+
             done
 
             echo "Prompt" >> "${target_install_file}"
@@ -609,7 +612,7 @@ function write_install_schemas(){
 
 
             for entry in "${sorted[@]}"; do
-              file=$(basename "${entry}")
+              file=$(basename ${entry})
 
               if [[ "$path" == "tables" ]]; then
                 skipfile="FALSE"
@@ -640,9 +643,7 @@ function write_install_schemas(){
                   echo "--uat@@$path/$file" >> "${target_install_file}"
                 else
                   echo "@@$path/$file" >> "${target_install_file}"
-                  if [[ "$path" != ".hooks/pre" ]] && [[ "$path" != ".hooks/post" ]]; then
-                    echo "Prompt <<< db/${schema}/${path}/${file}" >> "${target_install_file}"
-                  fi
+                  echo "Prompt <<< db/${schema}/${path}/${file}" >> "${target_install_file}"
                 fi
               fi
             done
@@ -658,11 +659,14 @@ function write_install_schemas(){
             echo "Prompt" >> "${target_install_file}"
             entries=("${targetpath}/db/${schema}/.hooks/post/${path}"/*.*)
             for entry in "${entries[@]}"; do
-              file=$(basename "${entry}")
+              file=$(basename ${entry})
 
-              echo "Prompt >>> db/${schema}/.hooks/post/${path}/${file}" >> "${target_install_file}"
-              echo "@@.hooks/post/${path}/$file" >> "${target_install_file}"
-              echo "Prompt <<< db/${schema}/.hooks/post/${path}/${file}" >> "${target_install_file}"
+              {
+              echo "Prompt >>> db/${schema}/.hooks/post/${path}/${file}"
+              echo "@@.hooks/post/${path}/${file}"
+              echo "Prompt <<< db/${schema}/.hooks/post/${path}/${file}"
+              } >> "${target_install_file}"
+
             done
 
              # set scan to off, to make use of vars inside main schema-hooks
@@ -683,7 +687,6 @@ function write_install_schemas(){
         echo "Prompt" >> "${target_install_file}"
         echo "Prompt" >> "${target_install_file}"
         echo "exit" >> "${target_install_file}"
-
 
       else
         echo "  .. db/${schema} does not exists in ${targetpath}"
