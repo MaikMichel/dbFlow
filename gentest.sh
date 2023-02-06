@@ -32,46 +32,6 @@ usage() {
   exit 1
 }
 
-MAINFOLDERS=( apex db reports rest .hooks )
-SCHEMAS=()
-
-if [[ ${PROJECT_MODE} == "FLEX" ]]; then
-  SCHEMAS=(${DBFOLDERS[@]})
-else
-  ALL_SCHEMAS=( ${DATA_SCHEMA} ${LOGIC_SCHEMA} ${APP_SCHEMA} )
-  SCHEMAS=($(printf "%s\n" "${ALL_SCHEMAS[@]}" | sort -u))
-
-  # if length is equal than ALL_SCHEMAS, otherwise distinct
-  if [[ ${#SCHEMAS[@]} == ${#ALL_SCHEMAS[@]} ]]; then
-    SCHEMAS=(${ALL_SCHEMAS[@]})
-  fi
-fi
-
-# folders for REST
-rest_array=( access/roles access/privileges access/mapping modules )
-
-# all folders (init and patch)
-
-all_folders=( .hooks/pre sequences tables indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies sources/types sources/packages sources/functions sources/procedures views mviews sources/triggers jobs tests/packages dml/base .hooks/post )
-init_folders=( ${all_folders[@]} )
-init_folders+=( ddl/init dml/init )
-
-patch_folders=( ${all_folders[@]} )
-patch_folders+=( ddl/patch/pre dml/patch/pre ddl/patch/post dml/patch/post )
-
-
-# was ist zu tun
-#
-# - in jedes bekannte Verzeichnis eine Datei erzeugen, die einen Eintrag in einer
-#   Testtabelle anlegt.
-# - Testtabelle im PreHook anlegen,vorher löschen, wenn vorhanden
-# - im PostHook einen Test ausführne, der die Anzahl und Reihenfolge der Einträgen
-#   überprüft
-# - aufteilen des Tests in init und patch
-# - "install" apex und rest
-
-
-
 function check_params() {
   debug="n" help="n" init="n" patch="n"
 
@@ -129,98 +89,132 @@ function check_params() {
 
 }
 
-function gen_init_scripts() {
+
+
+# MAINFOLDERS=( apex db reports rest .hooks )
+# SCHEMAS=()
+
+# if [[ ${PROJECT_MODE} == "FLEX" ]]; then
+#   SCHEMAS=(${DBFOLDERS[@]})
+# else
+#   ALL_SCHEMAS=( ${DATA_SCHEMA} ${LOGIC_SCHEMA} ${APP_SCHEMA} )
+#   SCHEMAS=($(printf "%s\n" "${ALL_SCHEMAS[@]}" | sort -u))
+
+#   # if length is equal than ALL_SCHEMAS, otherwise distinct
+#   if [[ ${#SCHEMAS[@]} == ${#ALL_SCHEMAS[@]} ]]; then
+#     SCHEMAS=(${ALL_SCHEMAS[@]})
+#   fi
+# fi
+
+# folders for REST
+# rest_array=( access/roles access/privileges access/mapping modules )
+
+
+
+
+# # all folders (init and patch)
+
+# all_folders=( .hooks/pre sequences tables indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies sources/types sources/packages sources/functions sources/procedures views mviews sources/triggers jobs tests/packages dml/base .hooks/post )
+# init_folders=( ${all_folders[@]} )
+# init_folders+=( ddl/init dml/init )
+
+# patch_folders=( ${all_folders[@]} )
+# patch_folders+=( ddl/patch/pre dml/patch/pre ddl/patch/post dml/patch/post )
+
+
+# was ist zu tun
+#
+# - in jedes bekannte Verzeichnis eine Datei erzeugen, die einen Eintrag in einer
+#   Testtabelle anlegt.
+# - Testtabelle im PreHook anlegen,vorher löschen, wenn vorhanden
+# - im PostHook einen Test ausführne, der die Anzahl und Reihenfolge der Einträgen
+#   überprüft
+# - aufteilen des Tests in init und patch
+# - "install" apex und rest
+
+
+
+
+function gen_scripts() {
+  local unmode="init"
+  if [[ ${mode} == "init" ]]; then
+    unmode="patch"
+  fi
+
   # loop through schemas and all possible folder and write inserts
   # to the new table
-  for schema in "${SCHEMAS[@]}"
+  for schema in "${DBSCHEMAS[@]}"
   do
-    # pro Schema eine HookDatei erzeugen
+    # remove unmode file if exists to keep consistent
+    [[ ! -f ".hooks/pre/${unmode}/test_${schema}.sql" ]] || rm ".hooks/pre/${unmode}/test_${schema}.sql"
 
+    # on hook file per schema
     [[ -d ".hooks/pre/${mode}" ]] || mkdir -p ".hooks/pre/${mode}"
     cat ".dbFlow/scripts/test/tbl_dbflow_test.sql" > ".hooks/pre/${mode}/test_${schema}.sql"
 
-
     CNT_IDX_INIT=0
+    DBUNION=()
     # check every path in given order
-    for path in "${init_folders[@]}"
+    for path in "${SCAN_PATHES[@]}"
     do
+      # create folder if not exists
       [[ -d db/${schema}/${path} ]] || mkdir -p "db/${schema}/${path}"
-      echo "insert into dbflow_test(dft_mainfolder, dft_mode, dft_schema, dft_file) values ('db', '${mode}', '${schema}', 'db/${schema}/${path}');" > "db/${schema}/${path}/${mode}_dbflow_test.sql"
+
+      # remove init file if exists to keep consistent
+      [[ ! -f "db/${schema}/${path}/${unmode}_dbflow_test.sql" ]] || rm "db/${schema}/${path}/${unmode}_dbflow_test.sql"
+
+      echo "insert into dbflow_test(dft_mainfolder, dft_mode, dft_schema, dft_file) values ('db', '${mode}', '${schema}', 'db/${schema}/${path}/${mode}_dbflow_test.sql');" > "db/${schema}/${path}/${mode}_dbflow_test.sql"
 
       ((CNT_IDX_INIT=CNT_IDX_INIT+1))
-    done
-    TESTLINE="ut.expect(l_check_init)\.to_equal(0);"
-    TESTLINE2="ut.expect(l_check_init)\.to_equal(${CNT_IDX_INIT});"
-    sed "s/${TESTLINE}/${TESTLINE2}/g" .dbFlow/scripts/test/pck_test_dbflow.sql > ".hooks/post/utest_${schema}.sql"
-  done
-}
 
-function gen_patch_scripts() {
-  # loop through schemas and all possible folder and write inserts
-  # to the new table
-  for schema in "${SCHEMAS[@]}"
-  do
-    # remove init hooks, to keep test clean
-    rm -f "db/${schema}/.hooks/pre/init_dbflow_test.sql"
-    rm -f "db/${schema}/.hooks/post/init_dbflow_test.sql"
-
-    CNT_IDX_PATCH=0
-    # check every path in given order
-    for path in "${patch_folders[@]}"
-    do
-      [[ -d db/${schema}/${path} ]] || mkdir -p "db/${schema}/${path}"
-      echo "insert into dbflow_test(dft_mainfolder, dft_mode, dft_schema, dft_file) values ('db', '${mode}', '${schema}', 'db/${schema}/${path}');" > "db/${schema}/${path}/${mode}_dbflow_test.sql"
-
-      ((CNT_IDX_PATCH=CNT_IDX_PATCH+1))
-
-      if [[ ${path} == "tables" ]]; then
-        echo "insert into dbflow_test(dft_mainfolder, dft_mode, dft_schema, dft_file) values ('db', '${mode}', '${schema}', 'db/${schema}/${path}/tables_ddl/1');" > "db/${schema}/${path}/tables_ddl/${mode}_dbflow_test.1.sql"
-        echo "insert into dbflow_test(dft_mainfolder, dft_mode, dft_schema, dft_file) values ('db', '${mode}', '${schema}', 'db/${schema}/${path}/tables_ddl/2');" > "db/${schema}/${path}/tables_ddl/${mode}_dbflow_test.2.sql"
-        ((CNT_IDX_PATCH=CNT_IDX_PATCH+1))
+      if [[ ${path} == "tables" ]] && [[ ${mode} == "patch" ]]; then
+        echo "skipping tables"
+      else
+        DBUNION+=( "db/${schema}/${path}/${mode}_dbflow_test.sql" )
       fi
     done
 
-    TESTLINE="ut.expect(l_check_patch)\.to_equal(0);"
-    TESTLINE2="ut.expect(l_check_patch)\.to_equal(${CNT_IDX_PATCH});"
-    sed -i "s/${TESTLINE}/${TESTLINE2}/g" ".hooks/post/utest_${schema}.sql"
+    # gen test package
+    last_elem=${DBUNION[${#DBUNION[@]}-1]}
+
+    # copy first to target file
+    cat ".dbFlow/scripts/test/pck_test_dbflow_01.sql" > ".hooks/post/utest_${schema}.sql"
+
+    # now build the cursor
+    for file in "${DBUNION[@]}"
+    do
+      if [[ ${last_elem} == "${file}" ]]; then
+        echo "      select '${file}' dft_file from dual; " >> ".hooks/post/utest_${schema}.sql"
+      else
+        echo "      select '${file}' dft_file from dual union all " >> ".hooks/post/utest_${schema}.sql"
+      fi
+    done
+
+    # copy second to target file
+    cat ".dbFlow/scripts/test/pck_test_dbflow_02.sql" >> ".hooks/post/utest_${schema}.sql"
+
+    echo "exec ut.run('test_dbflow.check_scripts_${mode}', a_color_console => true);" >> ".hooks/post/utest_${schema}.sql"
+    echo " -- drop package test_dbflow;" >> ".hooks/post/utest_${schema}.sql"
   done
 }
 
-# depth=$1
 
-# for d in $(find apex -maxdepth ${depth} -mindepth ${depth} -type d)
-# do
-#   #Do something, the directory is accessible with $d:
-#   echo "Prompt EXECUTING: $d/install.sql" > $d/install.sql
-# done
-
-# for d in $(find rest -maxdepth ${depth} -mindepth ${depth} -type d)
-# do
-#   #Do something, the directory is accessible with $d:
-#   echo "Prompt EXECUTING: $d/install.sql" > $d/install.sql
-# done
-
-# for d in $(find db -not -path 'db/_setup*/*'  -type d)
-# do
-#   #Do something, the directory is accessible with $d:
-#   if [[ $d != "db/_setup" ]]; then
-#     echo "Prompt EXECUTING: $d/install.sql" > $d/install.sql
-#   fi
-# done
-
-# for d in $(find .hooks -type d)
-# do
-#   #Do something, the directory is accessible with $d:
-#   echo "Prompt EXECUTING: $d/install.sql" > $d/install.sql
-# done
-
+# validate params
 check_params "$@"
 
+# get branch name
+{ #try
+  branch=$(git branch --show-current)
+} || { # catch
+  branch="develop"
+}
+
+# set all folder names which has to be parsed for files to deploy in array SCAN_PATHES
+define_folders "${mode}" "${branch}"
+
 echo "mode: $mode"
-if [[ ${mode} == "init" ]]; then
-  gen_init_scripts
-elif [[ ${mode} == "patch" ]]; then
-  gen_patch_scripts
+if [[ ${mode} == "init" || ${mode} == "patch" ]]; then
+  gen_scripts
 else
   echo_error "unknown mode"
 fi
