@@ -240,20 +240,8 @@ function setup_env() {
     branch="develop"
   }
 
-  # at INIT there is no pretreatment or an evaluation of the table_ddl
-  # !: Don't forgett to change documentation when changing these arrays
-  if [[ "${mode}" == "init" ]]; then
-    array=( .hooks/pre sequences tables indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies sources/types sources/packages sources/functions sources/procedures views mviews sources/triggers jobs tests/packages ddl/init dml/init dml/base .hooks/post)
-  else
-    # building pre and post based on branches
-    pres=( .hooks/pre ddl/patch/pre_${branch} dml/patch/pre_${branch} ddl/patch/pre dml/patch/pre )
-    post=( ddl/patch/post_${branch} dml/patch/post_${branch} ddl/patch/post dml/base dml/patch/post .hooks/post )
-
-    array=( ${pres[@]} )
-    array+=( sequences tables tables/tables_ddl indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies sources/types sources/packages sources/functions sources/procedures views mviews sources/triggers jobs tests/packages )
-    array+=( ${post[@]} )
-  fi
-
+  # set all folder names which has to be parsed for files to deploy in array SCAN_PATHES
+  define_folders ${mode} ${branch}
 
   # if table changes are inside release, we have to call special-functionalities
   table_changes="FALSE"
@@ -571,7 +559,7 @@ function write_install_schemas(){
 
 
         # check every path in given order
-        for path in "${array[@]}"
+        for path in "${SCAN_PATHES[@]}"
         do
           if [[ -d "${targetpath}"/db/${schema}/$path ]]; then
             timelog "Writing calls for $path"

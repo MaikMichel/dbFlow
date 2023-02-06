@@ -108,6 +108,29 @@ function echo_debug() {
 # used when admin user is sys
 DBA_OPTION=" as sysdba"
 
+# array to hold all pathes to files which have to deployed based on mode and branch
+SCAN_PATHES=()
+
+function define_folders() {
+  local l_mode="${1}";
+  local l_branch="${2}";
+
+  # at INIT there is no pretreatment or an evaluation of the table_ddl
+  # !: Don't forgett to change documentation when changing these arrays
+  if [[ "${l_mode}" == "init" ]]; then
+    SCAN_PATHES=( .hooks/pre sequences tables indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies sources/types sources/packages sources/functions sources/procedures views mviews sources/triggers jobs tests/packages ddl/init dml/init dml/base .hooks/post)
+  else
+    # building pre and post based on branches
+    pres=( ".hooks/pre ddl/patch/pre_${l_branch}" "dml/patch/pre_${l_branch}" ddl/patch/pre dml/patch/pre )
+    post=( "ddl/patch/post_${l_branch}" "dml/patch/post_${l_branch}" ddl/patch/post dml/base dml/patch/post .hooks/post )
+
+    SCAN_PATHES=( ${pres[@]} )
+    SCAN_PATHES+=( sequences tables tables/tables_ddl indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies sources/types sources/packages sources/functions sources/procedures views mviews sources/triggers jobs tests/packages )
+    SCAN_PATHES+=( ${post[@]} )
+  fi
+}
+
+
 
 # Function return connect string
 #########################################
