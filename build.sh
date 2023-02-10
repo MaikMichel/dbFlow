@@ -248,7 +248,7 @@ function setup_env() {
 
   # folder outside git repo
   depotpath="$(pwd)/$DEPOT_PATH/$branch"
-  targetpath=$depotpath/${mode}_${version}
+  targetpath="${depotpath}"/${mode}_${version}
   sourcepath="."
 
   # initialize logfile
@@ -398,9 +398,12 @@ function copy_files {
     if [[ -d "${targetpath}"/rest ]]; then
       folders=()
       if [[ ${PROJECT_MODE} == "FLEX" ]]; then
-        for d in $(find "${targetpath}/rest" -maxdepth 1 -mindepth 1 -type d | sort -f)
+        diritems=()
+        IFS=$'\n' read -r -d '' -a diritems < <( find "${targetpath}/rest" -maxdepth 1 -mindepth 1 -type d | sort -f && printf '\0' )
+
+        for dirname in "${diritems[@]}"
         do
-          folders+=( $(basename "${d}") )
+          folders+=( $(basename "${dirname}") )
         done
       else
         folders=( . )
@@ -417,7 +420,10 @@ function copy_files {
             depth=2
           fi
 
-          for file in $(find "${targetpath}/rest/${fldr}/${path}/" -maxdepth $depth -mindepth $depth -type f | sort )
+          items=()
+          IFS=$'\n' read -r -d '' -a items < <( find "${targetpath}/rest/${fldr}/${path}/" -maxdepth $depth -mindepth $depth -type f | sort && printf '\0' )
+
+          for file in "${items[@]}"
           do
 
             base=${targetpath}/rest/${fldr}/
@@ -561,9 +567,9 @@ function write_install_schemas(){
         # check every path in given order
         for path in "${SCAN_PATHES[@]}"
         do
-          if [[ -d "${targetpath}"/db/${schema}/$path ]]; then
-            timelog "Writing calls for $path"
-            echo "Prompt Installing $path ..." >> "${target_install_file}"
+          if [[ -d "${targetpath}"/db/${schema}/${path} ]]; then
+            timelog "Writing calls for ${path}"
+            echo "Prompt Installing ${path} ..." >> "${target_install_file}"
 
             # set scan to on, to make use of vars inside main schema-hooks
             if [[ "${path}" == ".hooks/pre" ]] || [[ "${path}" == ".hooks/post" ]]; then
@@ -573,7 +579,7 @@ function write_install_schemas(){
             # pre folder-hooks (something like db/schema/.hooks/pre/tables)
             entries=("${targetpath}/db/${schema}/.hooks/pre/${path}"/*.*)
             for entry in "${entries[@]}"; do
-              file=$(basename ${entry})
+              file=$(basename "${entry}")
 
               {
               echo "Prompt >>> db/${schema}/.hooks/pre/${path}/${file}"
@@ -584,15 +590,15 @@ function write_install_schemas(){
             done
 
             echo "Prompt" >> "${target_install_file}"
-            if [[ "$path" == "ddl/patch/pre" ]] || [[ "$path" == "ddl/patch/pre_tst" ]] || [[ "$path" == "ddl/patch/pre_uat" ]] || [[ "$path" == "views" ]]; then
+            if [[ "${path}" == "ddl/patch/pre" ]] || [[ "${path}" == "ddl/patch/pre_tst" ]] || [[ "${path}" == "ddl/patch/pre_uat" ]] || [[ "${path}" == "views" ]]; then
               echo "WHENEVER SQLERROR CONTINUE" >> "${target_install_file}"
             fi
 
             # read files from folder
-            entries=("${targetpath}/db/${schema}/$path/*.*")
+            entries=("${targetpath}/db/${schema}/${path}"/*.*)
 
             # if packages then sort descending
-            if [[ "$path" == "sources/packages" ]] || [[ "$path" == "tests/packages" ]]; then
+            if [[ "${path}" == "sources/packages" ]] || [[ "${path}" == "tests/packages" ]]; then
               IFS=$'\n' sorted=($(sort -r <<<"${entries[*]}")); unset IFS
             else
               sorted=("${entries[@]}")
@@ -600,9 +606,9 @@ function write_install_schemas(){
 
 
             for entry in "${sorted[@]}"; do
-              file=$(basename ${entry})
+              file=$(basename "${entry}")
 
-              if [[ "$path" == "tables" ]]; then
+              if [[ "${path}" == "tables" ]]; then
                 skipfile="FALSE"
                 table_changes="TRUE"
 
@@ -617,26 +623,26 @@ function write_install_schemas(){
                 fi
 
                 if [[ "$skipfile" == "TRUE" ]]; then
-                  echo "Prompt ... skipped $file" >> "${target_install_file}"
+                  echo "Prompt ... skipped ${file}" >> "${target_install_file}"
                 else
                   echo "Prompt >>> db/${schema}/${path}/${file}" >> "${target_install_file}"
-                  echo "@@$path/$file" >> "${target_install_file}"
+                  echo "@@${path}/${file}" >> "${target_install_file}"
                   echo "Prompt <<< db/${schema}/${path}/${file}" >> "${target_install_file}"
                 fi
               else
                 echo "Prompt >>> db/${schema}/${path}/${file}" >> "${target_install_file}"
-                if [[ "$path" == "ddl/pre_tst" ]] && [[ "${mode}" == "patch" ]]; then
-                  echo "--tst@@$path/$file" >> "${target_install_file}"
-                elif [[ "$path" == "ddl/pre_uat" ]] && [[ "${mode}" == "patch" ]]; then
-                  echo "--uat@@$path/$file" >> "${target_install_file}"
+                if [[ "${path}" == "ddl/pre_tst" ]] && [[ "${mode}" == "patch" ]]; then
+                  echo "--tst@@${path}/${file}" >> "${target_install_file}"
+                elif [[ "${path}" == "ddl/pre_uat" ]] && [[ "${mode}" == "patch" ]]; then
+                  echo "--uat@@${path}/${file}" >> "${target_install_file}"
                 else
-                  echo "@@$path/$file" >> "${target_install_file}"
+                  echo "@@${path}/${file}" >> "${target_install_file}"
                   echo "Prompt <<< db/${schema}/${path}/${file}" >> "${target_install_file}"
                 fi
               fi
             done
 
-            if [[ "$path" == "ddl/patch/pre" ]] || [[ "$path" == "ddl/patch/pre_tst" ]] || [[ "$path" == "ddl/patch/pre_uat" ]]|| [[ "$path" == "views" ]]
+            if [[ "${path}" == "ddl/patch/pre" ]] || [[ "${path}" == "ddl/patch/pre_tst" ]] || [[ "${path}" == "ddl/patch/pre_uat" ]]|| [[ "${path}" == "views" ]]
             then
               echo "WHENEVER SQLERROR EXIT SQL.SQLCODE" >> "${target_install_file}"
             fi
@@ -647,7 +653,7 @@ function write_install_schemas(){
             echo "Prompt" >> "${target_install_file}"
             entries=("${targetpath}/db/${schema}/.hooks/post/${path}"/*.*)
             for entry in "${entries[@]}"; do
-              file=$(basename ${entry})
+              file=$(basename "${entry}")
 
               {
               echo "Prompt >>> db/${schema}/.hooks/post/${path}/${file}"
@@ -701,10 +707,13 @@ function write_install_apps() {
       depth=3
     fi
 
-    for d in $(find "${targetpath}/apex" -maxdepth ${depth} -mindepth ${depth} -type d)
+    items=()
+    IFS=$'\n' read -r -d '' -a items < <( find "${targetpath}/apex" -maxdepth "${depth}" -mindepth "${depth}" -type d && printf '\0' )
+
+    for dirname in "${items[@]}"
     do
-      echo "${d/${targetpath}\//}" >> "${target_apex_file}"
-      timelog "Writing call to install APP: ${d/${targetpath}\//} "
+      echo "${dirname/${targetpath}\//}" >> "${target_apex_file}"
+      timelog "Writing call to install APP: ${dirname/${targetpath}\//} "
     done
   fi
 }
@@ -718,9 +727,12 @@ function write_install_rest() {
 
     folders=()
     if [[ ${PROJECT_MODE} == "FLEX" ]]; then
-      for d in $(find rest -maxdepth 1 -mindepth 1 -type d | sort -f)
+      items=()
+      IFS=$'\n' read -r -d '' -a items < <( find rest -maxdepth 1 -mindepth 1 -type d | sort -f && printf '\0' )
+
+      for dirname in "${items[@]}"
       do
-        folders+=( $(basename "${d}") )
+        folders+=( $(basename "${dirname}") )
       done
     else
       folders=( . )
@@ -728,13 +740,15 @@ function write_install_rest() {
 
     for fldr in "${folders[@]}"
     do
-      timelog " == Schema: $fldr"
+      if [[ ${fldr} != "." ]]; then
+        timelog " == Schema: $fldr"
+      fi
+      rest_to_install="FALSE"
 
       # file to write to
       target_install_base=rest_${mode}_${version}.sql
       target_install_file="${targetpath}/rest/$fldr/$target_install_base"
       [ -f "${target_install_file}" ] && rm "${target_install_file}"
-      rest_to_install="FALSE"
 
       # write some infos
       echo "Prompt .............................................................................. " >> "${target_install_file}"
@@ -755,8 +769,12 @@ function write_install_rest() {
             depth=2
           fi
 
-          for file in $(find "${targetpath}/rest/${fldr}/${path}/" -maxdepth $depth -mindepth $depth -type f | sort )
+          items=()
+          IFS=$'\n' read -r -d '' -a items < <( find "${targetpath}/rest/${fldr}/${path}/" -maxdepth $depth -mindepth $depth -type f | sort && printf '\0' )
+
+          for file in "${items[@]}"
           do
+
             rest_to_install="TRUE"
             base="${targetpath}/rest/$fldr/"
             part=${file#$base}
@@ -781,20 +799,18 @@ function write_install_rest() {
               fi
               echo "/" >> "${target_install_file}"
             fi
-          done
 
-          echo "Prompt" >> "${target_install_file}"
-          echo "Prompt" >> "${target_install_file}"
+          done
           echo "" >> "${target_install_file}"
 
         fi
       done
-
       # nothing to install, just remove empty file
-      if [[ ${rest_to_install} == "FALSE" ]]; then
+      if [[ "${rest_to_install}" == "FALSE" ]]; then
         rm "${target_install_file}"
-        timelog " ... nothing found "
+        timelog " ... nothing found in ${path} "
       fi
+
     done
   fi
 }
@@ -934,8 +950,6 @@ function manage_artifact () {
 
   timelog ""
   timelog "==== .......... .......... .......... ==== " "${success}"
-  timelog "All files are placed in $DEPOT_PATH/$branch"
-  timelog "==== ..........    DONE    .......... ==== " "${success}"
 
   # remove colorcodes from logfile
   cat "${full_log_file}" | sed -r "s/\x1B\[([0-9]{1,3}((;[0-9]{1,3})*)?)?[m|K]//g" > "${full_log_file}.colorless"
@@ -951,6 +965,7 @@ function manage_artifact () {
     # pack directoy
     tar -C "${targetpath}" -czf "${targetpath}.tar.gz" .
 
+    timelog "Artifact writen to ${DEPOT_PATH}/${branch}/${mode}_${version}.tar.gz"
     if [[ ${KEEP_FOLDER} != "TRUE" ]]; then
       rm -rf "${targetpath}"
     fi
@@ -958,6 +973,13 @@ function manage_artifact () {
     echo_error "Nothing to release, aborting"
     exit 1
   fi
+
+
+  if [[ ${KEEP_FOLDER} == "TRUE" ]]; then
+    timelog "Visit folder ${DEPOT_PATH}/${branch}/${mode}_${version} to view content of the artifact"
+  fi
+  timelog "==== ..........    DONE    .......... ==== " "${success}"
+
 }
 
 function make_a_new_version() {
