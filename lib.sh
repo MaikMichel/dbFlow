@@ -27,10 +27,16 @@ YELLOW="\033[0;33m"       # Yellow
 BLUE="\033[0;34m"         # Blue
 PURPLE="\033[0;35m"       # Purple
 CYAN="\033[0;36m"         # Cyan
+BCYAN="\033[1;36m"         # Cyan
 BWHITE="\033[1;97m"       # White
 WHITE="\033[0;97m"        # White
 LWHITE="\033[1;30m"       # White
-BYELLOW="\033[1;33m"      # Yellow
+BYELLOW="\e[30;48;5;82m"  # Yellow
+BORANGE="\e[38;5;208m"    # Orange
+BUNLINE="\e[1;4m"
+BUNLINE="\e[1;4m"
+BGRAY="\e[0;90m"
+BLBACK="\e[30;48;5;81m"
 
 LIBSOURCED="TRUE"
 
@@ -44,7 +50,7 @@ function ask4pwd() {
   PROMPT=""
   pass=""
 
-  echo -n "${prompt_text}"
+  echo -n -e "${prompt_text}"
 
   stty -echo
 
