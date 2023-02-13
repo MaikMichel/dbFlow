@@ -95,7 +95,7 @@ show_generate_summary() {
   echo -e
   echo -e
   echo -e "${BGREEN}Congratulations${NC}"
-  echo -e "Your project ${BYELLOW}$PROJECT${NC} has been ${GREEN}successfully${NC} created. "
+  echo -e "Your project ${BWHITE}$PROJECT${NC} has been ${GREEN}successfully${NC} created. "
   echo -e "Scripts have been added inside directory: ${CYAN}db/_setup${NC} that allow you "
   echo -e "to create the respective schemas, workspaces as well as ACLs and features, as long "
   echo -e "as you specified them during the configuration. "
@@ -112,7 +112,7 @@ show_generate_summary() {
     printf "|   %-22b %b\n" "|   |   |-- f123" ">> Example Application 123 as subfolder"
   fi
   printf "|-- %-22b %b\n" "db" ">> All DB Schemas used"
-  printf "|   %-22b %b\n" "|-- _setup" ">> Scripts to create schemas, features, workspaces, ..."
+  printf "|   %-22b %b\n" "|-- _setup" ">> Scripts to create schemas, features, ${BORANGE}workspaces${NC}, ..."
   printf "|   %-22b %b\n" "|-- .hooks" ">> Scripts/Tasks to run pre or post db schema deployments"
   if [[ ${PROJECT_MODE} != "FLEX" ]]; then
     if [[ -d db/${PROJECT}_logic ]]; then
@@ -142,10 +142,12 @@ show_generate_summary() {
   echo -e "To execute the installation just run: ${CYAN}.dbFlow/setup.sh install${NC}"
   echo
   echo -e "For your daily work I recommend the use of the extension: "
-  echo -e "${BWHITE}dbFlux - https://marketplace.visualstudio.com/items?itemName=MaikMichel.dbflow${NC}"
+  echo -e "${BLBACK}dbFlux - https://marketplace.visualstudio.com/items?itemName=MaikMichel.dbflow${NC}"
   echo -e "For more information refer to readme: ${CYAN}.dbFlow/readme.md${NC}"
   echo
-  echo -e "To configure changelog settings, just modify corresponding parameters in build.env"
+  echo -e "To configure changelog settings, just modify corresponding parameters in ${BWHITE}build.env${NC}"
+  echo
+  echo -e "${BORANGE}Keep in mind that the script to create the workspace ${BWHITE}$PROJECT${NC} ${BORANGE}will drop the one with the same name!${NC}"
 }
 
 
@@ -212,7 +214,7 @@ install() {
           elif [[ $EXTENSION == "sh" ]]; then
             cd "${level1_dir}" || exit
             echo "Executing ${level1_dir}/${file}"
-            ./"${file}" "${yes}" "${DB_ADMIN_PWD}"
+            "./${file}" "${yes}" "${DB_ADMIN_PWD}"
             cd ../../..
           fi
 
@@ -235,7 +237,7 @@ install() {
               elif [[ $EXTENSION == "sh" ]]; then
                 cd "${level2_dir}" || exit
                 echo "Executing ${level2_dir}/${file2}"
-                ./"${file2}" "${yes}" "${DB_ADMIN_PWD}"
+                "./${file2}" "${yes}" "${DB_ADMIN_PWD}"
                 cd ../../../..
               fi
             fi
@@ -285,7 +287,8 @@ generate() {
   local project_name=$1
   local env_only=$2
 
-  read -r -p "Would you like to have a single, multi or flex scheme app (S/M/F) [M]: " db_scheme_type
+  local L_DEFAULT=${PROJECT_MODE-"M"}
+  read -r -p "$(echo -e "Which dbFLow project type do you want to create? ${BUNLINE}S${NC}ingle, ${BUNLINE}M${NC}ulti or ${BUNLINE}F${NC}lex [${BGRAY}${L_DEFAULT:0:1}${NC}]: ")" db_scheme_type
   db_scheme_type=${db_scheme_type:-"M"}
 
   # create directories
@@ -305,17 +308,26 @@ generate() {
   fi
 
   # write .env files
-  read -r -p "When running release tests, what is your prefered branch name [build]: " build_branch
-  read -r -p "Would you like to process changelogs during deployment [Y]: " create_changelogs
+  local L_DEFAULT=${BUILD_BRANCH-"build"}
+  read -r -p "$(echo -e "When running release tests, what is your prefered branch name [${BGRAY}${L_DEFAULT}${NC}]: ")" build_branch
+
+  if [[ -z ${CHANGELOG_SCHEMA} ]]; then
+    L_DEFAULT="N"
+  else
+    L_DEFAULT="Y"
+  fi
+  read -r -p "$(echo -e "Would you like to process changelogs during deployment [${BGRAY}${L_DEFAULT}${NC}]: ")" create_changelogs
 
   if [[ $(toLowerCase "${create_changelogs:-y}") == "y" ]]; then
     if [[ $(toLowerCase "${db_scheme_type}") == "s" ]]; then
       # when SingleSchema then there is only one possibility
       chl_schema=${project_name}
     elif [[ $(toLowerCase "${db_scheme_type}") == "f" ]]; then
-      read -r -p "What is the schema name the changelog is processed with [${project_name}_app]: " chl_schema
+      L_DEFAULT=${CHANGELOG_SCHEMA-"${project_name}_app"}
+      read -r -p "$(echo -e "What is the schema name the changelog is processed with [${BGRAY}${L_DEFAULT}${NC}]: ")" chl_schema
     elif [[ $(toLowerCase "${db_scheme_type}") == "m" ]]; then
-      read -r -p "What is the schema the changelog is processed with (${project_name}_data, ${project_name}_logic, ${project_name}_app) [${project_name}_app]: " chl_schema
+      L_DEFAULT=${CHANGELOG_SCHEMA-"${project_name}_app"}
+      read -r -p "$(echo -e "What is the schema the changelog is processed with (${BUNLINE}${project_name}_data${NC}, ${BUNLINE}${project_name}_logic${NC}, ${BUNLINE}${project_name}_app${NC}) [${BGRAY}${L_DEFAULT}${NC}]: ")" chl_schema
     fi
   fi
 
@@ -396,37 +408,43 @@ generate() {
   } > build.env
 
   # ask for some vars to put into file
-  read -r -p "Enter database connections [localhost:1521/xepdb1]: " db_tns
+  local L_DEFAULT=${DB_TNS-"localhost:1521/xepdb1"}
+  read -r -p "$(echo -e "Enter database connections [${BGRAY}${L_DEFAULT}${NC}]: ")" db_tns
   db_tns=${db_tns:-"localhost:1521/xepdb1"}
 
-  read -r -p "Enter username of admin user (admin, sys, ...) [sys]: " db_admin_user
+  local L_DEFAULT=${DB_ADMIN_USER-"sys"}
+  read -r -p "$(echo -e "Enter username of admin user (${BUNLINE}admin${NC}, ${BUNLINE}sys${NC}, ...) [${BGRAY}${L_DEFAULT}${NC}]: ")" db_admin_user
   db_admin_user=${db_admin_user:-"sys"}
 
-  ask4pwd "Enter password for ${db_admin_user} [leave blank and you will be asked for]: "
+  ask4pwd "$(echo -e "Enter password for ${BUNLINE}${db_admin_user}${NC} [${BGRAY}leave blank and you will be asked for${NC}]: ")"
   if [[ ${pass} != "" ]]; then
     db_admin_pwd=`echo "${pass}" | base64`
   fi
 
   if [[ $(toLowerCase "${db_scheme_type}") != "s" ]]; then
-    ask4pwd "Enter password for deployment_user (proxyuser: ${project_name}_depl) [leave blank and you will be asked for]: "
+    L_DEFAULT=${DB_APP_USER-"${project_name}_depl"}
+    ask4pwd "$(echo -e "Enter password for deployment_user (proxyuser: ${BUNLINE}${L_DEFAULT}${NC}) [${BGRAY}leave blank and you will be asked for${NC}]: ")"
   else
-    ask4pwd "Enter password for user ${project_name} [leave blank and you will be asked for]: "
+    L_DEFAULT=${DB_APP_USER-"${project_name}"}
+    ask4pwd "$(echo -e "Enter password for user ${BUNLINE}${L_DEFAULT}${NC} [${BGRAY}leave blank and you will be asked for${NC}]: ")"
   fi
   if [[ ${pass} != "" ]]; then
     db_app_pwd=`echo "${pass}" | base64`
   fi
 
-
-  read -r -p "Enter path to depot [_depot]: " depot_path
+  L_DEFAULT=${DEPOT_PATH-"_depot"}
+  read -r -p "$(echo -e "Enter path to depot [${BGRAY}${L_DEFAULT}${NC}]: ")" depot_path
   depot_path=${depot_path:-"_depot"}
 
-  read -r -p "Enter stage of this configuration mapped to branch (develop, test, master) [develop]: " stage
+  L_DEFAULT=${STAGE-"develop"}
+  read -r -p "$(echo -e "Enter stage of this configuration mapped to branch (${BUNLINE}develop${NC}, ${BUNLINE}test${NC}, ${BUNLINE}master${NC}) [${BGRAY}${L_DEFAULT}${NC}]: ")" stage
   stage=${stage:-"develop"}
 
-  read -r -p "Do you wish to generate and install default tooling? (Logger, utPLSQL, teplsql, tapi) [Y]: " with_tools
+  read -r -p "$(echo -e "Do you wish to generate and install default tooling? (Logger, utPLSQL, teplsql, tapi) [${BGRAY}Y${NC}]: ")" with_tools
   with_tools=${with_tools:-"Y"}
 
-  read -r -p "Install with sql(cl) or sqlplus? [sqlplus]: " SQLCLI
+  L_DEFAULT=${SQLCLI-"sqlplus"}
+  read -r -p "$(echo -e "Install with ${BUNLINE}sql(cl)${NC} or ${BUNLINE}sqlplus${NC}? [${BGRAY}${L_DEFAULT}${NC}]: ")" SQLCLI
   SQLCLI=${SQLCLI:-"sqlplus"}
 
   # apply.env
@@ -595,15 +613,16 @@ generate() {
 
 is_any_schema_installed () {
     ${SQLCLI} -S -L "${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION}" <<!
-    set heading off
+    "set heading off
     set feedback off
     set pages 0
     with checksql as (select count(1) cnt
   from all_users
  where username in (upper('${DATA_SCHEMA}'), upper('${LOGIC_SCHEMA}'), upper('${APP_SCHEMA}') ))
  select case when cnt > 1 then 'true' else 'false' end ding
-   from checksql;
+   from checksql;"
 !
+
 }
 
 export_schema() {
