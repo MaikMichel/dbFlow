@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 #echo "Your script args ($#) are: $@"
 
-usage() {
-  echo -e "${BYELLOW}.dbFlow/apply.sh${NC} - applies the given build to target database from"
+function usage() {
+  echo -e "${BWHITE}.dbFlow/apply.sh${NC} - applies the given build to target database from"
   echo -e "                   depot path, defined in environment. "
   echo ""
-  echo -e "${BYELLOW}Usage:${NC}"
+  echo -e "${BWHITE}Usage:${NC}"
   echo -e "  $0 --init --version <label>"
   echo -e "  $0 --patch --version <label> [--noextract] [--redolog <old-logfile>]"
   echo
-  echo -e "${BYELLOW}Options:${NC}"
+  echo -e "${BWHITE}Options:${NC}"
   echo -e "  -h | --help             - Show this screen"
   echo -e "  -d | --debug            - Show additionaly output messages"
   echo -e "  -i | --init             - Flag to install a full installable artifact "
@@ -22,7 +22,7 @@ usage() {
   echo -e "                            Can be used to extract files manually or use a allready extracted build"
   echo -e "  -r | --redolog          - Optional to redo an installation and skip installation-step allready run"
   echo ""
- 	echo -e "${BYELLOW}Examples:${NC}"
+ 	echo -e "${BWHITE}Examples:${NC}"
   echo -e "  $0 --init --version 1.0.0"
   echo -e "  $0 --patch --version 1.1.0"
   echo -e "  $0 --patch --version 1.1.0 --noextract --redolog ../depot/master/old_logfile.log"
@@ -214,10 +214,7 @@ function check_params() {
   exec &> >(tee -a "$log_file")
 }
 
-
-
-print_info()
-{
+function print_info() {
   timelog "Installing    ${BWHITE}${mode} ${version}${NC}"
   timelog "----------------------------------------------------------"
   timelog "Mode:         ${BWHITE}$mode${NC}"
@@ -262,9 +259,7 @@ print_info()
   timelog
 }
 
-
-extract_patchfile()
-{
+function extract_patchfile() {
   if [[ ${must_extract} == "TRUE" ]]; then
     # check if patch exists
     if [[ -e ${install_source_file} ]]; then
@@ -289,7 +284,7 @@ extract_patchfile()
   fi
 }
 
-prepare_redo(){
+function prepare_redo() {
   if [[ -f "${oldlogfile}" ]]; then
     timelog "parsing redolog ${oldlogfile}"
 
@@ -340,8 +335,7 @@ prepare_redo(){
   fi
 }
 
-read_db_pass()
-{
+function read_db_pass() {
   if [[ -z "$DB_APP_PWD" ]]; then
     ask4pwd "Enter Password for deployment user ${DB_APP_USER} on ${DB_TNS}: "
     DB_APP_PWD=${pass}
@@ -350,10 +344,7 @@ read_db_pass()
   fi
 }
 
-
-
-remove_dropped_files()
-{
+function remove_dropped_files() {
   timelog "Check if any file should be removed ..."
   if [[ -e $remove_old_files ]]; then
     # loop throug content
@@ -366,7 +357,7 @@ remove_dropped_files()
   fi
 }
 
-execute_global_hook_scripts() {
+function execute_global_hook_scripts() {
   local entrypath=$1    # pre or post
   local targetschema=""
 
@@ -418,7 +409,7 @@ execute_global_hook_scripts() {
   fi
 }
 
-clear_db_schemas_on_init() {
+function clear_db_schemas_on_init() {
   if [[ "${mode}" == "init" ]]; then
     timelog "INIT - Mode, Schemas will be cleared"
     # loop through schemas reverse
@@ -431,7 +422,7 @@ clear_db_schemas_on_init() {
   fi
 }
 
-validate_connections(){
+function validate_connections() {
   # loop through schemas
   for schema in "${SCHEMAS[@]}"
   do
@@ -440,8 +431,7 @@ validate_connections(){
 
 }
 
-install_db_schemas()
-{
+function install_db_schemas() {
   cd "${basepath}" || exit
 
   # execute all files in global pre path
@@ -491,7 +481,7 @@ install_db_schemas()
   execute_global_hook_scripts "db/.hooks/post/${mode}"
 }
 
-set_rest_publish_state() {
+function set_rest_publish_state() {
   cd "${basepath}" || exit
   local publish=$1
   if [[ -d "rest" ]]; then
@@ -554,8 +544,7 @@ set_rest_publish_state() {
 }
 
 
-
-set_apps_unavailable() {
+function set_apps_unavailable() {
   cd "${basepath}" || exit
 
   if [[ -d "apex" ]]; then
@@ -621,7 +610,7 @@ End;
 
 }
 
-set_apps_available() {
+function set_apps_available() {
   cd "${basepath}" || exit
 
   if [[ -d "apex" ]]; then
@@ -696,7 +685,7 @@ set_apps_available() {
 
 }
 
-install_apps() {
+function install_apps() {
 
   cd "${basepath}" || exit
 
@@ -779,7 +768,7 @@ install_apps() {
 # Function to install REST-Services
 #######################################
 
-install_rest() {
+function install_rest() {
   cd "${basepath}" || exit
 
   rest_install_file=rest_${mode}_${version}.sql
@@ -839,7 +828,7 @@ install_rest() {
 
 # when changelog is found and changelog template is defined then
 # execute template on configured schema apply.env:CHANGELOG_SCHEMA=?
-process_changelog() {
+function process_changelog() {
   chlfile=changelog_${mode}_${version}.md
   tplfile=reports/changelog/template.sql
   if [[ -f ${chlfile} ]]; then
@@ -880,7 +869,7 @@ process_changelog() {
   fi
 }
 
-post_message_to_teams() {
+function post_message_to_teams() {
   cd "${basepath}" || exit
 
   local TITLE=$1
@@ -902,7 +891,7 @@ post_message_to_teams() {
   fi
 }
 
-process_logs() {
+function process_logs() {
   # remove colorcodes from file
   echo "Processing logs"
   cat "${full_log_file}" | sed -r "s/\x1B\[([0-9]{1,3}((;[0-9]{1,3})*)?)?[m|K]//g" > "${full_log_file}.colorless"
@@ -913,7 +902,7 @@ process_logs() {
   mv ./*"${mode}"*"${version}"* "${target_finalize_path}"
 }
 
-manage_result() {
+function manage_result() {
   cd "${basepath}" || exit
 
   local target_move=$1
@@ -994,7 +983,7 @@ manage_result() {
 }
 
 #################################################################################################
-notify() {
+function notify() {
     [[ ${1} = 0 ]] || echo ❌ EXIT "${1}"
     # you can notify some external services here,
     # ie. Slack webhook, Github commit/PR etc.
@@ -1014,11 +1003,11 @@ trap '(exit 130)' INT
 trap '(exit 143)' TERM
 trap 'rc=$?; notify $rc; exit $rc' EXIT
 
-# validate and check existence of vars defined in apply.env and build.env
-check_vars
-
 # validate params this script was called with
 check_params "$@"
+
+# validate and check existence of vars defined in apply.env and build.env
+check_vars
 
 # print some global vars to output
 print_info

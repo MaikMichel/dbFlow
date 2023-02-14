@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # echo "Your script args ($#) are: $@"
 
-usage() {
+function usage() {
   echo -e "${BWHITE}.dbFlow/build.sh${NC} - build an installable artifact with eiter"
-  echo -e "                   all (${BYELLOW}init${NC}) or only with changed (${BYELLOW}patch${NC}) files"
+  echo -e "                   all (${BWHITE}init${NC}) or only with changed (${BWHITE}patch${NC}) files"
   echo ""
   echo -e "${BWHITE}Usage:${NC}"
   echo -e "  $0 --init --version <label>"
@@ -1081,11 +1081,11 @@ function call_apply_on_install() {
 ###############################################################################################
 
 
-# validate and check existence of vars defined in build.env
-check_vars
-
 # validate params this script was called with
 check_params "$@"
+
+# validate and check existence of vars defined in build.env
+check_vars
 
 # define some vars
 setup_env

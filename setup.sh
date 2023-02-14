@@ -2,28 +2,34 @@
 # echo "Your script args ($#) are: $@"
 
 
-usage() {
-  echo -e "${BYELLOW}setup [dbFlow]${NC} - generate project structure and install dependencies. "
+function usage() {
+  echo -e "${BWHITE}setup [${CYAN}dbFlow${NC}${BWHITE}]${NC} - generate project structure and install dependencies. "
 
   echo
   echo -e "${BWHITE}USAGE${NC}"
-  echo -e "  ${0} <COMMAND>"
+  echo -e "  ${0} --generate <project-name> [--envonly]"
+  echo -e "  ${0} --install [--force]"
+  echo -e "  ${0} --copyto <target-path>"
   echo
-  echo -e "${BWHITE}COMMANDS${NC}"
-  echo -e "  generate <project-name>  ${BWHITE}*req${NC}    generates project structure"
-  echo -e "    -e (env files only)            only environment files will be created, no folders"
+  echo -e "${BWHITE}Options${NC}"
+  echo -e "  -h | --help                    - Show this screen"
+  echo -e "  -d | --debug                   - Show additionaly output messages"
   echo -e ""
-  echo -e "  install                          installs project dependencies to db"
-  echo -e "    -f (force overwrite)           features will be reinstalled if exists"
-  echo -e "                                   ${RED}schemas/users will be dropped and recreated${NC}"
+  echo -e "  -g | --generate <project-name> - generates project structure"
+  echo -e "                                   project-name is required, other options are read from env"
+  echo -e "  -e | --envonly                 - option on generate, to create only environment files"
   echo -e ""
-  echo -e "  copyto <target-path>      ${BWHITE}*req${NC}   copy db/_setup, env files, and .dbFlow to target"
+  echo -e "  -i | --install                 - installs project dependencies to db"
+  echo -e "  -f | --force                   - features will be reinstalled if exists"
+  echo -e "                                 - ${RED}schemas/users will be dropped and recreated${NC}"
+  echo -e "                                 - ${RED}workspace will be dropped and recreated${NC}"
+  echo -e ""
+  echo -e "  - c | --copyto <target-path>   - copy db/_setup, env files, and .dbFlow to target"
   echo
-  echo
-
-  echo -e "${BWHITE}EXAMPLE${NC}"
-  echo -e "  $0 generate example"
-  echo -e "  $0 install"
+  echo -e "${BWHITE}Examples:${NC}"
+  echo -e "  ${0} --generate mytest"
+  echo -e "  ${0} --install"
+  echo -e "  ${0} --copyto \"../../instances/build\""
   echo
   echo
   exit 1
@@ -48,7 +54,7 @@ basepath=$(pwd)
 # array of subdirectories inside $targetpath to scan for executables (sh/sql)
 array=( tablespaces directories users features workspaces acls )
 
-notify() {
+function notify() {
     [[ ${1} = 0 ]] || echo ❌ EXIT "${1}"
     # you can notify some external services here,
     # ie. Slack webhook, Github commit/PR etc.
@@ -59,7 +65,7 @@ trap '(exit 130)' INT
 trap '(exit 143)' TERM
 trap 'rc=$?; notify $rc; exit $rc' EXIT
 
-print2envsql() {
+function print2envsql() {
   echo define project="${PROJECT}" > "${targetpath}/env.sql"
 
   if [[ -n ${APP_SCHEMA} ]]; then
@@ -87,7 +93,8 @@ print2envsql() {
   fi
 }
 
-show_generate_summary() {
+function show_generate_summary() {
+  local env_only=$2
   # target environment
 [ ! -f ./build.env ] || source ./build.env
 [ ! -f ./apply.env ] || source ./apply.env
@@ -96,14 +103,18 @@ show_generate_summary() {
   echo -e
   echo -e "${BGREEN}Congratulations${NC}"
   echo -e "Your project ${BWHITE}$PROJECT${NC} has been ${GREEN}successfully${NC} created. "
-  echo -e "Scripts have been added inside directory: ${CYAN}db/_setup${NC} that allow you "
-  echo -e "to create the respective schemas, workspaces as well as ACLs and features, as long "
-  echo -e "as you specified them during the configuration. "
-
+  if [[ ${env_only} == "NO" ]]; then
+    echo -e "Scripts have been added inside directory: ${CYAN}db/_setup${NC} that allow you "
+    echo -e "to create the respective schemas, workspaces as well as ACLs and features, as long "
+    echo -e "as you specified them during the configuration. "
+  fi
   echo
   echo -e "${BWHITE}${PROJECT} - directory structure${NC}"
+  if [[ ${env_only} == "NO" ]]; then
   printf "|-- %-22b %b\n" "${DEPOT_PATH}" ">> Path to store your build artifacts"
+  fi
   printf "|-- ${CYAN}%-22b${NC} %b\n" ".dbFlow" ">> ${CYAN}dbFlow itself${NC}"
+  if [[ ${env_only} == "NO" ]]; then
   printf "|-- %-22b %b\n" ".hooks" ">> Scripts/Tasks to run pre or post deployment"
   printf "|-- %-22b %b\n" "apex" ">> APEX applications in subfolders (f123)"
   if [[ ${PROJECT_MODE} = "FLEX" ]]; then
@@ -136,10 +147,18 @@ show_generate_summary() {
     printf "|   %-22b %b\n" "|   |-- module" ">> The REST modules in subfolders (api)"
   fi
   printf "|-- %-22b %b\n" "static" ">> StaticFiles used to uploads go here (managed by dbFlux)"
+  fi
   printf "%-26b %b\n" "apply.env" ">> Environment configuration added to .gitignore"
   printf "%-26b %b\n" "build.env" ">> Project configuration"
   echo
-  echo -e "To execute the installation just run: ${CYAN}.dbFlow/setup.sh install${NC}"
+  if [[ ${env_only} == "NO" ]]; then
+  echo -e "To execute the installation just run: ${CYAN}.dbFlow/setup.sh --install${NC}"
+  else
+  echo -e "This was an environment only generation. This is meant for environments you are"
+  echo -e "not allowed to install your initial setup on your own. For example create users"
+  echo -e "and install features. "
+  echo -e "To apply any patch you built run e.g. ${CYAN}.dbFlow/apply.sh --patch --version 1.2.3${NC}"
+  fi
   echo
   echo -e "For your daily work I recommend the use of the extension: "
   echo -e "${BLBACK}dbFlux - https://marketplace.visualstudio.com/items?itemName=MaikMichel.dbflow${NC}"
@@ -147,15 +166,17 @@ show_generate_summary() {
   echo
   echo -e "To configure changelog settings, just modify corresponding parameters in ${BWHITE}build.env${NC}"
   echo
+  if [[ ${env_only} == "NO" ]]; then
   echo -e "${BORANGE}Keep in mind that the script to create the workspace ${BWHITE}$PROJECT${NC} ${BORANGE}will drop the one with the same name!${NC}"
+  fi
 }
 
 
-remove2envsql() {
+function remove2envsql() {
   rm -f "${basepath}/${targetpath}/env.sql"
 }
 
-install() {
+function install() {
   local yes=${1:-"NO"}
 
   if [[ $yes == "YES" ]]; then
@@ -259,7 +280,7 @@ install() {
 
 } # install
 
-copytopath() {
+function copytopath() {
   local target_path=${1}
 
   [[ -d "${target_path}/db/_setup" ]] || mkdir -p "${target_path}/db"
@@ -283,13 +304,14 @@ copytopath() {
   echo "to install your base dependencies"
 }
 
-generate() {
+function generate() {
   local project_name=$1
   local env_only=$2
+  echo -e "Name of the project: ${BWHITE}${project_name}${NC}"
 
-  local L_DEFAULT=${PROJECT_MODE-"M"}
-  read -r -p "$(echo -e "Which dbFLow project type do you want to create? ${BUNLINE}S${NC}ingle, ${BUNLINE}M${NC}ulti or ${BUNLINE}F${NC}lex [${BGRAY}${L_DEFAULT:0:1}${NC}]: ")" db_scheme_type
-  db_scheme_type=${db_scheme_type:-"M"}
+  local L_DEFAULT_SB_SCHEME_TYPE=${PROJECT_MODE-"M"}
+  read -r -p "$(echo -e "Which dbFLow project type do you want to create? ${BUNLINE}S${NC}ingle, ${BUNLINE}M${NC}ulti or ${BUNLINE}F${NC}lex [${BGRAY}${L_DEFAULT_SB_SCHEME_TYPE:0:1}${NC}]: ")" db_scheme_type
+  db_scheme_type=${db_scheme_type:-"${L_DEFAULT_SB_SCHEME_TYPE:0:1}"}
 
   # create directories
   if [[ ${env_only} == "NO" ]]; then
@@ -308,26 +330,27 @@ generate() {
   fi
 
   # write .env files
-  local L_DEFAULT=${BUILD_BRANCH-"build"}
-  read -r -p "$(echo -e "When running release tests, what is your prefered branch name [${BGRAY}${L_DEFAULT}${NC}]: ")" build_branch
+  local L_DEFAULT_BUILD_BRANCH=${BUILD_BRANCH-"build"}
+  read -r -p "$(echo -e "When running release tests, what is your prefered branch name [${BGRAY}${L_DEFAULT_BUILD_BRANCH}${NC}]: ")" build_branch
 
   if [[ -z ${CHANGELOG_SCHEMA} ]]; then
-    L_DEFAULT="N"
+    L_DEFAULT_YN="N"
   else
-    L_DEFAULT="Y"
+    L_DEFAULT_YN="Y"
   fi
-  read -r -p "$(echo -e "Would you like to process changelogs during deployment [${BGRAY}${L_DEFAULT}${NC}]: ")" create_changelogs
+  read -r -p "$(echo -e "Would you like to process changelogs during deployment [${BGRAY}${L_DEFAULT_YN}${NC}]: ")" create_changelogs
 
-  if [[ $(toLowerCase "${create_changelogs:-y}") == "y" ]]; then
+  if [[ $(toLowerCase "${create_changelogs:-${L_DEFAULT_YN}}") == "y" ]]; then
     if [[ $(toLowerCase "${db_scheme_type}") == "s" ]]; then
       # when SingleSchema then there is only one possibility
       chl_schema=${project_name}
+      L_DEFAULT_CHANGELOG_SCHEMA=${chl_schema}
     elif [[ $(toLowerCase "${db_scheme_type}") == "f" ]]; then
-      L_DEFAULT=${CHANGELOG_SCHEMA-"${project_name}_app"}
-      read -r -p "$(echo -e "What is the schema name the changelog is processed with [${BGRAY}${L_DEFAULT}${NC}]: ")" chl_schema
+      L_DEFAULT_CHANGELOG_SCHEMA=${CHANGELOG_SCHEMA-"${project_name}_app"}
+      read -r -p "$(echo -e "What is the schema name the changelog is processed with [${BGRAY}${L_DEFAULT_CHANGELOG_SCHEMA}${NC}]: ")" chl_schema
     elif [[ $(toLowerCase "${db_scheme_type}") == "m" ]]; then
-      L_DEFAULT=${CHANGELOG_SCHEMA-"${project_name}_app"}
-      read -r -p "$(echo -e "What is the schema the changelog is processed with (${BUNLINE}${project_name}_data${NC}, ${BUNLINE}${project_name}_logic${NC}, ${BUNLINE}${project_name}_app${NC}) [${BGRAY}${L_DEFAULT}${NC}]: ")" chl_schema
+      L_DEFAULT_CHANGELOG_SCHEMA=${CHANGELOG_SCHEMA-"${project_name}_app"}
+      read -r -p "$(echo -e "What is the schema the changelog is processed with (${BUNLINE}${project_name}_data${NC}, ${BUNLINE}${project_name}_logic${NC}, ${BUNLINE}${project_name}_app${NC}) [${BGRAY}${L_DEFAULT_CHANGELOG_SCHEMA}${NC}]: ")" chl_schema
     fi
   fi
 
@@ -364,7 +387,7 @@ generate() {
 
     echo ""
     echo "# Name of the branch, where release tests are build"
-    echo "BUILD_BRANCH=${build_branch:-build}"
+    echo "BUILD_BRANCH=${build_branch:-${L_DEFAULT_BUILD_BRANCH}}"
     echo ""
 
 
@@ -378,8 +401,8 @@ generate() {
     echo "# keys to link directly to your ticketsystem using TICKET_URL"
 
 
-    if [[ $(toLowerCase "${create_changelogs:-y}") == "y" ]]; then
-      echo "CHANGELOG_SCHEMA=${chl_schema:-${project_name}_app}"
+    if [[ $(toLowerCase "${create_changelogs:-${L_DEFAULT_YN}}") == "y" ]]; then
+      echo "CHANGELOG_SCHEMA=${chl_schema:-${L_DEFAULT_CHANGELOG_SCHEMA}}"
 
       if [[ ${env_only} == "NO" ]]; then
         echo "INTENT_PREFIXES=( Feat Fix )"
@@ -397,7 +420,7 @@ generate() {
     else
       echo "# copy template to reports/changelog folder"
       echo "# cp .dbFlow/scripts/changelog_template.sql ${chltemplate}"
-      echo "# CHANGELOG_SCHEMA=${project_name}_app}"
+      echo "# CHANGELOG_SCHEMA=PROCESSING_SCHEMA"
       echo "# INTENT_PREFIXES=( Feat Fix )"
       echo "# INTENT_NAMES=( Features Fixes )"
       echo "# INTENT_ELSE=\"Others\""
@@ -408,13 +431,13 @@ generate() {
   } > build.env
 
   # ask for some vars to put into file
-  local L_DEFAULT=${DB_TNS-"localhost:1521/xepdb1"}
-  read -r -p "$(echo -e "Enter database connections [${BGRAY}${L_DEFAULT}${NC}]: ")" db_tns
-  db_tns=${db_tns:-"localhost:1521/xepdb1"}
+  local L_DEFAULT_DB_TNS=${DB_TNS-"localhost:1521/xepdb1"}
+  read -r -p "$(echo -e "Enter database connections [${BGRAY}${L_DEFAULT_DB_TNS}${NC}]: ")" db_tns
+  db_tns=${db_tns:-"${L_DEFAULT_DB_TNS}"}
 
-  local L_DEFAULT=${DB_ADMIN_USER-"sys"}
-  read -r -p "$(echo -e "Enter username of admin user (${BUNLINE}admin${NC}, ${BUNLINE}sys${NC}, ...) [${BGRAY}${L_DEFAULT}${NC}]: ")" db_admin_user
-  db_admin_user=${db_admin_user:-"sys"}
+  local L_DEFAULT_DB_ADMIN_USER=${DB_ADMIN_USER-"sys"}
+  read -r -p "$(echo -e "Enter username of admin user (${BUNLINE}admin${NC}, ${BUNLINE}sys${NC}, ...) [${BGRAY}${L_DEFAULT_DB_ADMIN_USER}${NC}]: ")" db_admin_user
+  db_admin_user=${db_admin_user:-"${L_DEFAULT_DB_ADMIN_USER}"}
 
   ask4pwd "$(echo -e "Enter password for ${BUNLINE}${db_admin_user}${NC} [${BGRAY}leave blank and you will be asked for${NC}]: ")"
   if [[ ${pass} != "" ]]; then
@@ -422,30 +445,34 @@ generate() {
   fi
 
   if [[ $(toLowerCase "${db_scheme_type}") != "s" ]]; then
-    L_DEFAULT=${DB_APP_USER-"${project_name}_depl"}
-    ask4pwd "$(echo -e "Enter password for deployment_user (proxyuser: ${BUNLINE}${L_DEFAULT}${NC}) [${BGRAY}leave blank and you will be asked for${NC}]: ")"
+    L_DEFAULT_DB_APP_USER=${DB_APP_USER-"${project_name}_depl"}
+    ask4pwd "$(echo -e "Enter password for deployment_user (proxyuser: ${BUNLINE}${L_DEFAULT_DB_APP_USER}${NC}) [${BGRAY}leave blank and you will be asked for${NC}]: ")"
   else
-    L_DEFAULT=${DB_APP_USER-"${project_name}"}
-    ask4pwd "$(echo -e "Enter password for user ${BUNLINE}${L_DEFAULT}${NC} [${BGRAY}leave blank and you will be asked for${NC}]: ")"
+    L_DEFAULT_DB_APP_USER=${DB_APP_USER-"${project_name}"}
+    ask4pwd "$(echo -e "Enter password for user ${BUNLINE}${L_DEFAULT_DB_APP_USER}${NC} [${BGRAY}leave blank and you will be asked for${NC}]: ")"
   fi
   if [[ ${pass} != "" ]]; then
     db_app_pwd=`echo "${pass}" | base64`
   fi
 
-  L_DEFAULT=${DEPOT_PATH-"_depot"}
-  read -r -p "$(echo -e "Enter path to depot [${BGRAY}${L_DEFAULT}${NC}]: ")" depot_path
-  depot_path=${depot_path:-"_depot"}
+  L_DEFAULT_DEPOT_PATH=${DEPOT_PATH-"_depot"}
+  read -r -p "$(echo -e "Enter path to depot [${BGRAY}${L_DEFAULT_DEPOT_PATH}${NC}]: ")" depot_path
+  depot_path=${depot_path:-"${L_DEFAULT_DEPOT_PATH}"}
 
-  L_DEFAULT=${STAGE-"develop"}
-  read -r -p "$(echo -e "Enter stage of this configuration mapped to branch (${BUNLINE}develop${NC}, ${BUNLINE}test${NC}, ${BUNLINE}master${NC}) [${BGRAY}${L_DEFAULT}${NC}]: ")" stage
-  stage=${stage:-"develop"}
+  L_DEFAULT_STAGE=${STAGE-"develop"}
+  read -r -p "$(echo -e "Enter stage of this configuration mapped to branch (${BUNLINE}develop${NC}, ${BUNLINE}test${NC}, ${BUNLINE}master${NC}) [${BGRAY}${L_DEFAULT_STAGE}${NC}]: ")" stage
+  stage=${stage:-"${L_DEFAULT_STAGE}"}
 
-  read -r -p "$(echo -e "Do you wish to generate and install default tooling? (Logger, utPLSQL, teplsql, tapi) [${BGRAY}Y${NC}]: ")" with_tools
-  with_tools=${with_tools:-"Y"}
+  if [[ ${env_only} == "NO" ]]; then
+    read -r -p "$(echo -e "Do you wish to generate and install default tooling? (Logger, utPLSQL, teplsql, tapi) [${BGRAY}Y${NC}]: ")" with_tools
+    with_tools=${with_tools:-"Y"}
+  else
+    with_tools="N"
+  fi
 
-  L_DEFAULT=${SQLCLI-"sqlplus"}
-  read -r -p "$(echo -e "Install with ${BUNLINE}sql(cl)${NC} or ${BUNLINE}sqlplus${NC}? [${BGRAY}${L_DEFAULT}${NC}]: ")" SQLCLI
-  SQLCLI=${SQLCLI:-"sqlplus"}
+  L_DEFAULT_SQLCLI=${SQLCLI-"sqlplus"}
+  read -r -p "$(echo -e "Install with ${BUNLINE}sql(cl)${NC} or ${BUNLINE}sqlplus${NC}? [${BGRAY}${L_DEFAULT_SQLCLI}${NC}]: ")" SQLCLI
+  SQLCLI=${SQLCLI:-"${L_DEFAULT_SQLCLI}"}
 
   # apply.env
   {
@@ -453,11 +480,7 @@ generate() {
     echo "DB_TNS=${db_tns}"
     echo ""
     echo "# Deployment User"
-    if [[ $(toLowerCase "${db_scheme_type}") != "s" ]]; then
-      echo "DB_APP_USER=${project_name}_depl"
-    else
-      echo "DB_APP_USER=${project_name}"
-    fi
+    echo "DB_APP_USER=${L_DEFAULT_DB_APP_USER}"
     if [[ ${db_app_pwd} != "" ]]; then
       echo "DB_APP_PWD=\"!${db_app_pwd}\""
     else
@@ -608,189 +631,101 @@ generate() {
     fi
   fi
 
-  show_generate_summary "${project_name}"
+  show_generate_summary "${project_name}" "${env_only}"
 } # generate
 
-is_any_schema_installed () {
+function is_any_schema_installed () {
     ${SQLCLI} -S -L "${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION}" <<!
-    "set heading off
+    set heading off
     set feedback off
     set pages 0
     with checksql as (select count(1) cnt
   from all_users
  where username in (upper('${DATA_SCHEMA}'), upper('${LOGIC_SCHEMA}'), upper('${APP_SCHEMA}') ))
  select case when cnt > 1 then 'true' else 'false' end ding
-   from checksql;"
+   from checksql;
 !
 
 }
 
-export_schema() {
-  local targetschema=${1:-"ALL"}
-  local object_name=${2:-"ALL"}
 
+function function check_params_and_run_command() {
+  debug="n" help="h" gen="n" inst="n" pname="-" cptfld="-" envonly="NO" force="NO"
 
-  # when defined get it
-  ALL_SCHEMAS=( "${DATA_SCHEMA}" "${LOGIC_SCHEMA}" "${APP_SCHEMA}" )
-  SCHEMAS=($(printf "%s\n" "${ALL_SCHEMAS[@]}" | sort -u))
-  # if length is equal than ALL_SCHEMAS, otherwise distinct
-  if [[ ${#SCHEMAS[@]} == ${#ALL_SCHEMAS[@]} ]]; then
-    SCHEMAS=(${ALL_SCHEMAS[@]})
-  fi
-  if [[ ${targetschema} != "ALL" ]]; then
-    if [[ ! " ${SCHEMAS[@]} " =~ " ${targetschema} " ]]; then
-      echo_error "ERROR: unknown targetschema ${targetschema} (use ALL or anything of: ${SCHEMAS[*]})"
-      exit 1
-    fi
-  fi
-
-  echo "targetschema: ${targetschema}"
-  echo "object_name:  $object_name"
-
-  # export file wegräumen
-  for file in $(ls db | grep 'exp.zip')
-  do
-    rm "db/${file}"
+  while getopts_long 'dhg:ic:ef debug help generate: install copyto: envonly force' OPTKEY "${@}"; do
+      case ${OPTKEY} in
+          'd'|'debug')
+              d="y"
+              ;;
+          'h'|'help')
+              h="y"
+              ;;
+          'g'|'generate')
+              g="y"
+              pname="${OPTARG}"
+              ;;
+          'i'|'install')
+              i="y"
+              ;;
+          'c'|'copyto')
+              c="y"
+              cptfld="${OPTARG}"
+              ;;
+          'e'|'envonly')
+              envonly="YES"
+              ;;
+          'f'|'force')
+              force="YES"
+              ;;
+          '?')
+              echo_error "INVALID OPTION -- ${OPTARG}" >&2
+              usage
+              ;;
+          ':')
+              echo_error "MISSING ARGUMENT for option -- ${OPTARG}" >&2
+              usage
+              ;;
+          *)
+              echo_error "UNIMPLEMENTED OPTION -- ${OPTKEY}" >&2
+              usage
+              ;;
+      esac
   done
 
-
-  if [[ -z "$DB_APP_PWD" ]]; then
-    ask4pwd "Enter password für user ${DB_APP_USER}: "
-    DB_APP_PWD=${pass}
+  # help first
+  if [[ -n $h ]] && [[ $h == "y" ]]; then
+    usage
   fi
 
-  if [[ ${targetschema} == "ALL" ]]; then
-    for schema in "${SCHEMAS[@]}"
-    do
-      echo_warning " ... exporting ${schema}"
-      exit | sql -s "$(get_connect_string "${schema}")" @".dbFlow/scripts/schema_export/export.sql" "${object_name}"
-      if [[ -f "db/${schema}.exp.zip" ]]; then
-        unzip -qo "db/${schema}.exp.zip" -d "db/${schema}"
-        rm "db/${schema}.exp.zip"
-      else
-        echo_error "no export artifacts found!"
-      fi
-    done
-  else
-    echo_warning " ... exporting ${targetschema}"
-    exit | sql -s "$(get_connect_string "${targetschema}")" @".dbFlow/scripts/schema_export/export.sql" "${object_name}"
-    if [[ -f "db/${targetschema}.exp.zip" ]]; then
-      unzip -qo "db/${targetschema}.exp.zip" -d "db/${targetschema}"
-      rm "db/${targetschema}.exp.zip"
-    else
-      echo_error "no export artifacts found!"
-    fi
+  if [[ $# -lt 1 ]]; then
+    echo -e "${RED}No parameters found${NC}" 1>&2
+    usage
   fi
 
-  # for file in $(ls db | grep 'exp.zip')
-  # do
-  #   unzip -qo "db/${file}" -d "db/${targetschema}"
+  if [[ -n $g ]] && [[ ${pname} == "-" ]]; then
+    echo -e "${RED}Missing argument project name for command generate${NC}" 1>&2
+    usage
+  fi
 
-  #   rm "db/${file}"
-  # done
+  if [[ -n $c ]] && [[ ${cptfld} == "-" ]]; then
+    echo -e "${RED}Missing argument target folder for command copyto${NC}" 1>&2
+    usage
+  fi
 
-  echo -e "${GREEN}Done${NC}"
-} # export_schema
 
+  ####
+  if [[ -n $g ]] && [[ ${pname} != "-" ]]; then
+    generate ${pname} ${envonly}
+  fi
 
-if [[ $# -lt 1 ]]; then
-  echo -e "${RED}No parameters found${NC}" 1>&2
-  usage
-else
+  if [[ -n $c ]] && [[ ${cptfld} != "-" ]]; then
+    copytopath ${cptfld}
+  fi
 
-  # Parse options to the `setup` command
-  while getopts ":h" opt; do
-    case ${opt} in
-      h | help)
-        usage
-        ;;
-      \? )
-        echo -e  "${RED}Invalid Option: -$OPTARG${NC}" 1>&2
-        usage
-      ;;
-    esac
-  done
-  shift $((OPTIND -1))
+  if [[ -n $i ]]; then
+    install ${force}
+  fi
+}
 
-  subcommand=$1; shift  # Remove 'setup' from the argument list
-  case "$subcommand" in
-    # Parse options to the install sub command
-    generate)
-      envonly="NO"
-      [[ -z ${1-} ]] \
-        && echo -e  "${RED}ERROR: You have to specify a project${NC}" \
-        && exit 1 \
-
-      project=$1; shift  # Remove 'generate' from the argument list
-
-      # Process package options
-      while getopts ":e" opt; do
-        case ${opt} in
-          e )
-            envonly="YES"
-            ;;
-          \? )
-            echo_error  "Invalid Option: -$OPTARG"
-            usage
-            ;;
-          : )
-            echo_error "Invalid Option: -$OPTARG requires an argument" 1>&2
-            usage
-            ;;
-        esac
-      done
-      shift $((OPTIND -1))
-
-      generate "${project}" $envonly
-      ;;
-    copyto)
-      [[ -z ${1-} ]] \
-        && echo -e  "${RED}ERROR: You have to specify a project${NC}" \
-        && exit 1 \
-
-      tfldr=${1}; shift  # Remove 'copyto' from the argument list
-
-      # Process package options
-      while getopts ":f" opt; do
-        case ${opt} in
-          \? )
-            echo_error  "Invalid Option: -$OPTARG"
-            usage
-            ;;
-          : )
-            echo_error "Invalid Option: -$OPTARG requires an argument" 1>&2
-            usage
-            ;;
-        esac
-      done
-      shift $((OPTIND -1))
-      #echo "generate $tfldr
-      copytopath "${tfldr}"
-      ;;
-    install)
-      force="NO"
-
-       # Process install options
-      while getopts ":f" opt; do
-        case ${opt} in
-          f )
-            force="YES"
-            ;;
-          \? )
-            echo_error "Invalid Option: -$OPTARG"
-            usage
-            ;;
-        esac
-      done
-      shift $((OPTIND -1))
-
-      install $force
-
-      ;;
-
-    *)
-      echo_error "Invalid Argument see help"
-      usage
-      ;;
-  esac
-fi
+# validate params this script was called with
+check_params_and_run_command "$@"
