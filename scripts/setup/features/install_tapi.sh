@@ -102,11 +102,11 @@ Prompt grant public synonyms
 grant execute on om_tapigen to public;
 grant execute on om_tapigen_oddgen_wrapper to public;
 
-Promp lock user: ${tapi_schema}
+Prompt lock user: ${tapi_schema}
 conn ${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION}
 alter user ${tapi_schema} account lock;
 
-Promp table-api installen
+Prompt table-api installed
 
 !
 

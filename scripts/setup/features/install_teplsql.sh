@@ -103,11 +103,11 @@ grant select, insert, delete, update on TE_TEMPLATES to public;
 grant execute on teplsql to public;
 grant execute on te_templates_api to public;
 
-Promp lock user: ${teplsql_schema}
+Prompt lock user: ${teplsql_schema}
 conn ${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION}
 alter user ${teplsql_schema} account lock;
 
-Promp tePLSQL installed
+Prompt tePLSQL installed
 
 !
 
