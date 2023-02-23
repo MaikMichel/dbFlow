@@ -4,7 +4,7 @@
 
 function usage() {
   echo -e "${BWHITE}setup [${CYAN}dbFlow${NC}${BWHITE}]${NC} - generate project structure and install dependencies. "
-
+  # Tree chars └ ─ ├ ─ │
   echo
   echo -e "${BWHITE}USAGE${NC}"
   echo -e "  ${0} --generate <project-name> [--envonly]"
@@ -17,10 +17,10 @@ function usage() {
   echo -e ""
   echo -e "  -g | --generate <project-name> - generates project structure"
   echo -e "                                   project-name is required, other options are read from env"
-  echo -e "  -e | --envonly                 - option on generate, to create only environment files"
+  echo -e "     └─[ -e | --envonly ]        - option on generate, to create only environment files"
   echo -e ""
   echo -e "  -i | --install                 - installs project dependencies to db"
-  echo -e "  -f | --force                   - features will be reinstalled if exists"
+  echo -e "     └─[ -f | --force ]          - features will be reinstalled if exists"
   echo -e "                                 - ${RED}schemas/users will be dropped and recreated${NC}"
   echo -e "                                 - ${RED}workspace will be dropped and recreated${NC}"
   echo -e ""
@@ -37,6 +37,9 @@ function usage() {
 
 # get required functions and vars
 source ./.dbFlow/lib.sh
+
+# choose CLI to call
+SQLCLI=${SQLCLI:-sqlplus}
 
 # target environment
 [ ! -f ./build.env ] || source ./build.env
@@ -64,6 +67,23 @@ function notify() {
 trap '(exit 130)' INT
 trap '(exit 143)' TERM
 trap 'rc=$?; notify $rc; exit $rc' EXIT
+
+function check_vars() {
+  # validate parameters
+  do_exit="NO"
+
+  if [[ -z $DB_TNS ]]; then
+    echo_error "TNS not defined"
+    do_exit="YES"
+  fi
+
+  ####
+  if [[ ${do_exit} == "YES" ]]; then
+    echo_warning "aborting"
+    exit 1;
+  fi
+
+}
 
 function print2envsql() {
   echo define project="${PROJECT}" > "${targetpath}/env.sql"
@@ -179,6 +199,11 @@ function remove2envsql() {
 function install() {
   local yes=${1:-"NO"}
 
+  if [[ ! -d "${targetpath}" ]]; then
+     echo_error "Project setup folder does not exists, so nothing to install. Run \"$0 --generate <project>\" at first!"
+     exit 1
+  fi
+
   if [[ $yes == "YES" ]]; then
     echo_warning "Force option detected!"
   fi
@@ -206,8 +231,12 @@ function install() {
   check_admin_connection
 
   PROJECT_INSTALLED=$(is_any_schema_installed)
-  if [[ "${PROJECT_INSTALLED}" == *"true"* ]] && [[ ${yes} == "NO" ]]; then
-    echo_error "Project allready installed and option force not recoginized. \nTry option -f to force overwrite (drop + create)"
+  WORKSPACE_INSTALLED=$(is_workspace_installed)
+
+  if ([[ "${PROJECT_INSTALLED}" == *"true"* ]] || [[ "${WORKSPACE_INSTALLED}" == *"true"* ]]) && [[ ${yes} == "NO" ]]; then
+    [[ "${PROJECT_INSTALLED}" == *"true"* ]] && echo -e "${BORANGE}One or more schemas exist${NC}"
+    [[ "${WORKSPACE_INSTALLED}" == *"true"* ]] && echo -e "${BORANGE}Workspace exists${NC}"
+    echo_error "Use option -f to force overwrite or schemas and or workspace (drop + create)"
 
     exit 1
   fi
@@ -283,9 +312,14 @@ function install() {
 function copytopath() {
   local target_path=${1}
 
-  [[ -d "${target_path}/db/_setup" ]] || mkdir -p "${target_path}/db"
-  echo "copy db/_setup to ${target_path}"
-  cp -r ./db/_setup "${target_path}"/db
+  if [[ ! -d "${targetpath}" ]]; then
+     echo_error "Project setup folder does not exists, so nothing to copy. Run \"$0 --generate <project>\" at first!"
+     exit 1
+  fi
+
+  [[ -d "${target_path}/${targetpath}" ]] || mkdir -p "${target_path}/db"
+  echo "copy ${targetpath} to ${target_path}"
+  cp -r ./${targetpath} "${target_path}"/db
 
   echo "copy env files to ${target_path}"
   cp ./build.env "${target_path}"
@@ -307,7 +341,11 @@ function copytopath() {
 function generate() {
   local project_name=$1
   local env_only=$2
-  echo -e "Name of the project: ${BWHITE}${project_name}${NC}"
+  if [[ ${env_only} == "NO" ]]; then
+    echo -e "Generate Project: ${BWHITE}${project_name}${NC}"
+  else
+    echo -e "Configure Project: ${BWHITE}${project_name}${NC} (Environment only option)"
+  fi
 
   local L_DEFAULT_SB_SCHEME_TYPE=${PROJECT_MODE-"M"}
   read -r -p "$(echo -e "Which dbFLow project type do you want to create? ${BUNLINE}S${NC}ingle, ${BUNLINE}M${NC}ulti or ${BUNLINE}F${NC}lex [${BGRAY}${L_DEFAULT_SB_SCHEME_TYPE:0:1}${NC}]: ")" db_scheme_type
@@ -635,22 +673,38 @@ function generate() {
 } # generate
 
 function is_any_schema_installed () {
-    ${SQLCLI} -S -L "${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION}" <<!
+    ${SQLCLI} -S -L "${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION}" << EOF
     set heading off
     set feedback off
     set pages 0
     with checksql as (select count(1) cnt
-  from all_users
- where username in (upper('${DATA_SCHEMA}'), upper('${LOGIC_SCHEMA}'), upper('${APP_SCHEMA}') ))
- select case when cnt > 1 then 'true' else 'false' end ding
-   from checksql;
-!
+                        from all_users
+                       where username in (upper('${DATA_SCHEMA}'), upper('${LOGIC_SCHEMA}'), upper('${APP_SCHEMA}')))
+    select case when nvl(cnt, 0) = 0 then 'false' else 'true' end
+      from checksql;
+
+EOF
+
+}
+
+function is_workspace_installed () {
+  ${SQLCLI} -S -L "${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION}" << EOF
+    set heading off
+    set feedback off
+    set pages 0
+    with checksql as (select count(1) cnt
+                        from apex_workspaces
+                       where workspace = upper('${WORKSPACE}'))
+    select case when nvl(cnt, 0) = 0 then 'false' else 'true' end
+      from checksql;
+
+EOF
 
 }
 
 
-function function check_params_and_run_command() {
-  debug="n" help="h" gen="n" inst="n" pname="-" cptfld="-" envonly="NO" force="NO"
+function check_params_and_run_command() {
+  debug="n" help="h" gen="n" inst="n" pname="-" cptfld="-" envonly="NO" force="NO" withenvoption="NO"
 
   while getopts_long 'dhg:ic:ef debug help generate: install copyto: envonly force' OPTKEY "${@}"; do
       case ${OPTKEY} in
@@ -673,6 +727,7 @@ function function check_params_and_run_command() {
               ;;
           'e'|'envonly')
               envonly="YES"
+              withenvoption="YES"
               ;;
           'f'|'force')
               force="YES"
@@ -712,18 +767,37 @@ function function check_params_and_run_command() {
     usage
   fi
 
-
-  ####
+    ####
   if [[ -n $g ]] && [[ ${pname} != "-" ]]; then
-    generate ${pname} ${envonly}
+    if [[ $# -gt 2 ]] && [[ ${withenvoption} == "NO" ]]; then
+      echo -e "${RED}Unknown argument(s) detected${NC}" 1>&2
+      usage
+    else
+      if [[ "${pname}" =~ ^[a-zA-Z][a-zA-Z0-9_]*$ ]]; then
+        generate ${pname} ${envonly}
+        exit 0
+      else
+        echo -e "${RED}Invalid project name! Project name must be a valid schema name.${NC}" 1>&2
+        exit 1
+      fi
+    fi
   fi
 
   if [[ -n $c ]] && [[ ${cptfld} != "-" ]]; then
     copytopath ${cptfld}
+    exit 0
   fi
 
   if [[ -n $i ]]; then
     install ${force}
+    exit 0
+  fi
+
+  ####
+
+  if [[ $# -gt 0 ]]; then
+    echo -e "${RED}Unknown arguments${NC}" 1>&2
+    usage
   fi
 }
 
