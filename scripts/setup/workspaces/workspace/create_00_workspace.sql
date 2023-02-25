@@ -22,9 +22,7 @@ begin
 
   dbms_output.put_line('Workspace ^workspace allready installed!');
 
-  apex_instance_admin.remove_workspace(p_workspace         => upper('^workspace'),
-                                       p_drop_users        => 'Y',
-                                       p_drop_tablespaces  => 'Y' );
+  apex_instance_admin.remove_workspace(p_workspace         => upper('^workspace'));
 
   raise no_data_found;
 exception
