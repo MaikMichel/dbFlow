@@ -58,6 +58,13 @@ SQLCLI=${SQLCLI:-sqlplus}
 
 basepath=$(pwd)
 runfile=""
+debug="n"
+help="h"
+init="n"
+patch="n"
+version="-"
+noextract="n"
+redolog=""
 
 function check_vars() {
   # validate parameters
@@ -113,11 +120,24 @@ function check_vars() {
     exit 1;
   fi
 
+  # Defing some vars
+  app_install_file=apex_files_${version}.lst
+  remove_old_files=remove_files_${version}.lst
+
+  install_target_path=.
+  install_source_file=$install_source_path/${mode}_${version}.tar.gz
+  install_target_file=$install_target_path/${mode}_${version}.tar.gz
+
+  MDATE=`date "+%Y%m%d%H%M%S"`
+  log_file="${MDATE}_dpl_${mode}_${version}.log"
+
+  touch "${log_file}"
+  full_log_file="$( cd "$( dirname "${log_file}" )" >/dev/null 2>&1 && pwd )/${log_file}"
+
+  exec &> >(tee -a "$log_file")
 }
 
 function check_params() {
-  debug="n" help="h" init="n" patch="n" version="-" noextract="n"  redolog=""
-
   while getopts_long 'dhipv:nr: debug help init patch version: noextract redolog:' OPTKEY "${@}"; do
       case ${OPTKEY} in
           'd'|'debug')
@@ -196,22 +216,6 @@ function check_params() {
   fi
 
   oldlogfile=$redolog
-
-  # Defing some vars
-  app_install_file=apex_files_${version}.lst
-  remove_old_files=remove_files_${version}.lst
-
-  install_target_path=.
-  install_source_file=$install_source_path/${mode}_${version}.tar.gz
-  install_target_file=$install_target_path/${mode}_${version}.tar.gz
-
-  MDATE=`date "+%Y%m%d%H%M%S"`
-  log_file="${MDATE}_dpl_${mode}_${version}.log"
-
-  touch "${log_file}"
-  full_log_file="$( cd "$( dirname "${log_file}" )" >/dev/null 2>&1 && pwd )/${log_file}"
-
-  exec &> >(tee -a "$log_file")
 }
 
 function print_info() {
@@ -262,7 +266,7 @@ function print_info() {
 function extract_patchfile() {
   if [[ ${must_extract} == "TRUE" ]]; then
     # check if patch exists
-    if [[ -e ${install_source_file} ]]; then
+    if [[ -e "${install_source_file}" ]]; then
       timelog "${install_source_file} exists"
 
       # copy patch to _installed

@@ -243,7 +243,6 @@ EOF
   else
     echo_fatal "Error to connect to schema ${1}"
     echo_error "${sql_output}"
-    #echo_error ${CONN_STR}
     exit 2
   fi
 }
