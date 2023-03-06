@@ -288,6 +288,26 @@ function extract_patchfile() {
   fi
 }
 
+function validate_dbflow_version() {
+  if [[ -f "dbFlow_${mode}_${version}.version" ]]; then
+    version_apply=$(sed '/^## \[./!d;q' .dbFlow/CHANGELOG.md)
+    version_built=$(head -n 1 "dbFlow_${mode}_${version}.version")
+    if [[ "${version_apply}" == "${version_built}" ]]; then
+      timelog "dbFlow Versions matched"
+    else
+      timelog "Mismatched Versions build vs apply" "${warning}"
+      timelog ":${version_apply}: != :${version_built}:" "${warning}"
+
+      read -r -p "Do you want to proceed? " -n 1
+      echo    # (optional) move to a new line
+      if [[ ! $REPLY =~ ^[Yy]$ ]]
+      then
+          [[ "$0" = "$BASH_SOURCE" ]] && exit 1 || return 1 # handle exits from shell or function but don't exit interactive shell
+      fi
+    fi
+  fi
+}
+
 function prepare_redo() {
   if [[ -f "${oldlogfile}" ]]; then
     timelog "parsing redolog ${oldlogfile}"
@@ -964,7 +984,7 @@ function manage_result() {
   if [[ $target_move == "success" ]]; then
     post_message_to_teams "Release ${version}" "4CCC3B" "Release ${version} has been successfully applied to stage: <b>${STAGE}</b>."
 
-    echo "view output: ${basepath}/$DEPOT_PATH/$STAGE/$target_move/$version/${finallog}"
+    echo "view output: \"${basepath}/$DEPOT_PATH/$STAGE/$target_move/$version/${finallog}\""
 
     process_logs;
     exit 0
@@ -979,7 +999,7 @@ function manage_result() {
     echo_debug "possibility to specifiy the log file ${WHITE}${target_relative_path}/${log_file}${NC} as "
     echo_debug "redolog parameter. This will not repeat the steps that have already been successfully executed."
     echo_debug "${WHITE}$0 --${mode} --version ${version} --redolog ${target_relative_path}/${redolog}${NC}"
-    echo_debug "view output: ${basepath}/$DEPOT_PATH/$STAGE/$target_move/$version/${finallog}"
+    echo_debug "view output: $DEPOT_PATH/$STAGE/$target_move/$version/${finallog}"
 
     process_logs
     exit 1
@@ -1018,6 +1038,7 @@ print_info
 
 # preparation and validation
 extract_patchfile
+validate_dbflow_version
 read_db_pass
 validate_connections
 prepare_redo

@@ -962,6 +962,9 @@ function manage_artifact () {
     mv "${full_log_file}" "${targetpath}"/
     [[ -f "changelog_${mode}_${version}.md" ]] && mv "changelog_${mode}_${version}.md" "${targetpath}"/
 
+    # write dbFlow version info to control file
+    sed '/^## \[./!d;q' .dbFlow/CHANGELOG.md > "${targetpath}"/dbFlow_${mode}_${version}.version
+
     # pack directoy
     tar -C "${targetpath}" -czf "${targetpath}.tar.gz" .
 
