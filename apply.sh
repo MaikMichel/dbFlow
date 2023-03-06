@@ -308,6 +308,24 @@ function validate_dbflow_version() {
   fi
 }
 
+function validate_init_mode() {
+  # init mode is a kind of dangerous, cause everything is removed from schemas beforehand
+  if [[ "${mode}" == "init" ]]; then
+    if [[ -z ${DBFLOW_JENKINS:-} ]] && [[ "${version}" != "install" ]]; then
+      timelog "You are using init mode. All content will be dropped from schemas included in this artifact" "${warning}"
+      timelog "If you are running dbFLow inside CI/CD you can place DBFLOW_JENKINS as environment var with any value" "${warning}"
+      read -r -p "Do you want to proceed? " -n 1
+      echo    # (optional) move to a new line
+      if [[ ! $REPLY =~ ^[Yy]$ ]]
+      then
+          [[ "$0" = "$BASH_SOURCE" ]] && exit 1 || return 1 # handle exits from shell or function but don't exit interactive shell
+      fi
+    else
+      timelog "Running init on JENKINS or version is install"
+    fi
+  fi
+}
+
 function prepare_redo() {
   if [[ -f "${oldlogfile}" ]]; then
     timelog "parsing redolog ${oldlogfile}"
@@ -1029,6 +1047,7 @@ trap 'rc=$?; notify $rc; exit $rc' EXIT
 
 # validate params this script was called with
 check_params "$@"
+validate_init_mode
 
 # validate and check existence of vars defined in apply.env and build.env
 check_vars

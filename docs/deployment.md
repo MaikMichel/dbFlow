@@ -115,7 +115,8 @@ The apply.sh command applies a release to the respective configured database. Th
     Importing an init release leads to data loss!
 
 
-By specifying the ``-i/--init`` flag, an init release is retrieved from the depot and then imported. If no password is stored in the apply.env (this is recommended), it will be requested at the very beginning.
+By specifying the ``-i/--init`` flag, an init release is retrieved from the depot and then imported. If no password is stored in the apply.env (this is recommended), it will be requested at the very beginning. Because on init then content of all included schemas will be deleted you are asked to proceed. When you provide an environment variable called ``DBFLOW_JENKINS`` with any value the question is skipped.
+
 
 ```shell
 $ .dbFlow/apply.sh --init --version 1.0.0
