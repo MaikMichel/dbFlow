@@ -436,7 +436,7 @@ function validate_passes() {
   else
     # write back encoded
     if [[ -n $DB_APP_PWD ]]; then
-      pwd_enc=`echo" ${DB_APP_PWD}" | base64`
+      pwd_enc=`echo "${DB_APP_PWD}" | base64`
 
       # sed syntax is different in macos
       if [[ $(uname) == "Darwin" ]]; then
