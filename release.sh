@@ -39,12 +39,6 @@ function check_vars() {
   # check require vars from build.env
   do_exit="NO"
 
-
-  if [[ -z ${BRANCHES} ]]; then
-    echo_error "undefined var: BRANCHES"
-    do_exit="YES"
-  fi
-
   ####
   if [[ ${do_exit} == "YES" ]]; then
     echo_warning "aborting"
