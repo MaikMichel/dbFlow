@@ -101,10 +101,10 @@ function print2envsql() {
     echo define workspace="${WORKSPACE}" >> "${targetpath}/env.sql"
   fi
   if [[ -n ${DB_APP_PWD} ]]; then
-    echo define db_app_pwd="${DB_APP_PWD}" >> "${targetpath}/env.sql"
+    echo define wiz_db_app_pwd="${DB_APP_PWD}" >> "${targetpath}/env.sql"
   fi
 
-  echo define db_app_user="${DB_APP_USER}" >> "${targetpath}/env.sql"
+  echo define wiz_db_app_user="${DB_APP_USER}" >> "${targetpath}/env.sql"
 
   if [[ ${DB_ADMIN_USER} != "sys" ]]; then
     echo define deftablespace=data >> "${targetpath}/env.sql"
@@ -338,94 +338,180 @@ function copytopath() {
   echo "to install your base dependencies"
 }
 
-function generate() {
-  local project_name=$1
-  local env_only=$2
+
+function wizard() {
+  wiz_project_name="${1}"
+  env_only=${2}
+
   if [[ ${env_only} == "NO" ]]; then
-    echo -e "Generate Project: ${BWHITE}${project_name}${NC}"
+    echo -e "Generate Project: ${BWHITE}${wiz_project_name}${NC}"
   else
-    echo -e "Configure Project: ${BWHITE}${project_name}${NC} (Environment only option)"
+    echo -e "Configure Project: ${BWHITE}${wiz_project_name}${NC} (Environment only option)"
   fi
 
-  local L_DEFAULT_SB_SCHEME_TYPE=${PROJECT_MODE-"M"}
-  read -r -p "$(echo -e "Which dbFLow project type do you want to create? ${BUNLINE}S${NC}ingle, ${BUNLINE}M${NC}ulti or ${BUNLINE}F${NC}lex [${BGRAY}${L_DEFAULT_SB_SCHEME_TYPE:0:1}${NC}]: ")" db_scheme_type
-  db_scheme_type=${db_scheme_type:-"${L_DEFAULT_SB_SCHEME_TYPE:0:1}"}
+  local local_project_mode=${PROJECT_MODE-"M"}
+  read -r -p "$(echo -e "Which dbFLow project type do you want to create? ${BUNLINE}S${NC}ingle, ${BUNLINE}M${NC}ulti or ${BUNLINE}F${NC}lex [${BGRAY}${local_project_mode:0:1}${NC}]: ")" wiz_project_mode
+  wiz_project_mode=${wiz_project_mode:-"${local_project_mode:0:1}"}
 
-  # create directories
+  local local_build_branch=${BUILD_BRANCH-"build"}
+  read -r -p "$(echo -e "When running release tests, what is your prefered branch name [${BGRAY}${local_build_branch}${NC}]: ")" wiz_build_branch
+  wiz_build_branch=${wiz_build_branch:-"${local_build_branch}"}
+
+  if [[ -z ${CHANGELOG_SCHEMA} ]]; then
+    local_gen_chlog_yn="N"
+  else
+    local_gen_chlog_yn="Y"
+  fi
+  read -r -p "$(echo -e "Would you like to process changelogs during deployment [${BGRAY}${local_gen_chlog_yn}${NC}]: ")" wiz_create_changelogs
+  wiz_create_changelogs=${wiz_create_changelogs:-"${local_gen_chlog_yn}"}
+
+  if [[ $(toLowerCase "${wiz_create_changelogs:-${local_gen_chlog_yn}}") == "y" ]]; then
+    if [[ $(toLowerCase "${wiz_project_mode}") == "s" ]]; then
+      # when SingleSchema then there is only one possibility
+      wiz_chl_schema=${wiz_project_name}
+    elif [[ $(toLowerCase "${wiz_project_mode}") == "f" ]]; then
+      local_default_chlog_schema=${CHANGELOG_SCHEMA:-"${wiz_project_name}_app"}
+      read -r -p "$(echo -e "What is the schema name the changelog is processed with [${BGRAY}${local_default_chlog_schema}${NC}]: ")" wiz_chl_schema
+      wiz_chl_schema=${wiz_chl_schema:-"${local_default_chlog_schema}"}
+    elif [[ $(toLowerCase "${wiz_project_mode}") == "m" ]]; then
+      local_default_chlog_schema=${CHANGELOG_SCHEMA:-"${wiz_project_name}_app"}
+      read -r -p "$(echo -e "What is the schema the changelog is processed with (${BUNLINE}${wiz_project_name}_data${NC}, ${BUNLINE}${wiz_project_name}_logic${NC}, ${BUNLINE}${wiz_project_name}_app${NC}) [${BGRAY}${local_default_chlog_schema}${NC}]: ")" wiz_chl_schema
+      wiz_chl_schema=${wiz_chl_schema:-"${local_default_chlog_schema}"}
+    fi
+  fi
+
+  local local_db_tns=${DB_TNS-"localhost:1521/xepdb1"}
+  read -r -p "$(echo -e "Enter database connections [${BGRAY}${local_db_tns}${NC}]: ")" wiz_db_tns
+  wiz_db_tns=${wiz_db_tns:-"${local_db_tns}"}
+
+  local local_db_admin_user=${DB_ADMIN_USER-"sys"}
+  read -r -p "$(echo -e "Enter username of admin user (${BUNLINE}admin${NC}, ${BUNLINE}sys${NC}, ...) [${BGRAY}${local_db_admin_user}${NC}]: ")" wiz_db_admin_user
+  wiz_db_admin_user=${wiz_db_admin_user:-"${local_db_admin_user}"}
+
+  ask4pwd "$(echo -e "Enter password for ${BUNLINE}${wiz_db_admin_user}${NC} [${BGRAY}leave blank and you will be asked for${NC}]: ")"
+  if [[ ${pass} != "" ]]; then
+    wiz_db_admin_pwd=`echo "${pass}" | base64`
+  fi
+
+  if [[ $(toLowerCase "${wiz_project_mode}") != "s" ]]; then
+    wiz_db_app_user=${DB_APP_USER-"${wiz_project_name}_depl"}
+    ask4pwd "$(echo -e "Enter password for deployment_user (proxyuser: ${BUNLINE}${wiz_db_app_user}${NC}) [${BGRAY}leave blank and you will be asked for${NC}]: ")"
+  else
+    wiz_db_app_user=${DB_APP_USER-"${wiz_project_name}"}
+    ask4pwd "$(echo -e "Enter password for user ${BUNLINE}${wiz_db_app_user}${NC} [${BGRAY}leave blank and you will be asked for${NC}]: ")"
+  fi
+  if [[ ${pass} != "" ]]; then
+    wiz_db_app_pwd=`echo "${pass}" | base64`
+  fi
+
+  local local_depot_path=${DEPOT_PATH-"_depot"}
+  read -r -p "$(echo -e "Enter path to depot [${BGRAY}${local_depot_path}${NC}]: ")" wiz_depot_path
+  wiz_depot_path=${wiz_depot_path:-"${local_depot_path}"}
+
+  local local_stage=${STAGE-"develop"}
+  read -r -p "$(echo -e "Enter stage of this configuration mapped to branch (${BUNLINE}develop${NC}, ${BUNLINE}test${NC}, ${BUNLINE}master${NC}) [${BGRAY}${local_stage}${NC}]: ")" wiz_stage
+  wiz_stage=${wiz_stage:-"${local_stage}"}
+
   if [[ ${env_only} == "NO" ]]; then
-    if [[ $(toLowerCase "${db_scheme_type}") == "m" ]]; then
-      mkdir -p db/{.hooks/{pre,post},"${project_name}"_data/{.hooks/{pre,post},sequences,tables/tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,mviews,tests/packages,ddl/{init,patch/{pre,post}},dml/{base,init,patch/{pre,post}}}}
-      mkdir -p db/{.hooks/{pre,post},"${project_name}"_logic/{.hooks/{pre,post},sequences,tables/tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,mviews,tests/packages,ddl/{init,patch/{pre,post}},dml/{base,init,patch/{pre,post}}}}
-      mkdir -p db/{.hooks/{pre,post},"${project_name}"_app/{.hooks/{pre,post},sequences,tables/tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,mviews,tests/packages,ddl/{init,patch/{pre,post}},dml/{base,init,patch/{pre,post}}}}
-    elif [[ $(toLowerCase "${db_scheme_type}") == "s" ]]; then
-      mkdir -p db/{.hooks/{pre,post},"${project_name}"/{.hooks/{pre,post},sequences,tables/tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,mviews,tests/packages,ddl/{init,patch/{pre,post}},dml/{base,init,patch/{pre,post}}}}
-    elif [[ $(toLowerCase "${db_scheme_type}") == "f" ]]; then
-      mkdir -p db/{.hooks/{pre,post},"${project_name}"_app/{.hooks/{pre,post},sequences,tables/tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,mviews,tests/packages,ddl/{init,patch/{pre,post}},dml/{base,init,patch/{pre,post}}}}
+    read -r -p "$(echo -e "Do you wish to generate and install default tooling? (Logger, utPLSQL, teplsql, tapi) [${BGRAY}Y${NC}]: ")" wiz_with_tools
+    wiz_with_tools=${wiz_with_tools:-"Y"}
+  else
+    wiz_with_tools="N"
+  fi
+
+  local local_sqlcli=${SQLCLI-"sqlplus"}
+  read -r -p "$(echo -e "Install with ${BUNLINE}sql(cl)${NC} or ${BUNLINE}sqlplus${NC}? [${BGRAY}${local_sqlcli}${NC}]: ")" wiz_sqlcli
+  wiz_sqlcli=${wiz_sqlcli:-"${local_sqlcli}"}
+
+  if [[ ${env_only} == "NO" ]]; then
+  # ask for application IDs
+    wiz_apex_ids=""
+    read -r -p "Enter application IDs (comma separated) you wish to use initialy (100,101,...): " wiz_apex_ids
+
+    # ask for restful Modulsa
+    wiz_rest_modules=""
+    read -r -p "Enter restful Moduls (comma separated) you wish to use initialy (api,test,...): " wiz_rest_modules
+  fi
+}
+
+function generate() {
+  # TODO: Check all necessary vars before doining anything
+  echo "wiz_project_name: ${wiz_project_name+x}"
+  echo "wiz_project_mode: ${wiz_project_mode+x}"
+  echo "wiz_build_branch: ${wiz_build_branch+x}"
+  echo "wiz_create_changelogs: ${wiz_create_changelogs+x}"
+  echo "wiz_db_tns: ${wiz_db_tns+x}"
+  echo "wiz_db_app_user: ${wiz_db_app_user+x}"
+  echo "wiz_db_admin_user: ${wiz_db_admin_user+x}"
+  echo "wiz_depot_path: ${wiz_depot_path+x}"
+  echo "wiz_stage: ${wiz_stage+x}"
+  echo "wiz_sqlcli: ${wiz_sqlcli+x}"
+  if [[ -z ${wiz_project_name+x} ]] || \
+     [[ -z ${wiz_project_mode+x} ]] || \
+     [[ -z ${wiz_build_branch+x} ]] || \
+     [[ -z ${wiz_create_changelogs+x} ]] || \
+     [[ -z ${wiz_db_tns+x} ]] || \
+     [[ -z ${wiz_db_app_user+x} ]] || \
+     [[ -z ${wiz_db_admin_user+x} ]] || \
+     [[ -z ${wiz_depot_path+x} ]] ||\
+     [[ -z ${wiz_stage+x} ]] ||\
+     [[ -z ${wiz_sqlcli+x} ]]
+    then
+    echo_error "Not all vars set"
+    exit 1
+  fi
+
+  # create directories :: wiz_project_mode
+  if [[ ${env_only} == "NO" ]]; then
+    if [[ $(toLowerCase "${wiz_project_mode}") == "m" ]]; then
+      mkdir -p db/{.hooks/{pre,post},"${wiz_project_name}"_data/{.hooks/{pre,post},sequences,tables/tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,mviews,tests/packages,ddl/{init,patch/{pre,post}},dml/{base,init,patch/{pre,post}}}}
+      mkdir -p db/{.hooks/{pre,post},"${wiz_project_name}"_logic/{.hooks/{pre,post},sequences,tables/tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,mviews,tests/packages,ddl/{init,patch/{pre,post}},dml/{base,init,patch/{pre,post}}}}
+      mkdir -p db/{.hooks/{pre,post},"${wiz_project_name}"_app/{.hooks/{pre,post},sequences,tables/tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,mviews,tests/packages,ddl/{init,patch/{pre,post}},dml/{base,init,patch/{pre,post}}}}
+    elif [[ $(toLowerCase "${wiz_project_mode}") == "s" ]]; then
+      mkdir -p db/{.hooks/{pre,post},"${wiz_project_name}"/{.hooks/{pre,post},sequences,tables/tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,mviews,tests/packages,ddl/{init,patch/{pre,post}},dml/{base,init,patch/{pre,post}}}}
+    elif [[ $(toLowerCase "${wiz_project_mode}") == "f" ]]; then
+      mkdir -p db/{.hooks/{pre,post},"${wiz_project_name}"_app/{.hooks/{pre,post},sequences,tables/tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,mviews,tests/packages,ddl/{init,patch/{pre,post}},dml/{base,init,patch/{pre,post}}}}
     else
-      echo_error "unknown type ${db_scheme_type}"
+      echo_error "unknown type ${wiz_project_mode}"
       exit 1
     fi
   fi
 
-  # write .env files
-  local L_DEFAULT_BUILD_BRANCH=${BUILD_BRANCH-"build"}
-  read -r -p "$(echo -e "When running release tests, what is your prefered branch name [${BGRAY}${L_DEFAULT_BUILD_BRANCH}${NC}]: ")" build_branch
-
-  if [[ -z ${CHANGELOG_SCHEMA} ]]; then
-    L_DEFAULT_YN="N"
-  else
-    L_DEFAULT_YN="Y"
-  fi
-  read -r -p "$(echo -e "Would you like to process changelogs during deployment [${BGRAY}${L_DEFAULT_YN}${NC}]: ")" create_changelogs
-
-  if [[ $(toLowerCase "${create_changelogs:-${L_DEFAULT_YN}}") == "y" ]]; then
-    if [[ $(toLowerCase "${db_scheme_type}") == "s" ]]; then
-      # when SingleSchema then there is only one possibility
-      chl_schema=${project_name}
-      L_DEFAULT_CHANGELOG_SCHEMA=${chl_schema}
-    elif [[ $(toLowerCase "${db_scheme_type}") == "f" ]]; then
-      L_DEFAULT_CHANGELOG_SCHEMA=${CHANGELOG_SCHEMA-"${project_name}_app"}
-      read -r -p "$(echo -e "What is the schema name the changelog is processed with [${BGRAY}${L_DEFAULT_CHANGELOG_SCHEMA}${NC}]: ")" chl_schema
-    elif [[ $(toLowerCase "${db_scheme_type}") == "m" ]]; then
-      L_DEFAULT_CHANGELOG_SCHEMA=${CHANGELOG_SCHEMA-"${project_name}_app"}
-      read -r -p "$(echo -e "What is the schema the changelog is processed with (${BUNLINE}${project_name}_data${NC}, ${BUNLINE}${project_name}_logic${NC}, ${BUNLINE}${project_name}_app${NC}) [${BGRAY}${L_DEFAULT_CHANGELOG_SCHEMA}${NC}]: ")" chl_schema
-    fi
-  fi
 
   # build.env
   {
     echo "# project name"
-    echo "PROJECT=${project_name}"
+    echo "PROJECT=${wiz_project_name}"
     echo ""
     echo ""
-    if [[ $(toLowerCase "${db_scheme_type}") == "m" ]]; then
+    if [[ $(toLowerCase "${wiz_project_mode}") == "m" ]]; then
       echo "# In MultiSchema Mode, we have a classic 3 Tier model"
       echo "PROJECT_MODE=MULTI"
-      echo "APP_SCHEMA=${project_name}_app"
-      echo "DATA_SCHEMA=${project_name}_data"
-      echo "LOGIC_SCHEMA=${project_name}_logic"
-    elif [[ $(toLowerCase "${db_scheme_type}") == "s" ]]; then
+      echo "APP_SCHEMA=${wiz_project_name}_app"
+      echo "DATA_SCHEMA=${wiz_project_name}_data"
+      echo "LOGIC_SCHEMA=${wiz_project_name}_logic"
+    elif [[ $(toLowerCase "${wiz_project_mode}") == "s" ]]; then
       echo "# In SingleSchema Mode, we have a only one schema"
       echo "PROJECT_MODE=SINGLE"
-      echo "APP_SCHEMA=${project_name}"
-    elif [[ $(toLowerCase "${db_scheme_type}") == "f" ]]; then
+      echo "APP_SCHEMA=${wiz_project_name}"
+    elif [[ $(toLowerCase "${wiz_project_mode}") == "f" ]]; then
       echo "# In FlexSchema Mode, you have to create the schemas by your own"
       echo "# and don't forget to grant connect through proxy_user "
       echo "PROJECT_MODE=FLEX"
     fi
     echo ""
 
-    if [[ $(toLowerCase "${db_scheme_type}") != "f" ]]; then
+    if [[ $(toLowerCase "${wiz_project_mode}") != "f" ]]; then
       echo ""
       echo "# workspace app belongs to"
-      echo "WORKSPACE=${project_name}"
+      echo "WORKSPACE=${wiz_project_name}"
       echo ""
     fi
 
 
     echo ""
     echo "# Name of the branch, where release tests are build"
-    echo "BUILD_BRANCH=${build_branch:-${L_DEFAULT_BUILD_BRANCH}}"
+    echo "BUILD_BRANCH=${wiz_build_branch}"
     echo ""
 
 
@@ -439,8 +525,8 @@ function generate() {
     echo "# keys to link directly to your ticketsystem using TICKET_URL"
 
 
-    if [[ $(toLowerCase "${create_changelogs:-${L_DEFAULT_YN}}") == "y" ]]; then
-      echo "CHANGELOG_SCHEMA=${chl_schema:-${L_DEFAULT_CHANGELOG_SCHEMA}}"
+    if [[ $(toLowerCase "${wiz_create_changelogs}") == "y" ]]; then
+      echo "CHANGELOG_SCHEMA=${wiz_chl_schema}"
 
       if [[ ${env_only} == "NO" ]]; then
         echo "INTENT_PREFIXES=( Feat Fix )"
@@ -468,84 +554,40 @@ function generate() {
     echo ""
   } > build.env
 
-  # ask for some vars to put into file
-  local L_DEFAULT_DB_TNS=${DB_TNS-"localhost:1521/xepdb1"}
-  read -r -p "$(echo -e "Enter database connections [${BGRAY}${L_DEFAULT_DB_TNS}${NC}]: ")" db_tns
-  db_tns=${db_tns:-"${L_DEFAULT_DB_TNS}"}
-
-  local L_DEFAULT_DB_ADMIN_USER=${DB_ADMIN_USER-"sys"}
-  read -r -p "$(echo -e "Enter username of admin user (${BUNLINE}admin${NC}, ${BUNLINE}sys${NC}, ...) [${BGRAY}${L_DEFAULT_DB_ADMIN_USER}${NC}]: ")" db_admin_user
-  db_admin_user=${db_admin_user:-"${L_DEFAULT_DB_ADMIN_USER}"}
-
-  ask4pwd "$(echo -e "Enter password for ${BUNLINE}${db_admin_user}${NC} [${BGRAY}leave blank and you will be asked for${NC}]: ")"
-  if [[ ${pass} != "" ]]; then
-    db_admin_pwd=`echo "${pass}" | base64`
-  fi
-
-  if [[ $(toLowerCase "${db_scheme_type}") != "s" ]]; then
-    L_DEFAULT_DB_APP_USER=${DB_APP_USER-"${project_name}_depl"}
-    ask4pwd "$(echo -e "Enter password for deployment_user (proxyuser: ${BUNLINE}${L_DEFAULT_DB_APP_USER}${NC}) [${BGRAY}leave blank and you will be asked for${NC}]: ")"
-  else
-    L_DEFAULT_DB_APP_USER=${DB_APP_USER-"${project_name}"}
-    ask4pwd "$(echo -e "Enter password for user ${BUNLINE}${L_DEFAULT_DB_APP_USER}${NC} [${BGRAY}leave blank and you will be asked for${NC}]: ")"
-  fi
-  if [[ ${pass} != "" ]]; then
-    db_app_pwd=`echo "${pass}" | base64`
-  fi
-
-  L_DEFAULT_DEPOT_PATH=${DEPOT_PATH-"_depot"}
-  read -r -p "$(echo -e "Enter path to depot [${BGRAY}${L_DEFAULT_DEPOT_PATH}${NC}]: ")" depot_path
-  depot_path=${depot_path:-"${L_DEFAULT_DEPOT_PATH}"}
-
-  L_DEFAULT_STAGE=${STAGE-"develop"}
-  read -r -p "$(echo -e "Enter stage of this configuration mapped to branch (${BUNLINE}develop${NC}, ${BUNLINE}test${NC}, ${BUNLINE}master${NC}) [${BGRAY}${L_DEFAULT_STAGE}${NC}]: ")" stage
-  stage=${stage:-"${L_DEFAULT_STAGE}"}
-
-  if [[ ${env_only} == "NO" ]]; then
-    read -r -p "$(echo -e "Do you wish to generate and install default tooling? (Logger, utPLSQL, teplsql, tapi) [${BGRAY}Y${NC}]: ")" with_tools
-    with_tools=${with_tools:-"Y"}
-  else
-    with_tools="N"
-  fi
-
-  L_DEFAULT_SQLCLI=${SQLCLI-"sqlplus"}
-  read -r -p "$(echo -e "Install with ${BUNLINE}sql(cl)${NC} or ${BUNLINE}sqlplus${NC}? [${BGRAY}${L_DEFAULT_SQLCLI}${NC}]: ")" SQLCLI
-  SQLCLI=${SQLCLI:-"${L_DEFAULT_SQLCLI}"}
-
   # apply.env
   {
     echo "# DB Connection"
-    echo "DB_TNS=${db_tns}"
+    echo "DB_TNS=${wiz_db_tns}"
     echo ""
     echo "# Deployment User"
-    echo "DB_APP_USER=${L_DEFAULT_DB_APP_USER}"
-    if [[ ${db_app_pwd} != "" ]]; then
-      echo "DB_APP_PWD=\"!${db_app_pwd}\""
+    echo "DB_APP_USER=${wiz_db_app_user}"
+    if [[ ${wiz_db_app_pwd} != "" ]]; then
+      echo "DB_APP_PWD=\"!${wiz_db_app_pwd}\""
     else
       echo "DB_APP_PWD="
     fi
     echo ""
     echo "# SYS/ADMIN Pass"
-    echo "DB_ADMIN_USER=${db_admin_user}"
-    if [[ ${db_app_pwd} != "" ]]; then
-      echo "DB_ADMIN_PWD=\"!${db_admin_pwd}\""
+    echo "DB_ADMIN_USER=${wiz_db_admin_user}"
+    if [[ ${wiz_db_admin_pwd} != "" ]]; then
+      echo "DB_ADMIN_PWD=\"!${wiz_db_admin_pwd}\""
     else
       echo "DB_ADMIN_PWD="
     fi
     echo ""
     echo "# Path to Depot"
-    echo "DEPOT_PATH=${depot_path}"
+    echo "DEPOT_PATH=${wiz_depot_path}"
     echo ""
     echo "# Stage mapped to source branch ( develop test master )"
     echo "# this is used to get artifacts from depot_path"
-    echo "STAGE=${stage}"
+    echo "STAGE=${wiz_stage}"
     echo ""
     echo ""
     echo "# ADD this to original APP-NUM"
     echo "APP_OFFSET=0"
     echo ""
     echo "# Scripts are executed with"
-    echo "SQLCLI=${SQLCLI}"
+    echo "SQLCLI=${wiz_sqlcli}"
     echo ""
     echo "# TEAMS Channel to Post to on success"
     echo "TEAMS_WEBHOOK_URL="
@@ -558,7 +600,7 @@ function generate() {
 
   echo "" >> .gitignore
   write_line_if_not_exists "# static files" .gitignore
-  if [[ $(toLowerCase "${db_scheme_type}") == "f" ]]; then
+  if [[ $(toLowerCase "${wiz_project_mode}") == "f" ]]; then
     write_line_if_not_exists "static/**/f*/dist" .gitignore
   else
     write_line_if_not_exists "static/f*/dist" .gitignore
@@ -568,89 +610,81 @@ function generate() {
   write_line_if_not_exists "# vscode configuration" .gitignore
   write_line_if_not_exists ".vscode" .gitignore
 
-  if [[ ${depot_path} != ".."* ]]; then
+  if [[ ${wiz_depot_path} != ".."* ]]; then
     echo "" >> .gitignore
     write_line_if_not_exists "# depot inside wording dir" .gitignore
-    write_line_if_not_exists "${depot_path}" .gitignore
+    write_line_if_not_exists "${wiz_depot_path}" .gitignore
   fi
 
   if [[ ${env_only} == "NO" ]]; then
     # create targetpath directory
-    mkdir -p "${targetpath}"/{tablespaces,directories,users,features,workspaces/"${project_name}",acls}
-    mkdir -p "${depot_path}"
+    mkdir -p "${targetpath}"/{tablespaces,directories,users,features,workspaces/"${wiz_project_name}",acls}
+    mkdir -p "${wiz_depot_path}"
 
     # copy some examples into it
-    cp -rf .dbFlow/scripts/setup/workspaces/workspace/* "${targetpath}/workspaces/${project_name}"
+    cp -rf .dbFlow/scripts/setup/workspaces/workspace/* "${targetpath}/workspaces/${wiz_project_name}"
     cp -rf .dbFlow/scripts/setup/workspaces/*.* "${targetpath}/workspaces"
     cp -rf .dbFlow/scripts/setup/acls/* "${targetpath}/acls"
 
-    if [[ $(toLowerCase "${with_tools}") == "y" ]]; then
+    if [[ $(toLowerCase "${wiz_with_tools}") == "y" ]]; then
       cp -rf .dbFlow/scripts/setup/features/* "${targetpath}/features"
       chmod +x "${targetpath}"/features/*.sh
     else
       mkdir -p "${targetpath}"/features
     fi
 
-
     # create gen_users..
-    if [[ $(toLowerCase "${db_scheme_type}") == "m" ]]; then
-      sed "s/\^db_app_user/${project_name}_depl/g" .dbFlow/scripts/setup/users/00_depl.sql > "${targetpath}/users/00_create_${project_name}_depl.sql"
+    if [[ $(toLowerCase "${wiz_project_mode}") == "m" ]]; then
+      sed "s/\^wiz_db_app_user/${wiz_project_name}_depl/g" .dbFlow/scripts/setup/users/00_depl.sql > "${targetpath}/users/00_create_${wiz_project_name}_depl.sql"
 
-      sed "s/\^schema_name/${project_name}_data/g" .dbFlow/scripts/setup/users/01_schema.sql > "${targetpath}/users/01_create_${project_name}_data.sql"
-      sed "s/\^schema_name/${project_name}_logic/g" .dbFlow/scripts/setup/users/01_schema.sql > "${targetpath}/users/02_create_${project_name}_logic.sql"
-      sed "s/\^schema_name/${project_name}_app/g" .dbFlow/scripts/setup/users/01_schema.sql > "${targetpath}/users/03_create_${project_name}_app.sql"
+      sed "s/\^schema_name/${wiz_project_name}_data/g" .dbFlow/scripts/setup/users/01_schema.sql > "${targetpath}/users/01_create_${wiz_project_name}_data.sql"
+      sed "s/\^schema_name/${wiz_project_name}_logic/g" .dbFlow/scripts/setup/users/01_schema.sql > "${targetpath}/users/02_create_${wiz_project_name}_logic.sql"
+      sed "s/\^schema_name/${wiz_project_name}_app/g" .dbFlow/scripts/setup/users/01_schema.sql > "${targetpath}/users/03_create_${wiz_project_name}_app.sql"
 
-      sed -i "s/\^db_app_user/${project_name}_depl/g" "${targetpath}/users/01_create_${project_name}_data.sql"
-      sed -i "s/\^db_app_user/${project_name}_depl/g" "${targetpath}/users/02_create_${project_name}_logic.sql"
-      sed -i "s/\^db_app_user/${project_name}_depl/g" "${targetpath}/users/03_create_${project_name}_app.sql"
+      sed -i "s/\^wiz_db_app_user/${wiz_project_name}_depl/g" "${targetpath}/users/01_create_${wiz_project_name}_data.sql"
+      sed -i "s/\^wiz_db_app_user/${wiz_project_name}_depl/g" "${targetpath}/users/02_create_${wiz_project_name}_logic.sql"
+      sed -i "s/\^wiz_db_app_user/${wiz_project_name}_depl/g" "${targetpath}/users/03_create_${wiz_project_name}_app.sql"
 
-
-    elif [[ $(toLowerCase "${db_scheme_type}") == "s" ]]; then
-      sed "s/\^db_app_user/${project_name}/g" .dbFlow/scripts/setup/users/00_depl.sql > "${targetpath}/users/00_create_${project_name}.sql"
-      sed "s/\^schema_name/${project_name}/g" .dbFlow/scripts/setup/users/02_grants.sql >> "${targetpath}/users/00_create_${project_name}.sql"
-    elif [[ $(toLowerCase "${db_scheme_type}") == "f" ]]; then
-      sed "s/\^db_app_user/${project_name}_depl/g" .dbFlow/scripts/setup/users/00_depl.sql > "${targetpath}/users/00_create_${project_name}_depl.sql"
-      sed "s/\^schema_name/${project_name}_app/g" .dbFlow/scripts/setup/users/01_schema.sql > "${targetpath}/users/01_create_${project_name}_app.sql"
-      sed -i "s/\^db_app_user/${project_name}_depl/g" "${targetpath}/users/01_create_${project_name}_app.sql"
+    elif [[ $(toLowerCase "${wiz_project_mode}") == "s" ]]; then
+      sed "s/\^wiz_db_app_user/${wiz_project_name}/g" .dbFlow/scripts/setup/users/00_depl.sql > "${targetpath}/users/00_create_${wiz_project_name}.sql"
+      sed "s/\^schema_name/${wiz_project_name}/g" .dbFlow/scripts/setup/users/02_grants.sql >> "${targetpath}/users/00_create_${wiz_project_name}.sql"
+    elif [[ $(toLowerCase "${wiz_project_mode}") == "f" ]]; then
+      sed "s/\^wiz_db_app_user/${wiz_project_name}_depl/g" .dbFlow/scripts/setup/users/00_depl.sql > "${targetpath}/users/00_create_${wiz_project_name}_depl.sql"
+      sed "s/\^schema_name/${wiz_project_name}_app/g" .dbFlow/scripts/setup/users/01_schema.sql > "${targetpath}/users/01_create_${wiz_project_name}_app.sql"
+      sed -i "s/\^wiz_db_app_user/${wiz_project_name}_depl/g" "${targetpath}/users/01_create_${wiz_project_name}_app.sql"
     fi
 
-
+    # static files
     mkdir -p {apex,static,rest,reports,.hooks/{pre,post}}
-    if [[ $(toLowerCase "${db_scheme_type}") == "f" ]]; then
-      mkdir -p apex/"${project_name}"_app/"${project_name}"
-      mkdir -p static/"${project_name}"_app/"${project_name}"
-      mkdir -p rest/"${project_name}"_app
+    if [[ $(toLowerCase "${wiz_project_mode}") == "f" ]]; then
+      mkdir -p apex/"${wiz_project_name}"_app/"${wiz_project_name}"
+      mkdir -p static/"${wiz_project_name}"_app/"${wiz_project_name}"
+      mkdir -p rest/"${wiz_project_name}"_app
     fi
 
-
-    # ask for application IDs
-    apex_ids=""
-    read -r -p "Enter application IDs (comma separated) you wish to use initialy (100,101,...): " apex_ids
-
+    # default directories
     # split ids gen directories
-    apexids=(`echo "${apex_ids}" | sed 's/,/\n/g'`)
+    apexids=(`echo "${wiz_apex_ids}" | sed 's/,/\n/g'`)
     for apxID in "${apexids[@]}"
     do
-      if [[ $(toLowerCase "${db_scheme_type}") == "f" ]]; then
-        mkdir -p apex/"${project_name}"_app/"${project_name}"/f"${apxID}"
-        mkdir -p static/"${project_name}"_app/"${project_name}"/f"${apxID}"/{dist/{css,img,js},src/{css,img,js}}
+      if [[ $(toLowerCase "${wiz_project_mode}") == "f" ]]; then
+        mkdir -p apex/"${wiz_project_name}"_app/"${wiz_project_name}"/f"${apxID}"
+        mkdir -p static/"${wiz_project_name}"_app/"${wiz_project_name}"/f"${apxID}"/{dist/{css,img,js},src/{css,img,js}}
       else
         mkdir -p apex/f"${apxID}"
         mkdir -p static/f"${apxID}"/{dist/{css,img,js},src/{css,img,js}}
       fi
     done
 
-    # ask for restful Modulsa
-    rest_modules=""
-    read -r -p "Enter restful Moduls (comma separated) you wish to use initialy (api,test,...): " rest_modules
 
+    # default directories
     # split modules
-    restmodules=(`echo "${rest_modules}" | sed 's/,/\n/g'`)
+    restmodules=(`echo "${wiz_rest_modules}" | sed 's/,/\n/g'`)
     for restMOD in "${restmodules[@]}"
     do
-      if [[ $(toLowerCase "${db_scheme_type}") == "f" ]]; then
-        mkdir -p rest/"${project_name}"_app/modules/"${restMOD}"
-        mkdir -p rest/"${project_name}"_app/access/{privileges,roles,mapping}
+      if [[ $(toLowerCase "${wiz_project_mode}") == "f" ]]; then
+        mkdir -p rest/"${wiz_project_name}"_app/modules/"${restMOD}"
+        mkdir -p rest/"${wiz_project_name}"_app/access/{privileges,roles,mapping}
       else
         mkdir -p rest/modules/"${restMOD}"
         mkdir -p rest/access/{privileges,roles,mapping}
@@ -658,18 +692,18 @@ function generate() {
     done
 
     # workspace files
-    sed -i "s/\^workspace/${project_name}/g" "${targetpath}/workspaces/${project_name}/create_00_workspace.sql"
-    sed -i "s/\^workspace/${project_name}/g" "${targetpath}/workspaces/${project_name}/create_01_user_wsadmin.sql"
-    if [[ $(toLowerCase "${db_scheme_type}") == "s" ]]; then
-      sed -i "s/\^app_schema/${project_name}/g" "${targetpath}/workspaces/${project_name}/create_00_workspace.sql"
-      sed -i "s/\^app_schema/${project_name}/g" "${targetpath}/workspaces/${project_name}/create_01_user_wsadmin.sql"
+    sed -i "s/\^workspace/${wiz_project_name}/g" "${targetpath}/workspaces/${wiz_project_name}/create_00_workspace.sql"
+    sed -i "s/\^workspace/${wiz_project_name}/g" "${targetpath}/workspaces/${wiz_project_name}/create_01_user_wsadmin.sql"
+    if [[ $(toLowerCase "${wiz_project_mode}") == "s" ]]; then
+      sed -i "s/\^app_schema/${wiz_project_name}/g" "${targetpath}/workspaces/${wiz_project_name}/create_00_workspace.sql"
+      sed -i "s/\^app_schema/${wiz_project_name}/g" "${targetpath}/workspaces/${wiz_project_name}/create_01_user_wsadmin.sql"
     else
-      sed -i "s/\^app_schema/${project_name}_app/g" "${targetpath}/workspaces/${project_name}/create_00_workspace.sql"
-      sed -i "s/\^app_schema/${project_name}_app/g" "${targetpath}/workspaces/${project_name}/create_01_user_wsadmin.sql"
+      sed -i "s/\^app_schema/${wiz_project_name}_app/g" "${targetpath}/workspaces/${wiz_project_name}/create_00_workspace.sql"
+      sed -i "s/\^app_schema/${wiz_project_name}_app/g" "${targetpath}/workspaces/${wiz_project_name}/create_01_user_wsadmin.sql"
     fi
   fi
 
-  show_generate_summary "${project_name}" "${env_only}"
+  show_generate_summary "${wiz_project_name}" "${env_only}"
 } # generate
 
 function is_any_schema_installed () {
@@ -774,7 +808,8 @@ function check_params_and_run_command() {
       usage
     else
       if [[ "${pname}" =~ ^[a-zA-Z][a-zA-Z0-9_]*$ ]]; then
-        generate ${pname} ${envonly}
+        wizard ${pname} ${envonly}
+        generate
         exit 0
       else
         echo -e "${RED}Invalid project name! Project name must be a valid schema name.${NC}" 1>&2
