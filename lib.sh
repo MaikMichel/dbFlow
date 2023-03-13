@@ -34,7 +34,6 @@ LWHITE="\033[1;30m"       # White
 BYELLOW="\e[30;48;5;82m"  # Yellow
 BORANGE="\e[38;5;208m"    # Orange
 BUNLINE="\e[1;4m"
-BUNLINE="\e[1;4m"
 BGRAY="\e[0;90m"
 BLBACK="\e[30;48;5;81m"
 
