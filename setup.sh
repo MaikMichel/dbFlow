@@ -101,10 +101,10 @@ function print2envsql() {
     echo define workspace="${WORKSPACE}" >> "${targetpath}/env.sql"
   fi
   if [[ -n ${DB_APP_PWD} ]]; then
-    echo define wiz_db_app_pwd="${DB_APP_PWD}" >> "${targetpath}/env.sql"
+    echo define db_app_pwd="${DB_APP_PWD}" >> "${targetpath}/env.sql"
   fi
 
-  echo define wiz_db_app_user="${DB_APP_USER}" >> "${targetpath}/env.sql"
+  echo define db_app_user="${DB_APP_USER}" >> "${targetpath}/env.sql"
 
   if [[ ${DB_ADMIN_USER} != "sys" ]]; then
     echo define deftablespace=data >> "${targetpath}/env.sql"
@@ -121,7 +121,7 @@ function show_generate_summary() {
 
   echo -e
   echo -e
-  echo -e "${BGREEN}Congratulations${NC}"
+  echo -e "${BUNLINE}Congratulations!${NC}"
   echo -e "Your project ${BWHITE}$PROJECT${NC} has been ${GREEN}successfully${NC} created. "
   if [[ ${env_only} == "NO" ]]; then
     echo -e "Scripts have been added inside directory: ${CYAN}db/_setup${NC} that allow you "
@@ -200,7 +200,7 @@ function install() {
   local yes=${1:-"NO"}
 
   if [[ ! -d "${targetpath}" ]]; then
-     echo_error "Project setup folder does not exists, so nothing to install. Run \"$0 --generate <project>\" at first!"
+     echo_error "Project setup folder does not exist, so nothing to install. Run \"$0 --generate <project>\" at first!"
      exit 1
   fi
 
@@ -313,7 +313,7 @@ function copytopath() {
   local target_path=${1}
 
   if [[ ! -d "${targetpath}" ]]; then
-     echo_error "Project setup folder does not exists, so nothing to copy. Run \"$0 --generate <project>\" at first!"
+     echo_error "Project setup folder does not exist, so nothing to copy. Run \"$0 --generate <project>\" at first!"
      exit 1
   fi
 
@@ -346,7 +346,7 @@ function wizard() {
   if [[ ${env_only} == "NO" ]]; then
     echo -e "Generate Project: ${BWHITE}${wiz_project_name}${NC}"
   else
-    echo -e "Configure Project: ${BWHITE}${wiz_project_name}${NC} (Environment only option)"
+    echo -e "Configure Project: ${BWHITE}${wiz_project_name}${NC} (${BGRAY}Environment only option${NC})"
   fi
 
   local local_project_mode=${PROJECT_MODE-"M"}
@@ -435,17 +435,19 @@ function wizard() {
 }
 
 function generate() {
-  # TODO: Check all necessary vars before doining anything
-  echo "wiz_project_name: ${wiz_project_name+x}"
-  echo "wiz_project_mode: ${wiz_project_mode+x}"
-  echo "wiz_build_branch: ${wiz_build_branch+x}"
-  echo "wiz_create_changelogs: ${wiz_create_changelogs+x}"
-  echo "wiz_db_tns: ${wiz_db_tns+x}"
-  echo "wiz_db_app_user: ${wiz_db_app_user+x}"
-  echo "wiz_db_admin_user: ${wiz_db_admin_user+x}"
-  echo "wiz_depot_path: ${wiz_depot_path+x}"
-  echo "wiz_stage: ${wiz_stage+x}"
-  echo "wiz_sqlcli: ${wiz_sqlcli+x}"
+  echo -e "${CYAN}Generating project with following options${NC}"
+  echo -e "  project_name:       ${BWHITE}${wiz_project_name}${NC}"
+  echo -e "  project_mode:       ${BWHITE}${wiz_project_mode}${NC}"
+  echo -e "  build_branch:       ${BWHITE}${wiz_build_branch}${NC}"
+  echo -e "  create_changelogs:  ${BWHITE}${wiz_create_changelogs}${NC}"
+  echo -e "  db_tns:             ${BWHITE}${wiz_db_tns}${NC}"
+  echo -e "  db_app_user:        ${BWHITE}${wiz_db_app_user}${NC}"
+  echo -e "  db_admin_user:      ${BWHITE}${wiz_db_admin_user}${NC}"
+  echo -e "  depot_path:         ${BWHITE}${wiz_depot_path}${NC}"
+  echo -e "  stage:              ${BWHITE}${wiz_stage}${NC}"
+  echo -e "  sqlcli:             ${BWHITE}${wiz_sqlcli}${NC}"
+  echo -e "  env_only:           ${BWHITE}${env_only}${NC}"
+
   if [[ -z ${wiz_project_name+x} ]] || \
      [[ -z ${wiz_project_mode+x} ]] || \
      [[ -z ${wiz_build_branch+x} ]] || \
@@ -527,19 +529,22 @@ function generate() {
 
     if [[ $(toLowerCase "${wiz_create_changelogs}") == "y" ]]; then
       echo "CHANGELOG_SCHEMA=${wiz_chl_schema}"
+      echo "INTENT_PREFIXES=( Feat Fix )"
+      echo "INTENT_NAMES=( Features Fixes )"
+      echo "INTENT_ELSE=\"Others\""
+      echo "TICKET_MATCH=\"[A-Z]\+-[0-9]\+\""
+      echo "TICKET_URL=\"https://url-to-your-issue-tracker-like-jira/browse\""
 
       if [[ ${env_only} == "NO" ]]; then
-        echo "INTENT_PREFIXES=( Feat Fix )"
-        echo "INTENT_NAMES=( Features Fixes )"
-        echo "INTENT_ELSE=\"Others\""
-        echo "TICKET_MATCH=\"[A-Z]\+-[0-9]\+\""
-        echo "TICKET_URL=\"https://url-to-your-issue-tracker-like-jira/browse\""
-
         chltemplate=reports/changelog/template.sql
         if [[ ! -f ${chltemplate} ]]; then
           [[ -d reports/changelog ]] || mkdir -p reports/changelog
           cp ".dbFlow/scripts/changelog_template.sql" ${chltemplate}
         fi
+      else
+        echo "# this was an env-only configuration so you have to"
+        echo "# copy template to reports/changelog folder on your own"
+        echo "# cp .dbFlow/scripts/changelog_template.sql ${chltemplate}"
       fi
     else
       echo "# copy template to reports/changelog folder"
