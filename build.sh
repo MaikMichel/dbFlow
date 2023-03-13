@@ -683,7 +683,7 @@ function write_install_schemas(){
         echo "exit" >> "${target_install_file}"
 
       else
-        echo "  .. db/${schema} does not exists in ${targetpath}"
+        echo "  .. db/${schema} does not exist in ${targetpath}"
       fi
     done
   else
