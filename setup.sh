@@ -13,10 +13,10 @@ function usage() {
   echo
   echo -e "${BWHITE}Options${NC}"
   echo -e "  -h | --help                    - Show this screen"
-  echo -e "  -d | --debug                   - Show additionaly output messages"
   echo -e ""
   echo -e "  -g | --generate <project-name> - generates project structure"
   echo -e "                                   project-name is required, other options are read from env"
+  echo -e "     └─[ -w | --wizard ]         - do NOT start with a wizard questionare, import from env"
   echo -e "     └─[ -e | --envonly ]        - option on generate, to create only environment files"
   echo -e ""
   echo -e "  -i | --install                 - installs project dependencies to db"
@@ -24,7 +24,7 @@ function usage() {
   echo -e "                                 - ${RED}schemas/users will be dropped and recreated${NC}"
   echo -e "                                 - ${RED}workspace will be dropped and recreated${NC}"
   echo -e ""
-  echo -e "  - c | --copyto <target-path>   - copy db/_setup, env files, and .dbFlow to target"
+  echo -e "  -c | --copyto <target-path>   - copy db/_setup, env files, and .dbFlow to target"
   echo
   echo -e "${BWHITE}Examples:${NC}"
   echo -e "  ${0} --generate mytest"
@@ -32,7 +32,7 @@ function usage() {
   echo -e "  ${0} --copyto \"../../instances/build\""
   echo
   echo
-  exit 1
+  exit $1
 }
 
 # get required functions and vars
@@ -436,17 +436,23 @@ function wizard() {
 
 function generate() {
   echo -e "${CYAN}Generating project with following options${NC}"
-  echo -e "  project_name:       ${BWHITE}${wiz_project_name}${NC}"
-  echo -e "  project_mode:       ${BWHITE}${wiz_project_mode}${NC}"
-  echo -e "  build_branch:       ${BWHITE}${wiz_build_branch}${NC}"
-  echo -e "  create_changelogs:  ${BWHITE}${wiz_create_changelogs}${NC}"
-  echo -e "  db_tns:             ${BWHITE}${wiz_db_tns}${NC}"
-  echo -e "  db_app_user:        ${BWHITE}${wiz_db_app_user}${NC}"
-  echo -e "  db_admin_user:      ${BWHITE}${wiz_db_admin_user}${NC}"
-  echo -e "  depot_path:         ${BWHITE}${wiz_depot_path}${NC}"
-  echo -e "  stage:              ${BWHITE}${wiz_stage}${NC}"
-  echo -e "  sqlcli:             ${BWHITE}${wiz_sqlcli}${NC}"
-  echo -e "  env_only:           ${BWHITE}${env_only}${NC}"
+  echo -e "  Project:                          ${BWHITE}${wiz_project_name}${NC}"
+  echo -e "  Mode:                             ${BWHITE}${wiz_project_mode}${NC}"
+  echo -e "  Build Branch:                     ${BWHITE}${wiz_build_branch}${NC}"
+  echo -e "  Create Changelos:                 ${BWHITE}${wiz_create_changelogs}${NC}"
+  echo -e "  Schema Changelog proccessed:      ${BWHITE}${wiz_chl_schema}${NC}"
+  echo -e "  Connection:                       ${BWHITE}${wiz_db_tns}${NC}"
+  echo -e "  Admin User:                       ${BWHITE}${wiz_db_admin_user}${NC}"
+  echo -e "  Deployment User:                  ${BWHITE}${wiz_db_app_user}${NC}"
+  echo -e "  Location depot:                   ${BWHITE}${wiz_depot_path}${NC}"
+  echo -e "  Branch is mapped to Stage:        ${BWHITE}${wiz_stage}${NC}"
+  echo -e "  SQl commandline:                  ${BWHITE}${wiz_sqlcli}${NC}"
+  echo -e "  Install default tools:            ${BWHITE}${wiz_with_tools}${NC}"
+  echo -e "  Configure with default apps:      ${BWHITE}${wiz_apex_ids}${NC}"
+  echo -e "  Configure with default modules:   ${BWHITE}${wiz_rest_modules}${NC}"
+  echo -e "  Just install environment onyl:    ${BWHITE}${env_only}${NC}"
+  echo
+
 
   if [[ -z ${wiz_project_name+x} ]] || \
      [[ -z ${wiz_project_mode+x} ]] || \
@@ -462,6 +468,7 @@ function generate() {
     echo_error "Not all vars set"
     exit 1
   fi
+  echo -e "${BGRAY}... workinging ... ${NC}"
 
   # create directories :: wiz_project_mode
   if [[ ${env_only} == "NO" ]]; then
@@ -743,93 +750,104 @@ EOF
 
 
 function check_params_and_run_command() {
-  debug="n" help="h" gen="n" inst="n" pname="-" cptfld="-" envonly="NO" force="NO" withenvoption="NO"
+  pname_argument="-"
+  folder_argument="-"
 
-  while getopts_long 'dhg:ic:ef debug help generate: install copyto: envonly force' OPTKEY "${@}"; do
+  help_option="NO"
+  gen_project_option="NO"
+  inst_project_option="NO"
+  copy_config_option="NO"
+  envonly_option="NO"
+  force_option="NO"
+  wizard_option="NO"
+
+  while getopts_long 'hg:ic:efw help generate: install copyto: envonly force wizard' OPTKEY "${@}"; do
       case ${OPTKEY} in
-          'd'|'debug')
-              d="y"
-              ;;
           'h'|'help')
-              h="y"
+              help_option="YES"
               ;;
           'g'|'generate')
-              g="y"
-              pname="${OPTARG}"
+              gen_project_option="YES"
+              pname_argument="${OPTARG}"
               ;;
           'i'|'install')
-              i="y"
+              inst_project_option="YES"
               ;;
           'c'|'copyto')
-              c="y"
-              cptfld="${OPTARG}"
+              copy_config_option="YES"
+              folder_argument="${OPTARG}"
               ;;
           'e'|'envonly')
-              envonly="YES"
-              withenvoption="YES"
+              envonly_option="YES"
               ;;
           'f'|'force')
-              force="YES"
+              force_option="YES"
+              ;;
+          'w'|'wizard')
+              wizard_option="YES"
               ;;
           '?')
               echo_error "INVALID OPTION -- ${OPTARG}" >&2
-              usage
+              usage 10
               ;;
           ':')
               echo_error "MISSING ARGUMENT for option -- ${OPTARG}" >&2
-              usage
+              usage 11
               ;;
           *)
               echo_error "UNIMPLEMENTED OPTION -- ${OPTKEY}" >&2
-              usage
+              usage 12
               ;;
       esac
   done
 
   # help first
-  if [[ -n $h ]] && [[ $h == "y" ]]; then
-    usage
+  if [[ ${help_option} == "YES" ]]; then
+    usage 0
   fi
 
   if [[ $# -lt 1 ]]; then
     echo -e "${RED}No parameters found${NC}" 1>&2
-    usage
+    usage 1
   fi
 
-  if [[ -n $g ]] && [[ ${pname} == "-" ]]; then
-    echo -e "${RED}Missing argument project name for command generate${NC}" 1>&2
-    usage
+  if [[ ${gen_project_option} == "YES" ]] && [[ ${#pname_argument} -lt 3 ]]; then
+    echo -e "${RED}Missing or to small argument project name (${pname_argument}) for command generate${NC}" 1>&2
+    usage 2
   fi
 
-  if [[ -n $c ]] && [[ ${cptfld} == "-" ]]; then
-    echo -e "${RED}Missing argument target folder for command copyto${NC}" 1>&2
-    usage
+  if [[ ${copy_config_option} == "YES" ]] && [[ ${#folder_argument} -lt 3 ]]; then
+    echo -e "${RED}Missing or to small argument target folder (${folder_argument}) for command copyto${NC}" 1>&2
+    usage 3
   fi
 
     ####
-  if [[ -n $g ]] && [[ ${pname} != "-" ]]; then
-    if [[ $# -gt 2 ]] && [[ ${withenvoption} == "NO" ]]; then
-      echo -e "${RED}Unknown argument(s) detected${NC}" 1>&2
-      usage
-    else
-      if [[ "${pname}" =~ ^[a-zA-Z][a-zA-Z0-9_]*$ ]]; then
-        wizard ${pname} ${envonly}
+  if [[ ${gen_project_option} == "YES" ]] && [[ ${#pname_argument} -gt 2 ]]; then
+    # if [[ $# -gt 3 ]] && [[ ${withenvoption} == "NO" ]]; then
+    #   echo -e "${RED}Unknown argument(s) detected${NC}" 1>&2
+    #   usage
+    # else
+      if [[ "${pname_argument}" =~ ^[a-zA-Z][a-zA-Z0-9_]*$ ]]; then
+        # Default: use wizard
+        if [[ ${wizard_option} != "YES" ]]; then
+          wizard ${pname_argument} ${envonly_option}
+        fi
         generate
         exit 0
       else
         echo -e "${RED}Invalid project name! Project name must be a valid schema name.${NC}" 1>&2
-        exit 1
+        exit 4
       fi
-    fi
+    # fi
   fi
 
-  if [[ -n $c ]] && [[ ${cptfld} != "-" ]]; then
-    copytopath ${cptfld}
+  if [[ ${copy_config_option} == "YES" ]] && [[ ${#folder_argument} -gt 2 ]]; then
+    copytopath ${folder_argument}
     exit 0
   fi
 
-  if [[ -n $i ]]; then
-    install ${force}
+  if [[ ${inst_project_option} == "YES" ]]; then
+    install ${force_option}
     exit 0
   fi
 
@@ -837,7 +855,7 @@ function check_params_and_run_command() {
 
   if [[ $# -gt 0 ]]; then
     echo -e "${RED}Unknown arguments${NC}" 1>&2
-    usage
+    usage 5
   fi
 }
 

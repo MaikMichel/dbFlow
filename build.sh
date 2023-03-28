@@ -6,12 +6,12 @@ function usage() {
   echo -e "                   all (${BWHITE}init${NC}) or only with changed (${BWHITE}patch${NC}) files"
   echo ""
   echo -e "${BWHITE}Usage:${NC}"
-  echo -e "  $0 --init --version <label>"
-  echo -e "  $0 --patch --version <label> [--start <hash|tag>] [--end <hash|tag>]"
+  echo -e "  ${0} --init --version <label>"
+  echo -e "  ${0} --patch --version <label> [--start <hash|tag>] [--end <hash|tag>]"
   echo ""
   echo -e "${BWHITE}Options:${NC}"
   echo -e "  -h | --help             - Show this screen"
-  echo -e "  -d | --debug            - Show additionaly output messages"
+  echo -e ""
   echo -e "  -i | --init             - Flag to build a full installable artifact "
   echo -e "                            this will delete all objects in target schemas upon install"
   echo -e "  -p | --patch            - Flag to build an update/patch as artifact "
@@ -26,13 +26,13 @@ function usage() {
   echo -e "  -l | --listfiles        - Optional flag to list files which will be a part of the patch"
   echo ""
   echo -e "${BWHITE}Examples:${NC}"
-  echo -e "  $0 --init --version 1.0.0"
-  echo -e "  $0 --patch --version 1.1.0"
-  echo -e "  $0 --patch --version 1.2.0 --start 1.0.0"
-  echo -e "  $0 --patch --version 1.3.0 --start 71563f65 --end ba12010a"
-  echo -e "  $0 --patch --version 1.4.0 --start ORIG_HEAD --end HEAD"
+  echo -e "  ${0} --init --version 1.0.0"
+  echo -e "  ${0} --patch --version 1.1.0"
+  echo -e "  ${0} --patch --version 1.2.0 --start 1.0.0"
+  echo -e "  ${0} --patch --version 1.3.0 --start 71563f65 --end ba12010a"
+  echo -e "  ${0} --patch --version 1.4.0 --start ORIG_HEAD --end HEAD"
 
-  exit 1
+  exit $1
 }
 
 
@@ -53,6 +53,15 @@ if [[ -e ./apply.env ]]; then
   validate_passes
 fi
 
+function notify() {
+    [[ ${1} = 0 ]] || echo ❌ EXIT "${1}"
+    # you can notify some external services here,
+    # ie. Slack webhook, Github commit/PR etc.
+}
+
+trap '(exit 130)' INT
+trap '(exit 143)' TERM
+trap 'rc=$?; notify $rc; exit $rc' EXIT
 
 function check_vars() {
   # check require vars from build.env
@@ -96,120 +105,148 @@ function check_vars() {
 }
 
 function check_params() {
-  debug="n" help="n" init="n" patch="n" version="-" start=ORIG_HEAD end=HEAD k="n" a="n" l="n"
+  help_option="NO"
+  init_option="NO"
+  patch_option="NO"
+  version_option="NO"
+  version_argument="-"
+  start_option="NO"
+  start_argument=ORIG_HEAD
+  end_option="NO"
+  end_argument=HEAD
+  keep_option="NO"
+  all_option="NO"
+  list_option="NO"
 
-  while getopts_long 'dhipv:s:e:kal debug help init patch version: start: end: keepfolder shipall listfiles' OPTKEY "${@}"; do
+  while getopts_long 'hipv:s:e:kal help init patch version: start: end: keepfolder shipall listfiles' OPTKEY "${@}"; do
       case ${OPTKEY} in
-          'd'|'debug')
-              d=y
-              ;;
           'h'|'help')
-              h=y
+              help_option="YES"
               ;;
           'i'|'init')
-              i=y
+              init_option="YES"
               ;;
           'p'|'patch')
-              p=y
+              patch_option="YES"
               ;;
           'v'|'version')
-              version="${OPTARG}"
+              version_option="YES"
+              version_argument="${OPTARG}"
               ;;
           's'|'start')
-              start="${OPTARG}"
+              start_option="YES"
+              start_argument="${OPTARG}"
               ;;
           'e'|'end')
-              end="${OPTARG}"
+              end_option="YES"
+              end_argument="${OPTARG}"
               ;;
           'k'|'keepfolder')
-              k=y
+              keep_option="YES"
               ;;
           'a'|'shipall')
-              a=y
+              all_option="YES"
               ;;
           'l'|'listfiles')
-              l=y
+              list_option="YES"
               ;;
           '?')
               echo_error "INVALID OPTION -- ${OPTARG}" >&2
-              usage
+              usage 10
               ;;
           ':')
               echo_error "MISSING ARGUMENT for option -- ${OPTARG}" >&2
-              usage
+              usage 11
               ;;
           *)
               echo_error "UNIMPLEMENTED OPTION -- ${OPTKEY}" >&2
-              usage
+              usage 12
               ;;
       esac
   done
 
   # help first
-  if [[ -n $h ]] && [[ $h == "y" ]]; then
-    usage
+  if [[ ${help_option} == "YES" ]]; then
+    usage 0
+  fi
+
+  if [[ $# -lt 1 ]]; then
+    echo_error "Missing arguments"
+    usage 1
   fi
 
   # Rule 1: init or patch
-  if [[ -z $i ]] && [[ -z $p ]]; then
+  if [[ ${init_option} == "NO" ]] && [[ ${patch_option} == "NO" ]]; then
     echo_error "Missing build mode, init or patch using flags -i or -p"
-    usage
+    usage 2
   fi
-
-  if [[ $i == "y" ]] && [[ $p == "y" ]]; then
+  if [[ ${init_option} == "YES" ]] && [[ ${patch_option} == "YES" ]]; then
     echo_error "Build mode can only be init or patch, not both"
-    usage
+    usage 3
   fi
 
   # Rule 2: we always need a version
-  if [[ -z $version ]] || [[ $version == "-" ]]; then
+  if [[ ${version_option} == "NO" ]] || [[ ${version_argument} == "-" ]]; then
     echo_error "Missing version"
-    usage
+    usage 4
+  else
+    version=${version_argument}
+  fi
+
+  if [[ ${init_option} == "YES" ]] && ([[ ${start_option} == "YES" ]] || [[ ${end_option} == "YES" ]]); then
+    echo_error "Start or End hash or tags are only valid in patch mode"
+    usage 5
   fi
 
   # now check dependent params
-  if [[ $i == "y" ]]; then
+  if [[ ${init_option} == "YES" ]]; then
     mode="init"
-  elif [[ $p == "y" ]]; then
+  elif [[ ${patch_option} == "YES" ]]; then
     mode="patch"
   fi
 
+
+
     # Rule 3: When patch, we need git tags or hashes to build the diff
   if [[ $mode == "patch" ]]; then
-    if git cat-file -e "${start}" 2> /dev/null; then
-      from_commit="${start}"
+    if git cat-file -e "${start_argument}" 2> /dev/null; then
+      from_commit="${start_argument}"
     else
-      echo_error "Start Commit or Tag ${start} not found"
-      exit 1
+      echo_error "Start Commit or Tag ${start_argument} not found"
+      exit 6
     fi
 
-    if git cat-file -e "${end}" 2> /dev/null; then
-      until_commit="${end}"
+    if git cat-file -e "${end_argument}" 2> /dev/null; then
+      until_commit="${end_argument}"
     else
-      echo_error "End Commit or Tag ${end} not found"
-      exit 1
+      echo_error "End Commit or Tag ${end_argument} not found"
+      exit 7
     fi
   fi
 
+
   # now check keep folder
-  if [[ $k == "y" ]]; then
+  if [[ ${keep_option} == "YES" ]]; then
     KEEP_FOLDER="TRUE"
-  elif [[ $p == "y" ]]; then
+  else
     KEEP_FOLDER="FALSE"
   fi
 
   # now check ship all files
-  if [[ $a == "y" ]]; then
+  if [[ ${all_option} == "YES" ]]; then
     SHIP_ALL="TRUE"
-  elif [[ $p == "y" ]]; then
+  else
     SHIP_ALL="FALSE"
   fi
 
-  if [[ $l == "y" ]] && [[ $p == "y" ]]; then
+  if [[ ${list_option} == "YES" ]] && [[ $mode == "patch" ]]; then
     echo -e "${PURPLE}Listing changed files (build.env .gitignore apex db reports rest .hooks)${NC}"
 
     git --no-pager diff -r --compact-summary --dirstat --stat-width=120 --no-commit-id "${from_commit}" "${until_commit}" --diff-filter=ACMRTUXB  -- build.env .gitignore apex db reports rest .hooks
     exit 0
+  elif [[ ${list_option} == "YES" ]] && [[ $mode == "init" ]]; then
+    echo_error "Flag -l|--list is not valid on init mode, cause nothing to list as delta"
+    usage 8
   fi
 }
 
@@ -251,6 +288,9 @@ function setup_env() {
   targetpath="${depotpath}"/${mode}_${version}
   sourcepath="."
 
+  rel_depotpath="$DEPOT_PATH/$branch"
+  rel_targetpath="${rel_depotpath}"/${mode}_${version}
+
   # initialize logfile
   MDATE=`date "+%Y%m%d%H%M%S"`
   log_file="${MDATE}_bld_${mode}_${version}.log"
@@ -286,8 +326,8 @@ function setup_env() {
   fi
      timelog "Schemas:             (${BWHITE}${SCHEMAS[*]}${NC})"
   timelog "----------------------------------------------------------"
-  timelog "Depotpath:     ${BWHITE}${depotpath}${NC}"
-  timelog "Targetpath:    ${BWHITE}${targetpath}${NC}"
+  timelog "Depotpath:     ${BWHITE}${rel_depotpath}${NC}"
+  timelog "Targetpath:    ${BWHITE}${rel_targetpath}${NC}"
   timelog "Sourcepath:    ${BWHITE}${sourcepath}${NC}"
   timelog "Keepfolder:    ${BWHITE}${KEEP_FOLDER}${NC}"
   timelog "----------------------------------------------------------"
