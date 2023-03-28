@@ -141,19 +141,21 @@ function gen_scripts() {
     unmode="patch"
   fi
 
+
   # loop through schemas and all possible folder and write inserts
   # to the new table
   for schema in "${DBSCHEMAS[@]}"
   do
+    CNT_IDX_INIT=0
+    DBUNION=()
+
     # remove unmode file if exists to keep consistent
     [[ ! -f ".hooks/pre/${unmode}/test_${schema}.sql" ]] || rm ".hooks/pre/${unmode}/test_${schema}.sql"
 
-    # on hook file per schema
+    # one hook file per schema
     [[ -d ".hooks/pre/${mode}" ]] || mkdir -p ".hooks/pre/${mode}"
     cat ".dbFlow/scripts/test/tbl_dbflow_test.sql" > ".hooks/pre/${mode}/test_${schema}.sql"
 
-    CNT_IDX_INIT=0
-    DBUNION=()
     # check every path in given order
     for path in "${SCAN_PATHES[@]}"
     do
@@ -173,6 +175,29 @@ function gen_scripts() {
         DBUNION+=( "db/${schema}/${path}/${mode}_dbflow_test.sql" )
       fi
     done
+
+    # loop through applications
+    if [[ -d "apex" ]]; then
+      depth=1
+      this_app_schema=""
+      if [[ ${PROJECT_MODE} == "FLEX" ]]; then
+        depth=2
+        this_app_schema=${schema}
+      fi
+
+      # only when MULTI and APP_SCHEMA, FLEX or SINGLE
+      if [[ ${PROJECT_MODE} != "MULTI" ]] || [[ ${schema} == ${APP_SCHEMA} ]]; then
+        items=()
+        IFS=$'\n' read -r -d '' -a items < <( find "apex/${this_app_schema}" -maxdepth "${depth}" -mindepth "${depth}" -type d && printf '\0' )
+
+        for dirname in "${items[@]}"
+        do
+          echo "insert into dbflow_test(dft_mainfolder, dft_mode, dft_schema, dft_file) values ('apex', '${mode}', '???', '${dirname}/install.sql');" > "${dirname}/install.sql"
+          DBUNION+=( "${dirname}/install.sql" )
+        done
+      fi
+    fi
+
 
     # gen test package
     last_elem=${DBUNION[${#DBUNION[@]}-1]}
