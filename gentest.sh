@@ -23,19 +23,22 @@ usage() {
   echo -e "  -i | --init             - Flag to build all files relevant for an initial deployment "
   echo -e "  -p | --patch            - Flag to build only files relevant for an patch deployment "
   echo -e "                            This will apply on top of the initial created files"
+  echo -e "  -k | --hooks            - Option to create files in all schema object folder hooks"
   echo ""
   echo -e "${BWHITE}Examples:${NC}"
   echo -e "  $0 --init"
+  echo -e "  $0 --init --hooks"
   echo -e "  $0 --patch"
+  echo -e "  $0 --patch --hooks"
 
 
   exit 1
 }
 
 function check_params() {
-  debug="n" help="n" init="n" patch="n"
+  debug="n" help="n" init="n" patch="n" hooks="n"
 
-  while getopts_long 'dhip debug help init patch' OPTKEY "${@}"; do
+  while getopts_long 'dhipk debug help init patch hooks' OPTKEY "${@}"; do
       case ${OPTKEY} in
           'd'|'debug')
               d=y
@@ -48,6 +51,9 @@ function check_params() {
               ;;
           'p'|'patch')
               p=y
+              ;;
+          'k'|'hooks')
+              hooks="y"
               ;;
           '?')
               echo_error "INVALID OPTION -- ${OPTARG}" >&2
@@ -146,6 +152,7 @@ function gen_scripts() {
   # to the new table
   for schema in "${DBSCHEMAS[@]}"
   do
+    echo "processing Schema: ${schema}"
     CNT_IDX_INIT=0
     DBUNION=()
 
@@ -159,25 +166,76 @@ function gen_scripts() {
     # check every path in given order
     for path in "${SCAN_PATHES[@]}"
     do
-      # create folder if not exists
-      [[ -d db/${schema}/${path} ]] || mkdir -p "db/${schema}/${path}"
+      echo "processing Folder: ${path}"
+
+      # when hook option is enabled, do the same inside hooks
+      if [[ ${hooks} == "y" ]] && [[ ${path} != ".hooks/"* ]]; then
+        # pre folder-hooks (something like db/schema/.hooks/pre/tables)
+        targetfolder="db/${schema}/.hooks/pre/${path}"
+        # create targetfolder if not exists
+        [[ -d ${targetfolder} ]] || mkdir -p "${targetfolder}"
+
+        # remove init file if exists to keep consistent
+        [[ ! -f "${targetfolder}/${unmode}_dbflow_test.sql" ]] || rm "${targetfolder}/${unmode}_dbflow_test.sql"
+
+        echo "insert into dbflow_test(dft_mainfolder, dft_mode, dft_schema, dft_file) values ('db', '${mode}', '${schema}', '${targetfolder}/${mode}_dbflow_test.sql');" > "${targetfolder}/${mode}_dbflow_test.sql"
+
+        ((CNT_IDX_INIT=CNT_IDX_INIT+1))
+
+        # if [[ ${path} == "tables" ]] && [[ ${mode} == "patch" ]]; then
+        #   echo "skipping tables"
+        # else
+          DBUNION+=( "${targetfolder}/${mode}_dbflow_test.sql" )
+        # fi
+      fi
+
+      targetfolder="db/${schema}/${path}"
+
+      # create targetfolder if not exists
+      [[ -d ${targetfolder} ]] || mkdir -p "${targetfolder}"
 
       # remove init file if exists to keep consistent
-      [[ ! -f "db/${schema}/${path}/${unmode}_dbflow_test.sql" ]] || rm "db/${schema}/${path}/${unmode}_dbflow_test.sql"
+      [[ ! -f "${targetfolder}/${unmode}_dbflow_test.sql" ]] || rm "${targetfolder}/${unmode}_dbflow_test.sql"
 
-      echo "insert into dbflow_test(dft_mainfolder, dft_mode, dft_schema, dft_file) values ('db', '${mode}', '${schema}', 'db/${schema}/${path}/${mode}_dbflow_test.sql');" > "db/${schema}/${path}/${mode}_dbflow_test.sql"
+      echo "insert into dbflow_test(dft_mainfolder, dft_mode, dft_schema, dft_file) values ('db', '${mode}', '${schema}', '${targetfolder}/${mode}_dbflow_test.sql');" > "${targetfolder}/${mode}_dbflow_test.sql"
 
       ((CNT_IDX_INIT=CNT_IDX_INIT+1))
 
       if [[ ${path} == "tables" ]] && [[ ${mode} == "patch" ]]; then
         echo "skipping tables"
       else
-        DBUNION+=( "db/${schema}/${path}/${mode}_dbflow_test.sql" )
+        DBUNION+=( "${targetfolder}/${mode}_dbflow_test.sql" )
       fi
+
+
+      # when hook option is enabled, do the same inside hooks
+      if [[ ${hooks} == "y" ]] && [[ ${path} != ".hooks/"* ]]; then
+        # post folder-hooks (something like db/schema/.hooks/post/tables)
+        targetfolder="db/${schema}/.hooks/post/${path}"
+        # create targetfolder if not exists
+        [[ -d ${targetfolder} ]] || mkdir -p "${targetfolder}"
+
+        # remove init file if exists to keep consistent
+        [[ ! -f "${targetfolder}/${unmode}_dbflow_test.sql" ]] || rm "${targetfolder}/${unmode}_dbflow_test.sql"
+
+        echo "insert into dbflow_test(dft_mainfolder, dft_mode, dft_schema, dft_file) values ('db', '${mode}', '${schema}', '${targetfolder}/${mode}_dbflow_test.sql');" > "${targetfolder}/${mode}_dbflow_test.sql"
+
+        ((CNT_IDX_INIT=CNT_IDX_INIT+1))
+
+        # if [[ ${path} == "tables" ]] && [[ ${mode} == "patch" ]]; then
+        #   echo "skipping tables"
+        # else
+          DBUNION+=( "${targetfolder}/${mode}_dbflow_test.sql" )
+        # fi
+      fi
+
+
     done
 
     # loop through applications
     if [[ -d "apex" ]]; then
+
+
       depth=1
       this_app_schema=""
       if [[ ${PROJECT_MODE} == "FLEX" ]]; then
@@ -192,10 +250,13 @@ function gen_scripts() {
 
         for dirname in "${items[@]}"
         do
+          echo "processing APEX App: ${dirname}"
           echo "insert into dbflow_test(dft_mainfolder, dft_mode, dft_schema, dft_file) values ('apex', '${mode}', '???', '${dirname}/install.sql');" > "${dirname}/install.sql"
           DBUNION+=( "${dirname}/install.sql" )
         done
       fi
+
+      echo
     fi
 
 
