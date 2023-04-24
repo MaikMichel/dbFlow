@@ -390,7 +390,7 @@ function wizard() {
 
   ask4pwd "$(echo -e "Enter password for ${BUNLINE}${wiz_db_admin_user}${NC} [${BGRAY}leave blank and you will be asked for${NC}]: ")"
   if [[ ${pass} != "" ]]; then
-    wiz_db_admin_pwd=`echo "${pass}" | base64`
+    wiz_db_admin_pwd=`echo "${pass}"`
   fi
 
   if [[ $(toLowerCase "${wiz_project_mode}") != "s" ]]; then
@@ -401,7 +401,7 @@ function wizard() {
     ask4pwd "$(echo -e "Enter password for user ${BUNLINE}${wiz_db_app_user}${NC} [${BGRAY}leave blank and you will be asked for${NC}]: ")"
   fi
   if [[ ${pass} != "" ]]; then
-    wiz_db_app_pwd=`echo "${pass}" | base64`
+    wiz_db_app_pwd=`echo "${pass}"`
   fi
 
   local local_depot_path=${DEPOT_PATH-"_depot"}
@@ -574,6 +574,7 @@ function generate() {
     echo "# Deployment User"
     echo "DB_APP_USER=${wiz_db_app_user}"
     if [[ ${wiz_db_app_pwd} != "" ]]; then
+      wiz_db_app_pwd=`echo "${wiz_db_app_pwd}" | base64`
       echo "DB_APP_PWD=\"!${wiz_db_app_pwd}\""
     else
       echo "DB_APP_PWD="
@@ -582,6 +583,7 @@ function generate() {
     echo "# SYS/ADMIN Pass"
     echo "DB_ADMIN_USER=${wiz_db_admin_user}"
     if [[ ${wiz_db_admin_pwd} != "" ]]; then
+      wiz_db_admin_pwd=`echo "${wiz_db_admin_pwd}" | base64`
       echo "DB_ADMIN_PWD=\"!${wiz_db_admin_pwd}\""
     else
       echo "DB_ADMIN_PWD="
