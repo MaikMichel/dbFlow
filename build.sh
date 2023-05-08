@@ -1115,7 +1115,7 @@ function call_apply_on_install() {
 
     .dbFlow/apply.sh --"${mode}" --version "${version}"
   else
-    echo -e "${LWHITE}just call ${NC}${BWHITE}.dbFlow/apply.sh --${mode} --version ${version}${NC} ${LWHITE}inside your instance folder${NC}"
+    echo -e "${LWHITE}just call ${NC}${BWHITE}.dbFlow/apply.sh --${mode} --version ${version} ${NC}${LWHITE}inside your instance folder${NC}"
   fi
 }
 

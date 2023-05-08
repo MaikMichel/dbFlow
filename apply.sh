@@ -6,12 +6,12 @@ function usage() {
   echo -e "                   depot path, defined in environment. "
   echo ""
   echo -e "${BWHITE}Usage:${NC}"
-  echo -e "  $0 --init --version <label>"
-  echo -e "  $0 --patch --version <label> [--noextract] [--redolog <old-logfile>]"
+  echo -e "  ${0} --init --version <label>"
+  echo -e "  ${0} --patch --version <label> [--noextract] [--redolog <old-logfile>]"
   echo
   echo -e "${BWHITE}Options:${NC}"
   echo -e "  -h | --help             - Show this screen"
-  echo -e "  -d | --debug            - Show additionaly output messages"
+  echo -e ""
   echo -e "  -i | --init             - Flag to install a full installable artifact "
   echo -e "                            this will delete all objects in target schemas upon install"
   echo -e "  -p | --patch            - Flag to install an update/patch as artifact "
@@ -23,11 +23,12 @@ function usage() {
   echo -e "  -r | --redolog          - Optional to redo an installation and skip installation-step allready run"
   echo ""
  	echo -e "${BWHITE}Examples:${NC}"
-  echo -e "  $0 --init --version 1.0.0"
-  echo -e "  $0 --patch --version 1.1.0"
-  echo -e "  $0 --patch --version 1.1.0 --noextract --redolog ../depot/master/old_logfile.log"
+  echo -e "  ${0} --init --version 1.0.0"
+  echo -e "  ${0} --patch --version 1.1.0"
+  echo -e "  ${0} --patch --version 1.1.0 --noextract --redolog ../depot/master/old_logfile.log"
   echo
-  exit 1
+
+  exit $1
 }
 # get required functions and vars
 source ./.dbFlow/lib.sh
@@ -57,6 +58,7 @@ maintence="<span />${maintence}"
 SQLCLI=${SQLCLI:-sqlplus}
 
 basepath=$(pwd)
+
 runfile=""
 debug="n"
 help="h"
@@ -85,15 +87,15 @@ function check_vars() {
     do_exit="YES"
   fi
 
-  if [[ -z $DB_TNS ]]; then
+  if [[ -z ${DB_TNS} ]]; then
     echo_error "TNS not defined"
     do_exit="YES"
   fi
 
-  if [[ -d $DEPOT_PATH/$STAGE ]]; then
-    install_source_path=${basepath}/$DEPOT_PATH/$STAGE
+  if [[ -d ${DEPOT_PATH}/${STAGE} ]]; then
+    install_source_path=${basepath}/${DEPOT_PATH}/${STAGE}
   else
-    echo_error "Targetstage $STAGE inside $DEPOT_PATH is unknown"
+    echo_error "Targetstage ${STAGE} inside ${DEPOT_PATH} is unknown"
     do_exit="YES"
   fi
 
@@ -138,84 +140,93 @@ function check_vars() {
 }
 
 function check_params() {
-  while getopts_long 'dhipv:nr: debug help init patch version: noextract redolog:' OPTKEY "${@}"; do
+  help_option="NO"
+  init_option="NO"
+  patch_option="NO"
+  version_option="NO"
+  version_argument="-"
+  noextract_option="NO"
+  redolog_option="NO"
+  redolog_argument="-"
+
+  while getopts_long 'hipv:nr: help init patch version: noextract redolog:' OPTKEY "${@}"; do
       case ${OPTKEY} in
-          'd'|'debug')
-              d=y
-              ;;
           'h'|'help')
-              h=y
+              help_option="YES"
               ;;
           'i'|'init')
-              i=y
+              init_option="YES"
               ;;
           'p'|'patch')
-              p=y
+              patch_option="YES"
               ;;
           'v'|'version')
-              version="${OPTARG}"
+              version_option="YES"
+              version_argument="${OPTARG}"
               ;;
           'n'|'noextract')
-              noextract=y
+              noextract_option="YES"
               ;;
           'r'|'redolog')
-              redolog="${OPTARG}"
+              redolog_option="YES"
+              redolog_argument="${OPTARG}"
               ;;
           '?')
               echo_error "INVALID OPTION -- ${OPTARG}" >&2
-              usage
+              usage 10
               ;;
           ':')
               echo_error "MISSING ARGUMENT for option -- ${OPTARG}" >&2
-              usage
+              usage 11
               ;;
           *)
               echo_error "UNIMPLEMENTED OPTION -- ${OPTKEY}" >&2
-              usage
+              usage 12
               ;;
       esac
   done
 
   # help first
-  if [[ -n $h ]] && [[ $h == "y" ]]; then
-    usage
+  if [[ ${help_option} == "YES" ]]; then
+    usage 0
   fi
 
   # Rule 1: init or patch
-  if [[ -z $i ]] && [[ -z $p ]]; then
+  if [[ ${init_option} == "NO" ]] && [[ ${patch_option} == "NO" ]]; then
     echo_error "Missing apply mode, init or patch using flags -i or -p"
-    echo_error "type $0 --help for more informations"
-    usage
+    usage 2
   fi
 
-  if [[ $i == "y" ]] && [[ $p == "y" ]]; then
+  if [[ ${init_option} == "YES" ]] && [[ ${patch_option} == "YES" ]]; then
     echo_error "Build mode can only be init or patch, not both"
-    echo_error "type $0 --help for more informations"
-    usage
+    usage 3
   fi
 
   # Rule 2: we always need a version
-  if [[ -z $version ]] || [[ $version == "-" ]]; then
-    echo_error "Missing version, use flag -v x.x.x"
-    echo_error "type $0 --help for more informations"
-    usage
+  if [[ ${version_option} == "NO" ]] || [[ ${version_argument} == "-" ]]; then
+    echo_error "Missing version, use flag --version x.x.x"
+    usage 4
+  else
+    version=${version_argument}
   fi
 
   # now check dependent params
-  if [[ $i == "y" ]]; then
+  if [[ ${init_option} == "YES" ]]; then
     mode="init"
-  elif [[ $p == "y" ]]; then
+  elif [[ ${patch_option} == "YES" ]]; then
     mode="patch"
   fi
 
   # now check dependent params
-  if [[ $noextract == "y" ]]; then
+  if [[ ${noextract_option} == "YES" ]]; then
     must_extract="FALSE"
   else
     must_extract="TRUE"
   fi
 
-  oldlogfile=$redolog
+  if [[ ${redolog_option} == "YES" ]]; then
+    oldlogfile=$redolog_argument
+  fi
 }
 
 function print_info() {
@@ -794,6 +805,13 @@ function install_apps() {
         if [[ $? -ne 0 ]]; then
           timelog "ERROR when executing ${line}" "${failure}"
           manage_result "failure"
+        fi
+
+        # only for syntax highlighting
+        if [[ 1 == 2 ]]; then
+          echo <<!
+          '\'
+!
         fi
 
         cd "${basepath}" || exit
