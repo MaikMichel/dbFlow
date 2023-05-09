@@ -59,6 +59,9 @@ SQLCLI=${SQLCLI:-sqlplus}
 
 basepath=$(pwd)
 
+#
+AT_LEAST_ON_INSTALLFILE_STARTED="NO"
+
 runfile=""
 debug="n"
 help="h"
@@ -344,7 +347,7 @@ function prepare_redo() {
     this_os=$(uname)
 
     redo_file="redo_${MDATE}_${mode}_${version}.log"
-    grep '^<<< ' "${oldlogfile}" > "${redo_file}"
+    grep '^<<< ' "${oldlogfile}" | cat > "${redo_file}"
     sed -i 's/^<<< //' "${redo_file}"
 
     # backup install files
@@ -510,6 +513,7 @@ function install_db_schemas() {
         sed -i -E "s:--$STAGE:Prompt uncommented cleanup for stage $STAGE\n:g" "${db_install_file}"
 
         runfile=${db_install_file}
+        AT_LEAST_ON_INSTALLFILE_STARTED="YES"
         $SQLCLI -S -L "$(get_connect_string "${schema}")" @"${db_install_file}" "${version}" "${mode}"
         runfile=""
 
@@ -1027,15 +1031,21 @@ function manage_result() {
   else
     redolog=$(basename "${full_log_file}")
 
-    # failure
-    echo_debug "You can either copy the broken patch into the current directory with: "
-    echo_debug "${WHITE}cp ${target_relative_path}/${mode}_${version}.tar.gz .${NC}"
-    echo_debug "And restart the patch after the respective problem has been fixed"
-    echo_debug "Or create a new fixed release and restart the deployment of the patch. In both cases you have the"
-    echo_debug "possibility to specifiy the log file ${WHITE}${target_relative_path}/${log_file}${NC} as "
-    echo_debug "redolog parameter. This will not repeat the steps that have already been successfully executed."
-    echo_debug "${WHITE}$0 --${mode} --version ${version} --redolog ${target_relative_path}/${redolog}${NC}"
-    echo_debug "view output: $DEPOT_PATH/$STAGE/$target_move/$version/${finallog}"
+    # this is only usefull when at least on installation file has been executed
+    if [[ ${AT_LEAST_ON_INSTALLFILE_STARTED} == "YES" ]]; then
+      # failure
+      echo_debug "You can either copy the broken patch into the current directory and restart "
+      echo_debug "the patch after the respective problem has been fixed by using the redolog param"
+      echo_debug "---"
+      echo_debug "${WHITE}cp ${target_relative_path}/${mode}_${version}.tar.gz .${NC}"
+      echo_debug "${WHITE}$0 --${mode} --version ${version} --redolog ${target_relative_path}/${redolog}${NC}"
+      echo_debug "---"
+      echo_debug "Or create a new fixed release and restart the deployment of the patch. In both cases you have the"
+      echo_debug "possibility to specifiy the log file ${WHITE}${target_relative_path}/${log_file}${NC}"
+      echo_debug "as redolog parameter. This will not repeat the steps that have already been successfully executed."
+    fi
+
+    echo_debug "view output: \"$DEPOT_PATH/$STAGE/$target_move/$version/${finallog}\""
 
     process_logs
     exit 1
