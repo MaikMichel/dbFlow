@@ -871,7 +871,8 @@ function gen_changelog() {
 
   if [[ -n ${INTENT_PREFIXES} ]]; then
     for intent in "${!INTENT_PREFIXES[@]}"; do
-      readarray -t fixes <<< $(git log ${current_tag}...${previous_tag} --pretty="%s" --reverse | grep -v Merge | grep "^${INTENT_PREFIXES[$intent]}: *")
+      # echo "git log ${until_commit}...${from_commit} --pretty=\"%s\" --reverse | grep -v Merge | grep \"^${INTENT_PREFIXES[$intent]}: *\""
+      readarray -t fixes <<< $(git log ${until_commit}...${from_commit} --pretty="%s" --reverse | grep -v Merge | grep "^${INTENT_PREFIXES[$intent]}: *")
       eval fixes=($(printf "%q\n" "${fixes[@]}" | sort -u))
 
       if [[ ${#fixes[@]} -gt 0 ]] && [[ ${fixes[0]} != "" ]]; then
@@ -903,8 +904,8 @@ function gen_changelog() {
   # when INTENT_ELSE is defined output goes here
   if [[ -n ${INTENT_ELSE} ]]; then
     intent_pipes=$(printf '%s|' "${INTENT_PREFIXES[@]}" | sed 's/|$//')
-
-    readarray -t fixes <<< $(git log ${current_tag}...${previous_tag} --pretty="%s" --reverse | grep -v Merge | grep -v -E "^${intent_pipes}: *")
+    # echo "git log ${until_commit}...${from_commit} --pretty=\"%s\" --reverse | grep -v Merge | grep -v -E \"^${intent_pipes}: *\""
+    readarray -t fixes <<< $(git log ${until_commit}...${from_commit} --pretty="%s" --reverse | grep -v Merge | grep -v -E "^${intent_pipes}: *")
     eval fixes=($(printf "%q\n" "${fixes[@]}" | sort -u))
 
     if [[ ${#fixes[@]} -gt 0 ]] && [[ ${fixes[0]} != "" ]]; then
