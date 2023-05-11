@@ -29,7 +29,7 @@ function usage() {
   echo -e "${BWHITE}Examples:${NC}"
   echo -e "  ${0} --generate mytest"
   echo -e "  ${0} --install"
-  echo -e "  ${0} --copyto \"../../instances/build\""
+  echo -e "  ${0} --copyto \"../instances/build\""
   echo
   echo
   exit $1
