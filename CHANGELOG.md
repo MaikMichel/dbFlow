@@ -1,7 +1,24 @@
 # Changelog
 
 
-## [Unreleased]
+## [2.0.0 - 2023-05-23]
+- Fix: some vars to reference as quoted content
+- Fix: reading user input with -r option
+- Fix: Interpretation when nothing to greo in redolog
+- Fix: Changelog with start/end options, rather then with tags found
+- Refactored: writing build.env and apply.env
+- Refactored: path array to lib.sh
+- Refactored: color codes
+- Refactored: export schema functionality removed > this is part of dbFlux
+- Refactored: parameter parsing should now be consistant in all scripts
+- New: Add gentest.sh to put insert scripts in folders to validate execution
+- New: create_00_workspace.sql will now remove it before creating
+- New: Parameters passed to scripts are now alway options,
+       no commands or arguments without options.
+       **This will break your existing scripts!**
+- New: Validate dbFlow version artifact was build to match version it is applied with
+- New: Ask user to proceed on init mode when no DBFLOW_JENKINS var is set
+- New: Seperate wizard from generation so project can be setup by environment vars
 
 ## [1.0.0 - 2022-09-13]
 - Add Obfuscate passwords in apply.env
