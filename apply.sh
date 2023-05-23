@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 #echo "Your script args ($#) are: $@"
 
-usage() {
-  echo -e "${BYELLOW}.dbFlow/apply.sh${NC} - applies the given build to target database from"
+function usage() {
+  echo -e "${BWHITE}.dbFlow/apply.sh${NC} - applies the given build to target database from"
   echo -e "                   depot path, defined in environment. "
   echo ""
-  echo -e "${BYELLOW}Usage:${NC}"
-  echo -e "  $0 --init --version <label>"
-  echo -e "  $0 --patch --version <label> [--noextract] [--redolog <old-logfile>]"
+  echo -e "${BWHITE}Usage:${NC}"
+  echo -e "  ${0} --init --version <label>"
+  echo -e "  ${0} --patch --version <label> [--noextract] [--redolog <old-logfile>]"
   echo
-  echo -e "${BYELLOW}Options:${NC}"
+  echo -e "${BWHITE}Options:${NC}"
   echo -e "  -h | --help             - Show this screen"
-  echo -e "  -d | --debug            - Show additionaly output messages"
+  echo -e ""
   echo -e "  -i | --init             - Flag to install a full installable artifact "
   echo -e "                            this will delete all objects in target schemas upon install"
   echo -e "  -p | --patch            - Flag to install an update/patch as artifact "
@@ -22,12 +22,13 @@ usage() {
   echo -e "                            Can be used to extract files manually or use a allready extracted build"
   echo -e "  -r | --redolog          - Optional to redo an installation and skip installation-step allready run"
   echo ""
- 	echo -e "${BYELLOW}Examples:${NC}"
-  echo -e "  $0 --init --version 1.0.0"
-  echo -e "  $0 --patch --version 1.1.0"
-  echo -e "  $0 --patch --version 1.1.0 --noextract --redolog ../depot/master/old_logfile.log"
+ 	echo -e "${BWHITE}Examples:${NC}"
+  echo -e "  ${0} --init --version 1.0.0"
+  echo -e "  ${0} --patch --version 1.1.0"
+  echo -e "  ${0} --patch --version 1.1.0 --noextract --redolog ../depot/master/old_logfile.log"
   echo
-  exit 1
+
+  exit $1
 }
 # get required functions and vars
 source ./.dbFlow/lib.sh
@@ -57,7 +58,18 @@ maintence="<span />${maintence}"
 SQLCLI=${SQLCLI:-sqlplus}
 
 basepath=$(pwd)
+
+#
+AT_LEAST_ON_INSTALLFILE_STARTED="NO"
+
 runfile=""
+debug="n"
+help="h"
+init="n"
+patch="n"
+version="-"
+noextract="n"
+redolog=""
 
 function check_vars() {
   # validate parameters
@@ -78,15 +90,15 @@ function check_vars() {
     do_exit="YES"
   fi
 
-  if [[ -z $DB_TNS ]]; then
+  if [[ -z ${DB_TNS} ]]; then
     echo_error "TNS not defined"
     do_exit="YES"
   fi
 
-  if [[ -d $DEPOT_PATH/$STAGE ]]; then
-    install_source_path=${basepath}/$DEPOT_PATH/$STAGE
+  if [[ -d ${DEPOT_PATH}/${STAGE} ]]; then
+    install_source_path=${basepath}/${DEPOT_PATH}/${STAGE}
   else
-    echo_error "Targetstage $STAGE inside $DEPOT_PATH is unknown"
+    echo_error "Targetstage ${STAGE} inside ${DEPOT_PATH} is unknown"
     do_exit="YES"
   fi
 
@@ -94,7 +106,7 @@ function check_vars() {
     SCHEMAS=(${DBSCHEMAS[@]})
   else
     # get distinct values of array
-    ALL_SCHEMAS=( ${DATA_SCHEMA} ${LOGIC_SCHEMA} ${APP_SCHEMA} )
+    ALL_SCHEMAS=( "${DATA_SCHEMA}" "${LOGIC_SCHEMA}" "${APP_SCHEMA}" )
     SCHEMAS=($(printf "%s\n" "${ALL_SCHEMAS[@]}" | sort -u))
 
     # if length is equal than ALL_SCHEMAS, otherwise distinct
@@ -113,90 +125,6 @@ function check_vars() {
     exit 1;
   fi
 
-}
-
-function check_params() {
-  debug="n" help="h" init="n" patch="n" version="-" noextract="n"  redolog=""
-
-  while getopts_long 'dhipv:nr: debug help init patch version: noextract redolog:' OPTKEY "${@}"; do
-      case ${OPTKEY} in
-          'd'|'debug')
-              d=y
-              ;;
-          'h'|'help')
-              h=y
-              ;;
-          'i'|'init')
-              i=y
-              ;;
-          'p'|'patch')
-              p=y
-              ;;
-          'v'|'version')
-              version="${OPTARG}"
-              ;;
-          'n'|'noextract')
-              noextract=y
-              ;;
-          'r'|'redolog')
-              redolog="${OPTARG}"
-              ;;
-          '?')
-              echo_error "INVALID OPTION -- ${OPTARG}" >&2
-              usage
-              ;;
-          ':')
-              echo_error "MISSING ARGUMENT for option -- ${OPTARG}" >&2
-              usage
-              ;;
-          *)
-              echo_error "UNIMPLEMENTED OPTION -- ${OPTKEY}" >&2
-              usage
-              ;;
-      esac
-  done
-
-  # help first
-  if [[ -n $h ]] && [[ $h == "y" ]]; then
-    usage
-  fi
-
-  # Rule 1: init or patch
-  if [[ -z $i ]] && [[ -z $p ]]; then
-    echo_error "Missing apply mode, init or patch using flags -i or -p"
-    echo_error "type $0 --help for more informations"
-    usage
-  fi
-
-  if [[ $i == "y" ]] && [[ $p == "y" ]]; then
-    echo_error "Build mode can only be init or patch, not both"
-    echo_error "type $0 --help for more informations"
-    usage
-  fi
-
-  # Rule 2: we always need a version
-  if [[ -z $version ]] || [[ $version == "-" ]]; then
-    echo_error "Missing version, use flag -v x.x.x"
-    echo_error "type $0 --help for more informations"
-    usage
-  fi
-
-  # now check dependent params
-  if [[ $i == "y" ]]; then
-    mode="init"
-  elif [[ $p == "y" ]]; then
-    mode="patch"
-  fi
-
-  # now check dependent params
-  if [[ $noextract == "y" ]]; then
-    must_extract="FALSE"
-  else
-    must_extract="TRUE"
-  fi
-
-  oldlogfile=$redolog
-
   # Defing some vars
   app_install_file=apex_files_${version}.lst
   remove_old_files=remove_files_${version}.lst
@@ -208,16 +136,103 @@ function check_params() {
   MDATE=`date "+%Y%m%d%H%M%S"`
   log_file="${MDATE}_dpl_${mode}_${version}.log"
 
-  touch $log_file
+  touch "${log_file}"
   full_log_file="$( cd "$( dirname "${log_file}" )" >/dev/null 2>&1 && pwd )/${log_file}"
 
   exec &> >(tee -a "$log_file")
 }
 
+function check_params() {
+  help_option="NO"
+  init_option="NO"
+  patch_option="NO"
+  version_option="NO"
+  version_argument="-"
+  noextract_option="NO"
+  redolog_option="NO"
+  redolog_argument="-"
 
+  while getopts_long 'hipv:nr: help init patch version: noextract redolog:' OPTKEY "${@}"; do
+      case ${OPTKEY} in
+          'h'|'help')
+              help_option="YES"
+              ;;
+          'i'|'init')
+              init_option="YES"
+              ;;
+          'p'|'patch')
+              patch_option="YES"
+              ;;
+          'v'|'version')
+              version_option="YES"
+              version_argument="${OPTARG}"
+              ;;
+          'n'|'noextract')
+              noextract_option="YES"
+              ;;
+          'r'|'redolog')
+              redolog_option="YES"
+              redolog_argument="${OPTARG}"
+              ;;
+          '?')
+              echo_error "INVALID OPTION -- ${OPTARG}" >&2
+              usage 10
+              ;;
+          ':')
+              echo_error "MISSING ARGUMENT for option -- ${OPTARG}" >&2
+              usage 11
+              ;;
+          *)
+              echo_error "UNIMPLEMENTED OPTION -- ${OPTKEY}" >&2
+              usage 12
+              ;;
+      esac
+  done
 
-print_info()
-{
+  # help first
+  if [[ ${help_option} == "YES" ]]; then
+    usage 0
+  fi
+
+  # Rule 1: init or patch
+  if [[ ${init_option} == "NO" ]] && [[ ${patch_option} == "NO" ]]; then
+    echo_error "Missing apply mode, init or patch using flags -i or -p"
+    usage 2
+  fi
+
+  if [[ ${init_option} == "YES" ]] && [[ ${patch_option} == "YES" ]]; then
+    echo_error "Build mode can only be init or patch, not both"
+    usage 3
+  fi
+
+  # Rule 2: we always need a version
+  if [[ ${version_option} == "NO" ]] || [[ ${version_argument} == "-" ]]; then
+    echo_error "Missing version, use flag --version x.x.x"
+    usage 4
+  else
+    version=${version_argument}
+  fi
+
+  # now check dependent params
+  if [[ ${init_option} == "YES" ]]; then
+    mode="init"
+  elif [[ ${patch_option} == "YES" ]]; then
+    mode="patch"
+  fi
+
+  # now check dependent params
+  if [[ ${noextract_option} == "YES" ]]; then
+    must_extract="FALSE"
+  else
+    must_extract="TRUE"
+  fi
+
+  if [[ ${redolog_option} == "YES" ]]; then
+    oldlogfile=$redolog_argument
+  fi
+}
+
+function print_info() {
   timelog "Installing    ${BWHITE}${mode} ${version}${NC}"
   timelog "----------------------------------------------------------"
   timelog "Mode:         ${BWHITE}$mode${NC}"
@@ -262,42 +277,78 @@ print_info()
   timelog
 }
 
-
-extract_patchfile()
-{
-  if [[ $must_extract == "TRUE" ]]; then
+function extract_patchfile() {
+  if [[ ${must_extract} == "TRUE" ]]; then
     # check if patch exists
-    if [[ -e $install_source_file ]]; then
-      timelog "$install_source_file exists"
+    if [[ -e "${install_source_file}" ]]; then
+      timelog "${install_source_file} exists"
 
       # copy patch to _installed
-      mv $install_source_file $install_target_path/
+      mv "${install_source_file}" "${install_target_path}"/
     else
-      if [[ -e $install_target_file ]]; then
-        timelog "$install_target_file allready copied"
+      if [[ -e "${install_target_file}" ]]; then
+        timelog "${install_target_file} allready copied"
       else
-        timelog "$install_target_file not found, nothing to install" $failure
+        timelog "${install_target_file} not found, nothing to install" "${failure}"
         manage_result "failure"
       fi
     fi
 
     # extract file
-    timelog "extracting file $install_target_file"
-    tar -zxf $install_target_file
+    timelog "extracting file ${install_target_file}"
+    tar -zxf "${install_target_file}"
   else
     timelog "artifact will not be extracted from depot"
   fi
 }
 
-prepare_redo(){
-  if [[ -f ${oldlogfile} ]]; then
+function validate_dbflow_version() {
+  if [[ -f "dbFlow_${mode}_${version}.version" ]]; then
+    version_apply=$(sed '/^## \[./!d;q' .dbFlow/CHANGELOG.md)
+    version_built=$(head -n 1 "dbFlow_${mode}_${version}.version")
+    if [[ "${version_apply}" == "${version_built}" ]]; then
+      timelog "dbFlow Versions matched"
+    else
+      timelog "Mismatched Versions build vs apply" "${warning}"
+      timelog ":${version_apply}: != :${version_built}:" "${warning}"
+
+      read -r -p "Do you want to proceed? " -n 1
+      echo    # (optional) move to a new line
+      if [[ ! $REPLY =~ ^[Yy]$ ]]
+      then
+          [[ "$0" = "$BASH_SOURCE" ]] && exit 1 || return 1 # handle exits from shell or function but don't exit interactive shell
+      fi
+    fi
+  fi
+}
+
+function validate_init_mode() {
+  # init mode is a kind of dangerous, cause everything is removed from schemas beforehand
+  if [[ "${mode}" == "init" ]]; then
+    if [[ -z ${DBFLOW_JENKINS:-} ]] && [[ "${version}" != "install" ]]; then
+      timelog "You are using init mode. All content will be dropped from schemas included in this artifact" "${warning}"
+      timelog "If you are running dbFLow inside CI/CD you can place DBFLOW_JENKINS as environment var with any value" "${warning}"
+      read -r -p "Do you want to proceed? " -n 1
+      echo    # (optional) move to a new line
+      if [[ ! $REPLY =~ ^[Yy]$ ]]
+      then
+          [[ "$0" = "$BASH_SOURCE" ]] && exit 1 || return 1 # handle exits from shell or function but don't exit interactive shell
+      fi
+    else
+      timelog "Running init on JENKINS or version is install"
+    fi
+  fi
+}
+
+function prepare_redo() {
+  if [[ -f "${oldlogfile}" ]]; then
     timelog "parsing redolog ${oldlogfile}"
 
     this_os=$(uname)
 
     redo_file="redo_${MDATE}_${mode}_${version}.log"
-    grep '^<<< ' ${oldlogfile} > ${redo_file}
-    sed -i 's/^<<< //' ${redo_file}
+    grep '^<<< ' "${oldlogfile}" | cat > "${redo_file}"
+    sed -i 's/^<<< //' "${redo_file}"
 
     # backup install files
     for schema in "${DBFOLDERS[@]}"
@@ -305,7 +356,7 @@ prepare_redo(){
 
       db_install_file=./db/$schema/${mode}_${schema}_${version}.sql
       if [[ -f $db_install_file ]]; then
-        mv ${db_install_file} ${db_install_file}.org
+        mv "${db_install_file}" "${db_install_file}.org"
       fi
     done # schema
 
@@ -313,7 +364,7 @@ prepare_redo(){
     while IFS= read -r line; do
       timelog " ... Skipping line $line"
       map[$line]=$line
-    done < ${redo_file}
+    done < "${redo_file}"
 
     for schema in "${DBFOLDERS[@]}"
     do
@@ -334,14 +385,13 @@ prepare_redo(){
           fi
         fi
         echo "$line"
-      done < ${old_install_file} > ${db_install_file}
+      done < "${old_install_file}" > "${db_install_file}"
     done # schema
 
   fi
 }
 
-read_db_pass()
-{
+function read_db_pass() {
   if [[ -z "$DB_APP_PWD" ]]; then
     ask4pwd "Enter Password for deployment user ${DB_APP_USER} on ${DB_TNS}: "
     DB_APP_PWD=${pass}
@@ -350,39 +400,35 @@ read_db_pass()
   fi
 }
 
-
-
-remove_dropped_files()
-{
+function remove_dropped_files() {
   timelog "Check if any file should be removed ..."
   if [[ -e $remove_old_files ]]; then
     # loop throug content
     while IFS= read -r line; do
-      timelog "Removing file $line"
-      rm -f $line
+      timelog "Removing file ${line}"
+      rm -f "${line}"
     done < "$remove_old_files"
   else
     timelog "No files to remove"
   fi
 }
 
-execute_global_hook_scripts() {
+function execute_global_hook_scripts() {
   local entrypath=$1    # pre or post
   local targetschema=""
 
   timelog "checking hook ${entrypath}"
 
   if [[ -d "${entrypath}" ]]; then
-    for file in $(ls ${entrypath} | sort )
+    for file in $(ls "${entrypath}" | sort )
     do
-      if [[ -f ${entrypath}/${file} ]]; then
-        # determine target schema
-        targetschema=$(get_schema_from_file_name ${file})
+      if [[ -f "${entrypath}/${file}" ]]; then
+        targetschema=$(get_schema_from_file_name "${file}")
         runfile="${entrypath}/${file}"
 
         if [[ ${targetschema} != "_" ]]; then
           timelog "executing hook file ${runfile} in ${targetschema}"
-          $SQLCLI -S -L "$(get_connect_string $targetschema)" <<!
+          $SQLCLI -S -L "$(get_connect_string "${targetschema}")" <<!
             define VERSION="${version}"
             define MODE="${mode}"
 
@@ -406,73 +452,73 @@ execute_global_hook_scripts() {
 !
 
         else
-          timelog "no schema found to execute hook file ${runfile} target schema has to be a part of filename" ${warning}
+          timelog "no schema found to execute hook file ${runfile} target schema has to be a part of filename" "${warning}"
         fi
       fi
     done
 
 
     if [[ $? -ne 0 ]]; then
-      timelog "ERROR when executing ${entrypath}/${file}" ${failure}
+      timelog "ERROR when executing ${entrypath}/${file}" "${failure}"
       manage_result "failure"
     fi
   fi
 }
 
-clear_db_schemas_on_init() {
+function clear_db_schemas_on_init() {
   if [[ "${mode}" == "init" ]]; then
     timelog "INIT - Mode, Schemas will be cleared"
     # loop through schemas reverse
     for (( idx=${#SCHEMAS[@]}-1 ; idx>=0 ; idx-- )) ; do
       local schema=${SCHEMAS[idx]}
       # On init mode schema content will be dropped
-      timelog "DROPING ALL OBJECTS on schema $schema"
-       exit | $SQLCLI -S -L "$(get_connect_string $schema)" @.dbFlow/lib/drop_all.sql ${full_log_file} ${version} ${mode}
+      timelog "DROPING ALL OBJECTS on schema ${schema}"
+       exit | $SQLCLI -S -L "$(get_connect_string "${schema}")" @".dbFlow/lib/drop_all.sql" "${full_log_file}" "${version}" "${mode}"
     done
   fi
 }
 
-validate_connections(){
+function validate_connections() {
   # loop through schemas
   for schema in "${SCHEMAS[@]}"
   do
-    check_connection ${schema}
+    check_connection "${schema}"
   done
 
 }
 
-install_db_schemas()
-{
-  cd ${basepath}
+function install_db_schemas() {
+  cd "${basepath}" || exit
 
   # execute all files in global pre path
   execute_global_hook_scripts "db/.hooks/pre"
   execute_global_hook_scripts "db/.hooks/pre/${mode}"
 
-  cd db
+  cd db || exit
 
   timelog "Start installing schemas"
   # loop through schemas
   for schema in "${DBFOLDERS[@]}"
   do
-    if [[ -d $schema ]]; then
-      cd $schema
+    if [[ -d ${schema} ]]; then
+      cd "${schema}" || exit
 
       # now executing main installation file if exists
-      db_install_file=${mode}_${schema}_${version}.sql
+      db_install_file="${mode}_${schema}_${version}.sql"
       # exists db install file
       if [[ -e $db_install_file ]]; then
         timelog "Installing schema $schema to ${DB_APP_USER} on ${DB_TNS}"
 
         # uncomment cleaning scripts specific to this stage/branch ex:--test or --acceptance
-        sed -i -E "s:--$STAGE:Prompt uncommented cleanup for stage $STAGE\n:g" $db_install_file
+        sed -i -E "s:--$STAGE:Prompt uncommented cleanup for stage $STAGE\n:g" "${db_install_file}"
 
-        runfile=$db_install_file
-        $SQLCLI -S -L "$(get_connect_string $schema)" @$db_install_file ${version} ${mode}
+        runfile=${db_install_file}
+        AT_LEAST_ON_INSTALLFILE_STARTED="YES"
+        $SQLCLI -S -L "$(get_connect_string "${schema}")" @"${db_install_file}" "${version}" "${mode}"
         runfile=""
 
         if [[ $? -ne 0 ]]; then
-          timelog "ERROR when executing db/$schema/$db_install_file" ${failure}
+          timelog "ERROR when executing db/${schema}/${db_install_file}" "${failure}"
           manage_result "failure"
         fi
 
@@ -492,8 +538,8 @@ install_db_schemas()
   execute_global_hook_scripts "db/.hooks/post/${mode}"
 }
 
-set_rest_publish_state() {
-  cd ${basepath}
+function set_rest_publish_state() {
+  cd "${basepath}" || exit
   local publish=$1
   if [[ -d "rest" ]]; then
     local appschema=${APP_SCHEMA}
@@ -502,7 +548,7 @@ set_rest_publish_state() {
     if [[ ${PROJECT_MODE} == "FLEX" ]]; then
       for d in $(find rest -maxdepth 1 -mindepth 1 -type d | sort -f)
       do
-        folders+=( $(basename $d)/modules )
+        folders+=( $(basename "${d}")/modules )
       done
     else
       folders=( "modules" )
@@ -517,11 +563,11 @@ set_rest_publish_state() {
       if [[ -d "rest/$fldr" ]]; then
         for mods in $(find rest/$fldr -maxdepth 1 -mindepth 1 -type d)
         do
-          mbase=$(basename $mods)
-          modules+=( ${mbase} )
+          mbase=$(basename "${mods}")
+          modules+=( "${mbase}" )
         done
 
-        $SQLCLI -S -L "$(get_connect_string ${appschema})" <<!
+        $SQLCLI -S -L "$(get_connect_string "${appschema}")" <<!
           set define off;
           set serveroutput on;
           $(
@@ -548,16 +594,15 @@ set_rest_publish_state() {
       fi
     done
   else
-    timelog "Directory rest does not exist" $warning
+    timelog "Directory rest does not exist" "${warning}"
   fi
 
-  cd ${basepath}
+  cd "${basepath}" || exit
 }
 
 
-
-set_apps_unavailable() {
-  cd ${basepath}
+function set_apps_unavailable() {
+  cd "${basepath}" || exit
 
   if [[ -d "apex" ]]; then
 
@@ -568,19 +613,19 @@ set_apps_unavailable() {
 
     for d in $(find apex -maxdepth ${depth} -mindepth ${depth} -type d)
     do
-      local app_name=$(basename $d)
+      local app_name=$(basename "${d}")
       local app_id=${app_name/f}
 
       local workspace=${WORKSPACE}
       local appschema=${APP_SCHEMA}
 
       if [[ ${PROJECT_MODE} == "FLEX" ]]; then
-        workspace=$(basename $(dirname ${d}))
-        appschema=$(basename $(dirname $(dirname ${d})))
+        workspace=$(basename $(dirname "${d}"))
+        appschema=$(basename $(dirname $(dirname "${d}")))
       fi
 
       timelog "disabling APEX-App ${app_id} in workspace ${workspace} for schema ${appschema}..."
-      $SQLCLI -S -L "$(get_connect_string ${appschema})" <<!
+      $SQLCLI -S -L "$(get_connect_string "${appschema}")" <<!
       set serveroutput on;
       set define off;
       Declare
@@ -617,13 +662,13 @@ End;
 
     done
   else
-    timelog "Directory apex does not exist" $warning
+    timelog "Directory apex does not exist" "${warning}"
   fi
 
 }
 
-set_apps_available() {
-  cd ${basepath}
+function set_apps_available() {
+  cd "${basepath}" || exit
 
   if [[ -d "apex" ]]; then
 
@@ -634,7 +679,7 @@ set_apps_available() {
 
     for d in $(find apex -maxdepth ${depth} -mindepth ${depth} -type d)
     do
-      local app_name=$(basename $d)
+      local app_name=$(basename "${d}")
       local app_id=${app_name/f}
 
       local workspace=${WORKSPACE}
@@ -647,7 +692,7 @@ set_apps_available() {
 
 
       timelog "enabling APEX-App ${app_id} in workspace ${workspace} for schema ${appschema}..."
-      $SQLCLI -S -L "$(get_connect_string $appschema)" <<!
+      $SQLCLI -S -L "$(get_connect_string "${appschema}")" <<!
       set serveroutput on;
       set define off;
       Declare
@@ -692,14 +737,14 @@ set_apps_available() {
 
     done
   else
-    timelog "Directory apex does not exist" ${warning}
+    timelog "Directory apex does not exist" "${warning}"
   fi
 
 }
 
-install_apps() {
+function install_apps() {
 
-  cd ${basepath}
+  cd "${basepath}" || exit
 
   # app install
   # exists app_install_file
@@ -707,20 +752,20 @@ install_apps() {
     timelog "Installing APEX-Apps ..."
     # loop throug content
     while IFS= read -r line; do
-      if [[ -e $line/install.sql ]]; then
-        local app_name=$(basename $line)
+      if [[ -e ${line}/install.sql ]]; then
+        local app_name=$(basename "${line}")
         local app_id=${app_name/f}
 
         local workspace=${WORKSPACE}
         local appschema=${APP_SCHEMA}
         if [[ ${PROJECT_MODE} == "FLEX" ]]; then
-          workspace=$(basename $(dirname $line))
-          appschema=$(basename $(dirname $(dirname ${line})))
+          workspace=$(basename $(dirname "${line}"))
+          appschema=$(basename $(dirname $(dirname "${line}")))
         fi
 
-        timelog "Installing $line Num: ${app_id} Workspace: ${workspace} Schema: $appschema"
-        cd $line
-        $SQLCLI -S -L "$(get_connect_string $appschema)" <<!
+        timelog "Installing $line Num: ${app_id} Workspace: ${workspace} Schema: ${appschema}"
+        cd "${line}" || exit
+        $SQLCLI -S -L "$(get_connect_string "${appschema}")" <<!
           define VERSION="${version}"
           define MODE="${mode}"
 
@@ -762,26 +807,33 @@ install_apps() {
 
 
         if [[ $? -ne 0 ]]; then
-          timelog "ERROR when executing $line" $failure
+          timelog "ERROR when executing ${line}" "${failure}"
           manage_result "failure"
         fi
 
-        cd ${basepath}
+        # only for syntax highlighting
+        if [[ 1 == 2 ]]; then
+          echo <<!
+          '\'
+!
+        fi
+
+        cd "${basepath}" || exit
       fi
     done < "$app_install_file"
   else
-    timelog "File $app_install_file does not exist" $warning
+    timelog "File $app_install_file does not exist" "${warning}"
   fi
 
-  cd ${basepath}
+  cd "${basepath}" || exit
 }
 
 
 # Function to install REST-Services
 #######################################
 
-install_rest() {
-  cd ${basepath}
+function install_rest() {
+  cd "${basepath}" || exit
 
   rest_install_file=rest_${mode}_${version}.sql
 
@@ -794,17 +846,17 @@ install_rest() {
 
     for d in $(find rest -maxdepth ${depth} -mindepth ${depth} -type d)
     do
-      cd ${d}
+      cd "${d}" || exit
 
       if [[ -f ${rest_install_file} ]]; then
 
         local appschema=${APP_SCHEMA}
         if [[ ${PROJECT_MODE} == "FLEX" ]]; then
-          appschema=$(basename ${d})
+          appschema=$(basename "${d}")
         fi
 
-        timelog "Installing REST-Services ${d}/${rest_install_file} on Schema $appschema"
-        $SQLCLI -S -L "$(get_connect_string $appschema)" <<!
+        timelog "Installing REST-Services ${d}/${rest_install_file} on Schema ${appschema}"
+        $SQLCLI -S -L "$(get_connect_string "${appschema}")" <<!
 
         define VERSION="${version}"
         define MODE="${mode}"
@@ -822,41 +874,41 @@ install_rest() {
 
         if [ $? -ne 0 ]
         then
-          timelog "ERROR when executing $line" $failure
+          timelog "ERROR when executing $line" "${failure}"
           exit 1
         fi
       fi
 
-      cd ${basepath}
+      cd "${basepath}" || exit
     done
 
   else
     timelog "Directory rest does not exist"
   fi
 
-  cd ${basepath}
+  cd "${basepath}" || exit
 }
 
 
 # when changelog is found and changelog template is defined then
 # execute template on configured schema apply.env:CHANGELOG_SCHEMA=?
-process_changelog() {
+function process_changelog() {
   chlfile=changelog_${mode}_${version}.md
   tplfile=reports/changelog/template.sql
   if [[ -f ${chlfile} ]]; then
     timelog "changelog found"
 
-    if [[ -f ${tplfile} ]]; then
+    if [[ -f "${tplfile}" ]]; then
       timelog "templatefile found"
 
       if [[ -n ${CHANGELOG_SCHEMA} ]]; then
         timelog "changelog schema '${CHANGELOG_SCHEMA}' is configured"
 
         # now gen merged sql file
-        create_merged_report_file ${chlfile} ${tplfile} ${chlfile}.sql
+        create_merged_report_file "${chlfile}" "${tplfile}" "${chlfile}.sql"
 
         # and run
-        $SQLCLI -S -L "$(get_connect_string ${CHANGELOG_SCHEMA})" <<!
+        $SQLCLI -S -L "$(get_connect_string "${CHANGELOG_SCHEMA}")" <<!
 
           Prompt executing changelog file ${chlfile}.sql
           @${chlfile}.sql
@@ -865,10 +917,10 @@ process_changelog() {
 
         if [ $? -ne 0 ]
         then
-          timelog "ERROR when runnin ${chlfile}.sql" $failure
+          timelog "ERROR when runnin ${chlfile}.sql" "${failure}"
           exit 1
         else
-          rm ${chlfile}.sql
+          rm "${chlfile}.sql"
         fi
       else
         timelog "changelog schema is NOT configured"
@@ -881,19 +933,19 @@ process_changelog() {
   fi
 }
 
-post_message_to_teams() {
-  cd ${basepath}
+function post_message_to_teams() {
+  cd "${basepath}" || exit
 
   local TITLE=$1
   local COLOR=$2
   local TEXT=$3
 
-  if [ -z ${TEAMS_WEBHOOK_URL} ]
+  if [ -z "${TEAMS_WEBHOOK_URL}" ]
   then
     timelog "No webhook_url specified."
   else
     # Convert formating.
-    MESSAGE=$( echo ${TEXT} | sed 's/"/\"/g' | sed "s/'/\'/g" )
+    MESSAGE=$( echo "${TEXT}" | sed 's/"/\"/g' | sed "s/'/\'/g" )
     JSON="{\"title\": \"${TITLE}\", \"themeColor\": \"${COLOR}\", \"text\": \"${MESSAGE}\" }"
 
     timelog "Posting to url: ${JSON} "
@@ -903,35 +955,35 @@ post_message_to_teams() {
   fi
 }
 
-process_logs() {
+function process_logs() {
   # remove colorcodes from file
   echo "Processing logs"
-  cat ${full_log_file} | sed -r "s/\x1B\[([0-9]{1,3}((;[0-9]{1,3})*)?)?[m|K]//g" > ${full_log_file}.colorless
-  rm ${full_log_file}
-  mv ${full_log_file}.colorless ${full_log_file}
+  cat "${full_log_file}" | sed -r "s/\x1B\[([0-9]{1,3}((;[0-9]{1,3})*)?)?[m|K]//g" > "${full_log_file}.colorless"
+  rm "${full_log_file}"
+  mv "${full_log_file}.colorless" "${full_log_file}"
 
   # move all logs
-  mv *${mode}*${version}* ${target_finalize_path}
+  mv ./*"${mode}"*"${version}"* "${target_finalize_path}"
 }
 
-manage_result() {
-  cd ${basepath}
+function manage_result() {
+  cd "${basepath}" || exit
 
   local target_move=$1
   target_relative_path=${DEPOT_PATH}/${STAGE}/${target_move}/${version}
   target_finalize_path=${install_source_path}/${target_move}/${version}
 
   # create path if not exists
-  [ -d ${target_finalize_path} ] || mkdir -p ${target_finalize_path}
+  [ -d "${target_finalize_path}" ] || mkdir -p "${target_finalize_path}"
 
   # notify
-  timelog "${mode} ${version} moved to ${target_finalize_path}" ${target_move}
-  timelog "Done with ${target_move}" ${target_move}
+  timelog "${mode} ${version} moved to ${target_finalize_path}" "${target_move}"
+  timelog "Done with ${target_move}" "${target_move}"
 
 
   # move apex lst
-  [[ -f apex_files_${version}.lst ]] && mv apex_files_${version}.lst ${target_finalize_path}
-  [[ -f remove_files_${version}.lst ]] && mv remove_files_${version}.lst ${target_finalize_path}
+  [[ -f "apex_files_${version}.lst" ]] && mv "apex_files_${version}.lst" "${target_finalize_path}"
+  [[ -f "remove_files_${version}.lst" ]] && mv "remove_files_${version}.lst" "${target_finalize_path}"
 
   # move rest files
   depth=1
@@ -941,17 +993,17 @@ manage_result() {
 
   for restfile in $(find rest -maxdepth ${depth} -mindepth ${depth} -type f)
   do
-    mv $restfile ${target_finalize_path}
+    mv "${restfile}" "${target_finalize_path}"
   done
 
   # loop through schemas
   for schema in "${DBFOLDERS[@]}"
   do
-    db_install_file=${mode}_${schema}_${version}.sql
+    db_install_file="${mode}_${schema}_${version}.sql"
 
-    if [[ -f db/$schema/$db_install_file ]]; then
-      [[ -d ${target_finalize_path}/db/$schema ]] || mkdir -p ${target_finalize_path}/db/$schema
-      mv db/$schema/$db_install_file* ${target_finalize_path}/db/$schema
+    if [[ -f "db/${schema}/${db_install_file}" ]]; then
+      [[ -d "${target_finalize_path}/db/${schema}" ]] || mkdir -p "${target_finalize_path}/db/${schema}"
+      mv "db/${schema}/${db_install_file}"* "${target_finalize_path}/db/${schema}"
     fi
   done
 
@@ -964,30 +1016,36 @@ manage_result() {
   deployed_by=`printf '%-11s' "$deployed_by"`
   result=`printf '%-11s' "$target_move"`
 
-  echo "| $versionmd | $deployed_at | $deployed_by |  $result " >> ${basepath}/version.md
+  echo "| $versionmd | $deployed_at | $deployed_by |  $result " >> "${basepath}/version.md"
 
-  finallog=$(basename ${full_log_file})
+  finallog=$(basename "${full_log_file}")
 
 
   if [[ $target_move == "success" ]]; then
     post_message_to_teams "Release ${version}" "4CCC3B" "Release ${version} has been successfully applied to stage: <b>${STAGE}</b>."
 
-    echo "view output: ${basepath}/$DEPOT_PATH/$STAGE/$target_move/$version/${finallog}"
+    echo "view output: \"${basepath}/$DEPOT_PATH/$STAGE/$target_move/$version/${finallog}\""
 
     process_logs;
     exit 0
   else
-    redolog=$(basename ${full_log_file})
+    redolog=$(basename "${full_log_file}")
 
-    # failure
-    echo_debug "You can either copy the broken patch into the current directory with: "
-    echo_debug "${WHITE}cp ${target_relative_path}/${mode}_${version}.tar.gz .${NC}"
-    echo_debug "And restart the patch after the respective problem has been fixed"
-    echo_debug "Or create a new fixed release and restart the deployment of the patch. In both cases you have the"
-    echo_debug "possibility to specifiy the log file ${WHITE}${target_relative_path}/${log_file}${NC} as "
-    echo_debug "redolog parameter. This will not repeat the steps that have already been successfully executed."
-    echo_debug "${WHITE}$0 --${mode} --version ${version} --redolog ${target_relative_path}/${redolog}${NC}"
-    echo_debug "view output: ${basepath}/$DEPOT_PATH/$STAGE/$target_move/$version/${finallog}"
+    # this is only usefull when at least on installation file has been executed
+    if [[ ${AT_LEAST_ON_INSTALLFILE_STARTED} == "YES" ]]; then
+      # failure
+      echo_debug "You can either copy the broken patch into the current directory and restart "
+      echo_debug "the patch after the respective problem has been fixed by using the redolog param"
+      echo_debug "---"
+      echo_debug "${WHITE}cp ${target_relative_path}/${mode}_${version}.tar.gz .${NC}"
+      echo_debug "${WHITE}$0 --${mode} --version ${version} --redolog ${target_relative_path}/${redolog}${NC}"
+      echo_debug "---"
+      echo_debug "Or create a new fixed release and restart the deployment of the patch. In both cases you have the"
+      echo_debug "possibility to specifiy the log file ${WHITE}${target_relative_path}/${log_file}${NC}"
+      echo_debug "as redolog parameter. This will not repeat the steps that have already been successfully executed."
+    fi
+
+    echo_debug "view output: \"$DEPOT_PATH/$STAGE/$target_move/$version/${finallog}\""
 
     process_logs
     exit 1
@@ -995,15 +1053,15 @@ manage_result() {
 }
 
 #################################################################################################
-notify() {
-    [[ $1 = 0 ]] || echo ❌ EXIT $1
+function notify() {
+    [[ ${1} = 0 ]] || echo ❌ EXIT "${1}"
     # you can notify some external services here,
     # ie. Slack webhook, Github commit/PR etc.
-    if [[ $1 -gt 2 ]]; then
+    if [[ ${1} -gt 2 ]]; then
       if [[ "${runfile}" != "" ]]; then
-        timelog "ERROR when executing ${runfile}" $failure
+        timelog "ERROR when executing ${runfile}" "${failure}"
       else
-        timelog "ERROR in last statement" $failure
+        timelog "ERROR in last statement" "${failure}"
       fi
 
       manage_result "failure"
@@ -1015,17 +1073,19 @@ trap '(exit 130)' INT
 trap '(exit 143)' TERM
 trap 'rc=$?; notify $rc; exit $rc' EXIT
 
-# validate and check existence of vars defined in apply.env and build.env
-check_vars
-
 # validate params this script was called with
 check_params "$@"
+validate_init_mode
+
+# validate and check existence of vars defined in apply.env and build.env
+check_vars
 
 # print some global vars to output
 print_info
 
 # preparation and validation
 extract_patchfile
+validate_dbflow_version
 read_db_pass
 validate_connections
 prepare_redo

@@ -28,7 +28,7 @@ rm ${tag_name}.zip
 cd "tePLSQL-"${tag_name}/tePLSQL-${tag_name/v/} # remove v from tag-name
 
 if [[ -z "$DB_ADMIN_USER" ]]; then
-  read -p "Enter username of admin user (admin, sys, ...) [sys]: " DB_ADMIN_USER
+  read -r -p "Enter username of admin user (admin, sys, ...) [sys]: " DB_ADMIN_USER
   DB_ADMIN_USER=${DB_ADMIN_USER:-"sys"}
 fi
 
@@ -62,7 +62,7 @@ then
   if [[ $yes == "YES" ]]; then
     reinstall="Y"
   else
-    read -p "$(echo -e ${BWHITE}"TEPLSQL is allready installed. Would you like to reinstall? (Y/N) [Y]: "${NC})" reinstall
+    read -r -p "$(echo -e ${BWHITE}"TEPLSQL is allready installed. Would you like to reinstall? (Y/N) [Y]: "${NC})" reinstall
     reinstall=${reinstall:-"Y"}
   fi
 
@@ -103,11 +103,11 @@ grant select, insert, delete, update on TE_TEMPLATES to public;
 grant execute on teplsql to public;
 grant execute on te_templates_api to public;
 
-Promp lock user: ${teplsql_schema}
+Prompt lock user: ${teplsql_schema}
 conn ${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION}
 alter user ${teplsql_schema} account lock;
 
-Promp tePLSQL installed
+Prompt tePLSQL installed
 
 !
 

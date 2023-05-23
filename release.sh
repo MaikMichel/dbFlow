@@ -14,8 +14,8 @@ CUR_DIRECTORY=$(pwd)
 # Log Location on Server.
 LOG_LOCATION=${CUR_DIRECTORY}
 LOG_FILENAME=release.log
-rm -f $LOG_LOCATION/$LOG_FILENAME
-exec > >( tee >( sed 's/\x1B\[[0-9;]*[JKmsu]//g' >> $LOG_LOCATION/$LOG_FILENAME ) )
+rm -f "${LOG_LOCATION}/${LOG_FILENAME}"
+exec > >( tee >( sed 's/\x1B\[[0-9;]*[JKmsu]//g' >> "${LOG_LOCATION}/${LOG_FILENAME}" ) )
 
 RLS_BUILDBRANCH=${BUILD_BRANCH:-build}
 
@@ -29,7 +29,7 @@ RLS_BUILDBRANCH=${BUILD_BRANCH:-build}
 
 exec 2>&1
 notify() {
-    [[ $1 = 0 ]] || echo ❌ EXIT $1
+    [[ ${1} = 0 ]] || echo ❌ EXIT "${1}"
     # you can notify some external services here,
     # ie. Slack webhook, Github commit/PR etc.
 }
@@ -38,12 +38,6 @@ notify() {
 function check_vars() {
   # check require vars from build.env
   do_exit="NO"
-
-
-  if [[ -z ${BRANCHES} ]]; then
-    echo_error "undefined var: BRANCHES"
-    do_exit="YES"
-  fi
 
   ####
   if [[ ${do_exit} == "YES" ]]; then
@@ -103,8 +97,8 @@ build_release() {
   fi
 
   # switch to source branch
-  log "change to Branch: $RLS_SOURCE_BRANCH"
-  git checkout $RLS_SOURCE_BRANCH
+  log "change to Branch: ${RLS_SOURCE_BRANCH}"
+  git checkout "${RLS_SOURCE_BRANCH}"
   { #try
     pulled=$(git pull)
   } || { # catch
@@ -113,8 +107,8 @@ build_release() {
   log "Head is $(git rev-parse --short HEAD)"
 
   # switch to target branch
-  log "change to Branch: $RLS_TARGET_BRANCH"
-  git checkout $RLS_TARGET_BRANCH
+  log "change to Branch: ${RLS_TARGET_BRANCH}"
+  git checkout "${RLS_TARGET_BRANCH}"
   { #try
     pulled=$(git pull)
   } || { # catch
@@ -124,47 +118,47 @@ build_release() {
 
   if [[ ${RLS_BUILD} == 'Y' ]]; then
     # remove build branch
-    if git show-ref --quiet refs/heads/$RLS_BUILDBRANCH; then
-      log "Removing branch $RLS_BUILDBRANCH"
-      git branch -D $RLS_BUILDBRANCH
+    if git show-ref --quiet refs/heads/"${RLS_BUILDBRANCH}"; then
+      log "Removing branch ${RLS_BUILDBRANCH}"
+      git branch -D "${RLS_BUILDBRANCH}"
     fi
 
     # create a new build branch out of target branch
-    log "Checkout new Branch $RLS_BUILDBRANCH"
-    git checkout -b $RLS_BUILDBRANCH
+    log "Checkout new Branch ${RLS_BUILDBRANCH}"
+    git checkout -b "${RLS_BUILDBRANCH}"
 
     # build initial patch
-    log "building initial install $version_previous (previous version)"
-    .dbFlow/build.sh -i -v $version_previous $keep
-    apply_tasks+=( ".dbFlow/apply.sh -i -v $version_previous" )
+    log "building initial install ${version_previous} (previous version)"
+    .dbFlow/build.sh -i -v "${version_previous}" "${keep}"
+    apply_tasks+=( ".dbFlow/apply.sh -i -v ${version_previous}" )
   fi
 
   # following makes only sense when source not the same as target
-  if [[ $RLS_SOURCE_BRANCH != $RLS_TARGET_BRANCH ]]; then
+  if [[ $RLS_SOURCE_BRANCH != "${RLS_TARGET_BRANCH}" ]]; then
     # merging target with source
     log "merging changes from $RLS_SOURCE_BRANCH"
-    git merge $RLS_SOURCE_BRANCH
+    git merge "${RLS_SOURCE_BRANCH}"
 
     # build diff patch
-    log "build patch upgrade $version_next (current version)"
-    .dbFlow/build.sh -p -v $version_next $keep
+    log "build patch upgrade ${version_next} (current version)"
+    .dbFlow/build.sh -p -v "${version_next}" "${keep}"
     build_patch_worked=$?
-    apply_tasks+=( ".dbFlow/apply.sh --patch --version $version_next" )
+    apply_tasks+=( ".dbFlow/apply.sh --patch --version ${version_next}" )
 
     # when buildtest then test new initial patch
     if [[ ${RLS_BUILD} == 'Y' ]]; then
       # und den initial Build des aktuellen Stand
       log "building initial install $version_next (current version)"
-      .dbFlow/build.sh -i -v $version_next $keep
-      apply_tasks+=( ".dbFlow/apply.sh --init --version $version_next" )
+      .dbFlow/build.sh -i -v "${version_next}" "${keep}"
+      apply_tasks+=( ".dbFlow/apply.sh --init --version ${version_next}" )
     else
       # not on build branch
       # for master and main branch the build script asks to push
       # for all others we will push here
-      if [ $build_patch_worked -eq 0 ]; then
+      if [ ${build_patch_worked} -eq 0 ]; then
         prod_branches=( "master" "main" )
         if [[ ! " ${prod_branches[@]} " =~ " ${RLS_TARGET_BRANCH} " ]]; then
-          if branchrev=$(git rev-parse -q --verify origin/${RLS_TARGET_BRANCH}); then
+          if branchrev=$(git rev-parse -q --verify origin/"${RLS_TARGET_BRANCH}"); then
             git push
           fi
         fi
@@ -174,20 +168,20 @@ build_release() {
 
   # some summarizings
   log "${GREEN}Done${NC}"
-  git checkout ${starting_branch}
+  git checkout "${starting_branch}"
 
   log "${GREEN}go to your instance directory where you host $RLS_TARGET_BRANCH and apply the following commands/patches${NC}"
 
   if [[ ${RLS_BUILD} == 'Y' ]] && [[ ${RLS_TOFOLDER} != '-' ]]; then
-    cd ${RLS_TOFOLDER}
+    cd "${RLS_TOFOLDER}" || exit
     if [[ -d ".dbFlow" ]]; then
-      cd ".dbFlow"
+      cd ".dbFlow" || exit
       { #try
         sub_pulled=$(git pull)
       } || { # catch
         sub_pulled="no"
       }
-      cd ".."
+      cd ..
     fi
   fi
 
@@ -200,7 +194,7 @@ build_release() {
   done
 
   if [[ ${RLS_BUILD} == 'Y' ]] && [[ ${RLS_TOFOLDER} != '-' ]]; then
-    cd ${CUR_DIRECTORY}
+    cd "${CUR_DIRECTORY}" || exit
   fi
 
 }

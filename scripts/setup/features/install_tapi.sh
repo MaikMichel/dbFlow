@@ -28,7 +28,7 @@ rm ${tag_name}.zip
 cd tapi-${tag_name}/table-api-generator-${tag_name/v/} # remove v from tag-name
 
 if [[ -z "$DB_ADMIN_USER" ]]; then
-  read -p "Enter username of admin user (admin, sys, ...) [sys]: " DB_ADMIN_USER
+  read -r -p "Enter username of admin user (admin, sys, ...) [sys]: " DB_ADMIN_USER
   DB_ADMIN_USER=${DB_ADMIN_USER:-"sys"}
 fi
 
@@ -63,7 +63,7 @@ then
   if [[ $yes == "YES" ]]; then
     reinstall="Y"
   else
-    read -p "$(echo -e ${BWHITE}"TableAPI is allready installed. Would you like to reinstall? (Y/N) [Y]: "${NC})" reinstall
+    read -r -p "$(echo -e ${BWHITE}"TableAPI is allready installed. Would you like to reinstall? (Y/N) [Y]: "${NC})" reinstall
     reinstall=${reinstall:-"Y"}
   fi
 
@@ -102,11 +102,11 @@ Prompt grant public synonyms
 grant execute on om_tapigen to public;
 grant execute on om_tapigen_oddgen_wrapper to public;
 
-Promp lock user: ${tapi_schema}
+Prompt lock user: ${tapi_schema}
 conn ${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION}
 alter user ${tapi_schema} account lock;
 
-Promp table-api installen
+Prompt table-api installed
 
 !
 

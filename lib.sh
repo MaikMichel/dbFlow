@@ -27,10 +27,15 @@ YELLOW="\033[0;33m"       # Yellow
 BLUE="\033[0;34m"         # Blue
 PURPLE="\033[0;35m"       # Purple
 CYAN="\033[0;36m"         # Cyan
+BCYAN="\033[1;36m"         # Cyan
 BWHITE="\033[1;97m"       # White
 WHITE="\033[0;97m"        # White
 LWHITE="\033[1;30m"       # White
-BYELLOW="\033[1;33m"      # Yellow
+BYELLOW="\e[30;48;5;82m"  # Yellow
+BORANGE="\e[38;5;208m"    # Orange
+BUNLINE="\e[1;4m"
+BGRAY="\e[0;90m"
+BLBACK="\e[30;48;5;81m"
 
 LIBSOURCED="TRUE"
 
@@ -44,7 +49,7 @@ function ask4pwd() {
   PROMPT=""
   pass=""
 
-  echo -n "${prompt_text}"
+  echo -n -e "${prompt_text}"
 
   stty -echo
 
@@ -108,10 +113,33 @@ function echo_debug() {
 # used when admin user is sys
 DBA_OPTION=" as sysdba"
 
+# array to hold all pathes to files which have to deployed based on mode and branch
+SCAN_PATHES=()
+
+function define_folders() {
+  local l_mode="${1}";
+  local l_branch="${2}";
+
+  # at INIT there is no pretreatment or an evaluation of the table_ddl
+  # !: Don't forgett to change documentation when changing these arrays
+  if [[ "${l_mode}" == "init" ]]; then
+    SCAN_PATHES=( .hooks/pre sequences tables indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies sources/types sources/packages sources/functions sources/procedures views mviews sources/triggers jobs tests/packages ddl ddl/init dml dml/init dml/base .hooks/post)
+  else
+    # building pre and post based on branches
+    pres=( ".hooks/pre ddl/patch/pre_${l_branch}" "dml/patch/pre_${l_branch}" ddl/patch/pre dml/patch/pre )
+    post=( "ddl" "ddl/patch/post_${l_branch}" "dml/patch/post_${l_branch}" ddl/patch/post dml dml/base dml/patch/post .hooks/post )
+
+    SCAN_PATHES=( ${pres[@]} )
+    SCAN_PATHES+=( sequences tables tables/tables_ddl indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies sources/types sources/packages sources/functions sources/procedures views mviews sources/triggers jobs tests/packages )
+    SCAN_PATHES+=( ${post[@]} )
+  fi
+}
+
+
 
 # Function return connect string
 #########################################
-get_connect_string() {
+function get_connect_string() {
   local dbfolder=$1
   local dbschema=$dbfolder
   local firstpart=${dbfolder%%_*}
@@ -123,15 +151,15 @@ get_connect_string() {
   fi
 
   # when connection user != target schema then use proxy
-  if [[ $DB_APP_USER != $dbschema ]]; then
-    echo "$DB_APP_USER[$dbschema]/$DB_APP_PWD@$DB_TNS"
+  if [[ ${DB_APP_USER} != "${dbschema}" ]]; then
+    echo "${DB_APP_USER}[${dbschema}]/${DB_APP_PWD}@${DB_TNS}"
   else
-    echo "$DB_APP_USER/$DB_APP_PWD@$DB_TNS"
+    echo "${DB_APP_USER}/${DB_APP_PWD}@${DB_TNS}"
   fi
 }
 
 function toLowerCase() {
-  echo "$1" | tr '[:upper:]' '[:lower:]'
+  echo "${1}" | tr '[:upper:]' '[:lower:]'
 }
 
 #some env settings SQLCL needs
@@ -158,19 +186,19 @@ timelog () {
   local type=${2:-""}
 
   case "$type" in
-    ${failure})
+    "${failure}")
       color=${RED}
       reset=${NC}
       ;;
-    ${success})
+    "${success}")
       color=${GREEN}
       reset=${NC}
       ;;
-    ${warning})
+    "${warning}")
       color=${YELLOW}
       reset=${NC}
       ;;
-    ${info})
+    "${info}")
       color=${CYAN}
       reset=${NC}
       ;;
@@ -194,14 +222,15 @@ EOF
   if [[ $sql_output == *"connected as"* ]]; then
     echo_success "Connection as ${DB_ADMIN_USER} is working"
   else
-    echo_fatal "Error to connect as ${DB_ADMIN_USER}"
+    echo_fatal "Error to connect as ${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION}"
     echo_error "${sql_output}"
     exit 2
   fi
 }
 
 function check_connection() {
-  local CONN_STR=$(get_connect_string $1)
+  local CONN_STR="$(get_connect_string "${1}")"
+
   sql_output=`${SQLCLI} -S -L "${CONN_STR}" <<EOF
   select 'connected to schema '||user t from dual;
   exit
@@ -213,7 +242,6 @@ EOF
   else
     echo_fatal "Error to connect to schema ${1}"
     echo_error "${sql_output}"
-    #echo_error ${CONN_STR}
     exit 2
   fi
 }
@@ -229,7 +257,7 @@ function get_schema_from_folder_name() {
     dbschema=${dbfolder/$firstpart"_"/""}
   fi
 
-  echo $dbschema
+  echo "${dbschema}"
 }
 
 function get_schema_from_file_name() {
@@ -243,7 +271,7 @@ function get_schema_from_file_name() {
       break
     fi
   done
-  echo $schema
+  echo "${schema}"
 }
 
 
@@ -255,10 +283,10 @@ DBSCHEMAS=()
   if [[ -d "db" ]]; then
     for d in $(find db -maxdepth 1 -mindepth 1 -type d | sort -f)
     do
-      folder=$(basename $d)
+      folder=$(basename "${d}")
       if [[ ${folder} != "_setup" ]] && [[ ${folder} != ".hooks" ]]; then
         DBFOLDERS+=( ${folder} )
-        DBSCHEMAS+=( $(get_schema_from_folder_name ${folder}) )
+        DBSCHEMAS+=( $(get_schema_from_folder_name "${folder}") )
       fi
     done
   fi
@@ -272,7 +300,7 @@ function write_line_if_not_exists () {
   if  grep -qxF "$line" "$file" ; then
     : # echo "$line exists in $file"
   else
-    echo $line >> $file
+    echo "$line" >> "$file"
   fi
 }
 
@@ -283,50 +311,50 @@ create_merged_report_file() {
   local base64_file=${source_file}.base64.txt
 
   # gen base64 from input
-  base64 -w 1000 ${source_file} > ${base64_file}
+  base64 -w 1000 "${source_file}" > "${base64_file}"
 
   ## write the output sql
-  echo "set serveroutput on" > ${output_file}
-  echo "declare" >> ${output_file}
-  echo "  l_b64         clob;" >> ${output_file}
-  echo "  l_bin         blob;" >> ${output_file}
-  echo "  l_file_name   varchar2(2000) := '${source_file}';  " >> ${output_file}
-  echo "" >> ${output_file}
-  echo "  gc_red           varchar2(7) := chr(27) || '[31m';" >> ${output_file}
-  echo "  gc_green         varchar2(7) := chr(27) || '[32m';" >> ${output_file}
-  echo "  gc_yellow        varchar2(7) := chr(27) || '[33m';" >> ${output_file}
-  echo "  gc_blue          varchar2(7) := chr(27) || '[34m';" >> ${output_file}
-  echo "  gc_cyan          varchar2(7) := chr(27) || '[36m';" >> ${output_file}
-  echo "  gc_reset         varchar2(7) := chr(27) || '[0m';" >> ${output_file}
-  echo "" >> ${output_file}
+  echo "set serveroutput on" > "${output_file}"
+  echo "declare" >> "${output_file}"
+  echo "  l_b64         clob;" >> "${output_file}"
+  echo "  l_bin         blob;" >> "${output_file}"
+  echo "  l_file_name   varchar2(2000) := '${source_file}';  " >> "${output_file}"
+  echo "" >> "${output_file}"
+  echo "  gc_red           varchar2(7) := chr(27) || '[31m';" >> "${output_file}"
+  echo "  gc_green         varchar2(7) := chr(27) || '[32m';" >> "${output_file}"
+  echo "  gc_yellow        varchar2(7) := chr(27) || '[33m';" >> "${output_file}"
+  echo "  gc_blue          varchar2(7) := chr(27) || '[34m';" >> "${output_file}"
+  echo "  gc_cyan          varchar2(7) := chr(27) || '[36m';" >> "${output_file}"
+  echo "  gc_reset         varchar2(7) := chr(27) || '[0m';" >> "${output_file}"
+  echo "" >> "${output_file}"
 
-  echo "begin" >> ${output_file}
-  echo "  dbms_lob.createtemporary(l_b64, true, dbms_lob.session);" >> ${output_file}
-  echo  >> ${output_file}
+  echo "begin" >> "${output_file}"
+  echo "  dbms_lob.createtemporary(l_b64, true, dbms_lob.session);" >> "${output_file}"
+  echo  >> "${output_file}"
   while IFS= read -r line
   do
-    echo "  dbms_lob.append(l_b64, '$line');" >> ${output_file}
+    echo "  dbms_lob.append(l_b64, '$line');" >> "${output_file}"
   done < "${base64_file}"
 
-  echo >> ${output_file}
-  echo "  l_bin := apex_web_service.clobbase642blob(l_b64);" >> ${output_file}
-  echo >> ${output_file}
+  echo >> "${output_file}"
+  echo "  l_bin := apex_web_service.clobbase642blob(l_b64);" >> "${output_file}"
+  echo >> "${output_file}"
 
-  echo "-------------" >> ${output_file}
-  cat ${template_file} >> ${output_file}
-  echo "-------------" >> ${output_file}
+  echo "-------------" >> "${output_file}"
+  cat "${template_file}" >> "${output_file}"
+  echo "-------------" >> "${output_file}"
 
-  echo "  commit;" >> ${output_file}
-  echo "exception" >> ${output_file}
-  echo "  when others then" >> ${output_file}
-  echo "    dbms_output.put_line(gc_red||sqlerrm || gc_reset);" >> ${output_file}
-  echo "    raise;" >> ${output_file}
+  echo "  commit;" >> "${output_file}"
+  echo "exception" >> "${output_file}"
+  echo "  when others then" >> "${output_file}"
+  echo "    dbms_output.put_line(gc_red||sqlerrm || gc_reset);" >> "${output_file}"
+  echo "    raise;" >> "${output_file}"
 
-  echo "end;" >> ${output_file}
-  echo "/" >> ${output_file}
-  echo >> ${output_file}
+  echo "end;" >> "${output_file}"
+  echo "/" >> "${output_file}"
+  echo >> "${output_file}"
 
-  rm ${base64_file}
+  rm "${base64_file}"
 }
 
 getopts_long() {
@@ -403,12 +431,12 @@ exists_in_list() {
 function validate_passes() {
    # decode when starting with a !
   if [[ $DB_APP_PWD == !* ]]; then
-    DB_APP_PWD=`echo ${DB_APP_PWD:1} | base64 --decode`
+    DB_APP_PWD=`echo "${DB_APP_PWD:1}" | base64 --decode`
   else
     # write back encoded
     if [[ -n $DB_APP_PWD ]]; then
-      pwd_enc=`echo ${DB_APP_PWD} | base64`
-      
+      pwd_enc=`echo "${DB_APP_PWD}" | base64`
+
       # sed syntax is different in macos
       if [[ $(uname) == "Darwin" ]]; then
         sed -i"y" "/^DB_APP_PWD=/s/=.*/=\"\!$pwd_enc\"/" ./apply.env
@@ -420,11 +448,11 @@ function validate_passes() {
 
   # decode when starting with a !
   if [[ $DB_ADMIN_PWD == !* ]]; then
-    DB_ADMIN_PWD=`echo ${DB_ADMIN_PWD:1} | base64 --decode`
+    DB_ADMIN_PWD=`echo "${DB_ADMIN_PWD:1}" | base64 --decode`
   else
     # write back encoded
     if [[ -n $DB_ADMIN_PWD ]]; then
-      pwd_enc=`echo ${DB_ADMIN_PWD} | base64`
+      pwd_enc=`echo "${DB_ADMIN_PWD}" | base64`
 
       # sed syntax is different in macos
       if [[ $(uname) == "Darwin" ]]; then
