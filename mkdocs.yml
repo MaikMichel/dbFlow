@@ -1,6 +1,7 @@
 site_name: dbFLow - Documentation
 nav:
     - Home: index.md
+    - Start: start.md
     - The Concept: concept.md
     - How to setup: getting_started.md
     - How to deploy: deployment.md
@@ -13,12 +14,12 @@ theme:
     scheme: slate
     primary: blue
   features:
-    - navigation.tabs
+    # - navigation.tabs
     - navigation.expand
     - navigation.indexes
     - navigation.sections
-    # - toc.follow
-    # - toc.integrate
+    - toc.follow
+    - toc.integrate
     # - navigation.top
   icon:
     admonition:
@@ -39,6 +40,9 @@ markdown_extensions:
   - admonition
   - pymdownx.details
   - pymdownx.superfences
+  - pymdownx.caret
+  - pymdownx.mark
+  - pymdownx.tilde
   - def_list
   - pymdownx.tasklist:
       custom_checkbox: true
