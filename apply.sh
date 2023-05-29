@@ -312,11 +312,15 @@ function validate_dbflow_version() {
       timelog "Mismatched Versions build vs apply" "${warning}"
       timelog ":${version_apply}: != :${version_built}:" "${warning}"
 
-      read -r -p "Do you want to proceed? " -n 1
-      echo    # (optional) move to a new line
-      if [[ ! $REPLY =~ ^[Yy]$ ]]
-      then
-          [[ "$0" = "$BASH_SOURCE" ]] && exit 1 || return 1 # handle exits from shell or function but don't exit interactive shell
+      if [[ -z ${DBFLOW_JENKINS:-} ]]; then
+        read -r -p "Do you want to proceed? " -n 1
+        echo    # (optional) move to a new line
+        if [[ ! $REPLY =~ ^[Yy]$ ]]
+        then
+            [[ "$0" = "$BASH_SOURCE" ]] && exit 1 || return 1 # handle exits from shell or function but don't exit interactive shell
+        fi
+      else
+        timelog "Running different dbFlow version but JENKINS is set, so keep on running"
       fi
     fi
   fi
