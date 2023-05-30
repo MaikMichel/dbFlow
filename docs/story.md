@@ -1,0 +1,20 @@
+Start
+  install
+
+Concept
+  GitFlow
+  SmartFS
+  2Phase
+  Depot
+Setup
+  generate
+  install
+  copyto
+Deploy
+  build
+    init
+    patch
+  apply
+    init
+    apply
+  release
