@@ -9,7 +9,7 @@
       
       
       
-        <link rel="prev" href="..">
+        <link rel="prev" href="../start/">
       
       
         <link rel="next" href="../getting_started/">
@@ -108,7 +108,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#concept" class="md-skip">
+        <a href="#the-concept" class="md-skip">
           Skip to content
         </a>
       
@@ -122,7 +122,7 @@
 
   
 
-<header class="md-header md-header--shadow" data-md-component="header">
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href=".." title="dbFLow - Documentation" class="md-header__button md-logo" aria-label="dbFLow - Documentation" data-md-component="logo">
       
@@ -190,13 +190,120 @@
     
   </nav>
   
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+
+
+  <li class="md-tabs__item">
+    <a href=".." class="md-tabs__link">
+      Home
+    </a>
+  </li>
+
+      
+        
+  
+  
+
+
+  <li class="md-tabs__item">
+    <a href="../start/" class="md-tabs__link">
+      Start
+    </a>
+  </li>
+
+      
+        
+  
+  
+    
+  
+
+
+  <li class="md-tabs__item">
+    <a href="./" class="md-tabs__link md-tabs__link--active">
+      The Concept
+    </a>
+  </li>
+
+      
+        
+  
+  
+
+
+  <li class="md-tabs__item">
+    <a href="../getting_started/" class="md-tabs__link">
+      How to setup
+    </a>
+  </li>
+
+      
+        
+  
+  
+
+
+  <li class="md-tabs__item">
+    <a href="../deployment/" class="md-tabs__link">
+      How to deploy
+    </a>
+  </li>
+
+      
+        
+  
+  
+
+
+  <li class="md-tabs__item">
+    <a href="../changelog/" class="md-tabs__link">
+      Generating a changelog
+    </a>
+  </li>
+
+      
+        
+  
+  
+
+
+  <li class="md-tabs__item">
+    <a href="../migrating/" class="md-tabs__link">
+      Migrating from previous
+    </a>
+  </li>
+
+      
+        
+  
+  
+
+
+  <li class="md-tabs__item">
+    <a href="../tutorial/" class="md-tabs__link">
+      A Tutorial
+    </a>
+  </li>
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
 </header>
     
     <div class="md-container" data-md-component="container">
       
       
-        
-          
         
       
       <main class="md-main" data-md-component="main">
@@ -209,10 +316,12 @@
                   <div class="md-sidebar__inner">
                     
 
+  
+
 
   
 
-<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
     <a href=".." title="dbFLow - Documentation" class="md-nav__button md-logo" aria-label="dbFLow - Documentation" data-md-component="logo">
       
@@ -235,6 +344,21 @@
     <li class="md-nav__item">
       <a href=".." class="md-nav__link">
         Home
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../start/" class="md-nav__link">
+        Start
       </a>
     </li>
   
@@ -282,65 +406,111 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#git-flow" class="md-nav__link">
-    Git Flow
+  <a href="#git-flow-to-db" class="md-nav__link">
+    Git Flow to DB
+  </a>
+  
+    <nav class="md-nav" aria-label="Git Flow to DB">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#git-flow-in-short" class="md-nav__link">
+    Git Flow in short
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reflect-db-changes" class="md-nav__link">
+    Reflect DB changes
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-phase-deployment" class="md-nav__link">
+    2 Phase deployment
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#dbflow" class="md-nav__link">
-    dbFlow
+  <a href="#smartfs" class="md-nav__link">
+    SmartFS
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#modes" class="md-nav__link">
-    Modes
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#main-folders" class="md-nav__link">
-    Main Folders
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
+    <nav class="md-nav" aria-label="SmartFS">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
   <a href="#project-types" class="md-nav__link">
     Project Types
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
+        
+          <li class="md-nav__item">
   <a href="#schema-folders" class="md-nav__link">
     Schema Folders
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#apex" class="md-nav__link">
-    APEX
+        
+          <li class="md-nav__item">
+  <a href="#installation-sequence" class="md-nav__link">
+    Installation Sequence
+  </a>
+  
+    <nav class="md-nav" aria-label="Installation Sequence">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#init" class="md-nav__link">
+    init
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#rest" class="md-nav__link">
-    REST
+        
+          <li class="md-nav__item">
+  <a href="#patch" class="md-nav__link">
+    patch
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#hooks" class="md-nav__link">
     Hooks
   </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#apex-applications" class="md-nav__link">
+    APEX Applications
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rest-modules" class="md-nav__link">
+    REST Modules
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -449,37 +619,41 @@
                   
 
 
-<h1 id="concept">Concept</h1>
-<h2 id="git-flow">Git Flow</h2>
-<p>dbFlow is a deployment framework to deploy Oracle based projects / applications. dbFlow is roughly based on the so called Git Flow.</p>
-<p>This flow describes how releases of an application are delivered from the main development branch to the master branch, production. The following figure outlines this flow.</p>
+<h1 id="the-concept">The Concept</h1>
+<p><strong>dbFlow</strong> is based on 4 core topics. These topics are encountered again and again during the work with <strong>dbFLow</strong>. One is the adaptation of the git flow related to the work with database changes, the 2 phase deployment, smartFS, which reflects the directory structure and last but not least the depot, a kind of artifactory.</p>
+<h2 id="git-flow-to-db">Git Flow to DB</h2>
+<p><strong>dbFlow</strong> is a deployment framework to deploy Oracle based projects / applications. <strong>dbFlow</strong> is roughly based on the so called Git Flow. This flow describes how releases of an application are delivered from the main development branch to the master branch, production. The following figure outlines this flow.</p>
+<h3 id="git-flow-in-short">Git Flow in short</h3>
 <p><img alt="" src="../images/gitflow_01.png" /></p>
 <p>Development mainly takes place on the develop branch. Features that are not included in the next release are developed in so-called feature branches. If a release has to be built from the current development state, the develop branch is merged into the release branch. This represents at the same time a so-called distribution boundary. This means that development can continue on the development branch and does not have to wait for the actual release. The release is first merged into the next higher branch. In our case this is the test branch. If an error is found here, it is fixed in the release branch and merged back to test. These changes also flow back into the development branch later. If the tests on the test stage are successful, the next branch is merged and the release is tested accordingly. This continues until the respective release has reached the master branch and therefore has reached production.</p>
-<h2 id="dbflow">dbFlow</h2>
-<p>dbFlow supports the developers and release managers by building an artifact corresponding to the delta of a merge, meaning the changed files, which can be applied to the respective database instance.</p>
+<h3 id="reflect-db-changes">Reflect DB changes</h3>
+<p><strong>dbFlow</strong> supports the developers and release managers by building an artifact corresponding to the delta of 2 commits. Meaning the changed files, which can be applied to the respective database instance. So whenever you build a patch, you can refer to two commits as start and endpoint of a patch. Those commits can consist of state before and after merging ( HEAD, ORIG_HEAD), commit hashes or tags.</p>
 <p><img alt="" src="../images/gitflow_02.png" /></p>
-<p>For each target branch a separate database or database container is expected. The artifacts that dbFLow generates by merging the branches can then be imported into the databases/containers.</p>
-<h2 id="modes">Modes</h2>
-<p>dbFlow can generate two types of artifacts / supports two types of installation modes, which can be applied to the databases/containers. On the one hand this is a so-called <strong>INIT</strong>ial delivery, which empties the target schemas first, or expects empty schemas, and on the other hand a <strong>PATCH</strong> delivery, which requires the corresponding previous version of a deployment on the database.</p>
+<p>For each target branch a separate database or database container is expected. The artifacts that <strong>dbFLow</strong> generates can then be installed into the databases/containers.</p>
+<h2 id="2-phase-deployment">2 Phase deployment</h2>
+<p><strong>dbFlow</strong> can generate two types of artifacts, which can be applied to the databases. On the one hand this is a so-called <strong><mark>INIT</mark></strong>ial deployment, which clears the target schemas first, or expects empty schemas, and on the other hand a <strong><mark>PATCH</mark></strong> deployment, which requires the corresponding previous version of a deployment on the database.</p>
 <div class="admonition info">
 <p class="admonition-title">Info</p>
-<p>Usually, the initial delivery is only installed <strong>ONCE</strong> on a production system. After that, only patch versions are applied.</p>
+<p>Usually, the <strong><mark>init</mark></strong>ial deployment is only installed <strong>ONCE</strong> on a production system. After that, only <strong><mark>patch</mark></strong> versions are applied.</p>
 </div>
-<p>The advantage of this two-track approach is that a version of an application can always be built directly and thus forms the basis of a subsequent patch. For example, one can build the initial version of a predecessor and install the current state as a patch on top of it. This procedure forms the basis of flawless releases.</p>
+<p>The advantage of this two-phase approach is that a version of an application can always be built directly and thus forms the basis of a subsequent patch. For example, one can build the <strong><mark>init</mark></strong>ial version of a predecessor and install the current state as a <strong><mark>patch</mark></strong> on top of it. This procedure forms the basis of flawless releases.</p>
 <p><img alt="" src="../images/nightly_builds.png" /></p>
 <p>With this approach it is easy to map the concept of NighlyBuilds with Jenkins or similar CI/CD tools. To test whether a release can be applied to Prod/Master, it is sufficient to create an initial release of Master and apply it to a test database. Afterwards, the patch, in other words the delta to the development branch, is applied.</p>
 <div class="admonition warning">
 <p class="admonition-title">Important</p>
 <ul>
-<li>In <strong>INIT</strong> mode, all files from all directories except those named with Patch are applied.</li>
-<li>In <strong>PATCH</strong> mode only the changed files are applied.</li>
+<li>In <strong><mark>INIT</mark></strong> mode, all files from all directories except those named with <em>patch</em> are applied.</li>
+<li>In <strong><mark>PATCH</mark></strong> mode only the changed files are applied.</li>
 </ul>
 <blockquote>
 <p>Files inside <strong><em>.hook</em></strong> - folders will be always executed</p>
 </blockquote>
 </div>
-<h2 id="main-folders">Main Folders</h2>
-<p>To support this concept a dbFlow project and its directory structure must have a certain structure. dbFLow expects the following directories at the root level of the project itself.</p>
+<h2 id="smartfs">SmartFS</h2>
+<blockquote>
+<p>SmartFolderStructure</p>
+</blockquote>
+<p>To support this concept, a <strong>dbFlow</strong> project must have a certain directory structure. <strong>dbFLow</strong> expects the following directories at the root level of the project itself.</p>
 <table>
 <thead>
 <tr>
@@ -497,10 +671,6 @@
 <td>This folder contains the required database schemas and their objects.</td>
 </tr>
 <tr>
-<td><em>db/_setup</em></td>
-<td>This folder contains the required objects your application depends on. <br/>All scripts inside are called by the preferred admin account you configured (sys, admin, ...)</td>
-</tr>
-<tr>
 <td><strong>rest</strong></td>
 <td>Here the REST services / modules are stored</td>
 </tr>
@@ -514,12 +684,12 @@
 </tr>
 </tbody>
 </table>
-<h2 id="project-types">Project Types</h2>
+<h3 id="project-types">Project Types</h3>
 <p>This structure is independent from the project-type. <strong>dbFlow</strong> knows 3 types of projects: SingleSchema, MultiSchema and FlexSchema</p>
 <p><img alt="" src="../images/doc_project_modes.png" /></p>
 <p><em><code>SingleSchema</code></em> and <em><code>MultiSchema</code></em> are very similar. APEX applications and REST modules are imported or exported with the application user. The name of the workspace is stored in both modes in the project configuration. In <em><code>MultiSchema</code></em> mode two additional schemas (LOGIC and DATA) are used. Here a three layer model is built up, which holds the data in the DATA schema, the business logic in the LOGIC schema and everything that is application specific in the APP schema. In <em><code>SingleSchema</code></em> mode, a direct database connection is established with the respective schema. In <em><code>MultiSchema</code></em> mode, as well as in <em><code>FlexSchema</code></em> mode, a ProxyUser is used for the database connection, which then connects to the target schema.
 If the project is configured in <em><code>FlexMode</code></em>, you can freely configure the corresponding schemas and workspaces via the directory structure. When using <em><code>FlexMode</code></em>, APEX applications are stored within workspace folders, which are again located within schema folders. The same applies to the static subdirectories, of course. REST modules are also stored in their own schema folder in <em><code>FlexMode</code></em>. Importing or exporting is done via the proxy user, which connects to the respective schema, which is configured by directory name.</p>
-<h2 id="schema-folders">Schema Folders</h2>
+<h3 id="schema-folders">Schema Folders</h3>
 <p>Each schemafolder inside <strong>db</strong> folder except <code>_setup</code> is build with the same structur.</p>
 <table>
 <thead>
@@ -532,6 +702,10 @@ If the project is configured in <em><code>FlexMode</code></em>, you can freely c
 <tr>
 <td>db</td>
 <td></td>
+</tr>
+<tr>
+<td><em>_setup</em></td>
+<td>This folder contains the required objects your application depends on. <br/>All scripts inside are called by the preferred admin account you configured (sys, admin, ...)</td>
 </tr>
 <tr>
 <td>.. schema</td>
@@ -684,8 +858,9 @@ If the project is configured in <em><code>FlexMode</code></em>, you can freely c
 <p class="admonition-title">Warning</p>
 <p>Don't forget the trailing slashes in PLSQL files</p>
 </div>
-<p>The file structure has several purposes. On the one hand, these directories represent a fixed point in time during delivery, i.e. they reflect the order of execution. For example, tables are applied before the indexes and the constraints. Primary key constraints are applied before foreign key constraints, and so on.</p>
-<p>In addition, the division of the table directory into tables and tables_ddl represents a kind of toggle. In case of an initial delivery only the scripts from the table directory are executed. If it is a patch delivery, the script from the table directory will not be executed if files with the same root name exist in the tables_ddl directory.</p>
+<h3 id="installation-sequence">Installation Sequence</h3>
+<p>The file structure has several purposes. On the one hand, these directories represent a fixed point in time during deployment, i.e. they reflect the order of execution. For example, tables are applied before the indexes and the constraints. Primary key constraints are applied before foreign key constraints, and so on.</p>
+<p>In addition, the division of the table directory into tables and tables_ddl represents a kind of toggle. In case of an <strong><mark>init</mark></strong>ial delivery only the scripts from the table directory are executed. If it is a <strong><mark>patch</mark></strong> delivery, the script from the table directory will not be executed if files with the same root name exist in the tables_ddl directory.</p>
 <p>For example, if the table employees changes, the file is updated accordingly with the actual create-table statement. In addition, a matching alter-table script with the same base name is stored in the tables_ddl directory.</p>
 <p><div class="highlight"><pre><span></span><code><span class="o">//</span><span class="w"> </span><span class="n">employees</span><span class="p">.</span><span class="k">sql</span>
 <span class="k">create</span><span class="w"> </span><span class="k">table</span><span class="w"> </span><span class="n">employees</span><span class="w"> </span><span class="p">(</span>
@@ -728,16 +903,143 @@ If the project is configured in <em><code>FlexMode</code></em>, you can freely c
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
 <ul>
-<li>Changes to tables are always made 2 times. Once for a new installation (init) and once for an update (patch).</li>
+<li>Changes to tables are always made 2 times. Once for a new installation (<strong><mark>init</mark></strong>) and once for an update (<strong><mark>patch</mark></strong>).</li>
 <li>Table scripts may only contain the pure tables and comments. Constraints and indexes must be stored in the appropriate directories.</li>
-<li>Files from the table directory are executed if it is a new installation (init) or if the table is to be newly created in this update (patch).</li>
+<li>Files from the table directory are executed if it is a new installation (<strong><mark>init</mark></strong>) or if the table is to be newly created in this update (<strong><mark>patch</mark></strong>).</li>
+<li>Within the directories the files to be imported are sorted alphabetically, except for the package directory.</li>
 </ul>
 </div>
-<h2 id="apex">APEX</h2>
-<p>The used applications are stored in the apex directory. The applications will be expected in splitted form. For each application there is a corresponding folder containing the respective files (standard APEX export). For a deployment only the appropriate changes are included. A configuration option can be used here, in order to include all files into the deployment.</p>
+<h4 id="init">init</h4>
+<blockquote>
+<p>The following schema directories are applied in exactly this order during an <strong><mark>init</mark></strong> deployment:</p>
+</blockquote>
+<ul>
+<li>.hooks/pre</li>
+<li>sequences</li>
+<li>tables</li>
+<li>indexes/primaries</li>
+<li>indexes/uniques</li>
+<li>indexes/defaults</li>
+<li>constraints/primaries</li>
+<li>constraints/foreigns</li>
+<li>constraints/checks</li>
+<li>constraints/uniques</li>
+<li>contexts</li>
+<li>policies</li>
+<li>sources/types</li>
+<li>sources/packages</li>
+<li>sources/functions</li>
+<li>sources/procedures</li>
+<li>views</li>
+<li>mviews</li>
+<li>sources/triggers</li>
+<li>jobs</li>
+<li>tests/packages</li>
+<li>ddl</li>
+<li>ddl/init</li>
+<li>dml</li>
+<li>dml/init</li>
+<li>dml/base</li>
+<li>.hooks/post</li>
+</ul>
+<h4 id="patch">patch</h4>
+<blockquote>
+<p>The following schema directories are applied in exactly this order during a <strong><mark>patch</mark></strong> deployment:</p>
+</blockquote>
+<ul>
+<li>.hooks/pre</li>
+<li>ddl/patch/pre_${<em>branch-name</em>}</li>
+<li>dml/patch/pre_${<em>branch-name</em>}</li>
+<li>ddl/patch/pre</li>
+<li>dml/patch/pre</li>
+<li>sequences</li>
+<li>tables</li>
+<li>tables/tables_ddl</li>
+<li>indexes/primaries</li>
+<li>indexes/uniques</li>
+<li>indexes/defaults</li>
+<li>constraints/primaries</li>
+<li>constraints/foreigns</li>
+<li>constraints/checks</li>
+<li>constraints/uniques</li>
+<li>contexts</li>
+<li>policies</li>
+<li>sources/types</li>
+<li>sources/packages</li>
+<li>sources/functions</li>
+<li>sources/procedures</li>
+<li>views</li>
+<li>mviews</li>
+<li>sources/triggers</li>
+<li>jobs</li>
+<li>tests/packages</li>
+<li>ddl</li>
+<li>ddl/patch/post_${<em>branch-name</em>}</li>
+<li>dml/patch/post_${<em>branch-name</em>}</li>
+<li>ddl/patch/post</li>
+<li>dml</li>
+<li>dml/base</li>
+<li>dml/patch/post</li>
+<li>.hooks/post</li>
+</ul>
+<h3 id="hooks">Hooks</h3>
+<p>On each level of the main directories there are so called <code>.hooks</code> folders. You can find them in the root directory, in the db folder and in the schema folders. The <code>.hooks</code> folders are always divided into the subfolders <code>pre</code> and <code>post</code>. During the deployment process the scripts there will be executed in alphabetically order. These type of folders are meant to hold scripts which won't change too much during lifecycle of your product. For example you could place some kind of generator script inside here (Gen TableAPI, ...).</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Hookscripts outside the respective schema folders <strong>must</strong> contain the corresponding target schema in the name.</p>
+</div>
+<div class="highlight"><pre><span></span><code>├─ .hooks
+│  ├─ pre
+│  │  ├─ init
+│  │  ├─ patch
+│  │  │  └─ 01_schema_a_do_something_in_patch_mode.sql
+│  │  ├─ 01_schema_a_do_something.sql
+│  │  └─ 02_schema_a_do_something.sql
+│  └─ post
+│     ├─ 01_schema_c_do_something.sql
+│     ├─ 02_schema_b_do_something.sql
+│     └─ 03_schema_b_do_something.sql
+├─ apex
+├─ db
+│  ├─ .hooks
+│  │  ├─ pre
+│  │  │  ├─ init
+│  │  │  └─ patch
+│  │  └─ post
+│  │     ├─ init
+│  │     └─ patch
+│  ├─ schema_a
+│  └─ schema_b
+│     ├─ .hooks
+│     │  ├─ pre
+│     │  │  └─ init
+│     │  │  └─ patch
+│     │  ├─ post
+│     │  │  └─ init
+│     │  │  └─ patch
+│     └─ ...
+├─ rest
+├─ static
+</code></pre></div>
+<p>To execute a hook on a specific object type, you can add this structure to the corresponding directory within the schema hook. In this case you won't have the ability to diffentiate between the to modes.</p>
+<div class="highlight"><pre><span></span><code>├─ db
+│  └─ schema_a
+│     ├─ .hooks
+│     │  ├─ pre
+│     │  └─ post
+│     │     └─ sources
+│     │        └─ packages
+│     │           └─ call_me_after_packages_applied.sql
+│     └─ sources
+│        └─ packages
+│           ├─ my_package.pks
+│           └─ my_package.pkb
+</code></pre></div>
+<h3 id="apex-applications">APEX Applications</h3>
+<p>Applications are stored in the apex directory. The applications will be expected in splitted form. For each application there is a corresponding folder containing the respective files (standard APEX export). For a deployment only the appropriate changes are included. A configuration option can be used here, in order to include all files into the deployment.</p>
 <div class="highlight"><pre><span></span><code>├─ apex
 │  └─ f1000
-│  │  └─ application
+│  │  ├─ application
 │  │  └─ install.sql
 │  └─ f2000
 </code></pre></div>
@@ -750,18 +1052,18 @@ If the project is configured in <em><code>FlexMode</code></em>, you can freely c
 │     └─ workspace_y
 │        └─ f2000
 </code></pre></div>
-<h2 id="rest">REST</h2>
+<h3 id="rest-modules">REST Modules</h3>
 <p>If you use REST modules in your project, they are placed in the rest folder. Here dbFlow also expects a certain directory structure. This has a direct influence on the order of execution during the deployment.</p>
 <div class="highlight"><pre><span></span><code>├─ rest
-│  └─ access
-│  │  └─ roles
-│  │  └─ privileges
+│  ├─ access
+│  │  ├─ roles
+│  │  ├─ privileges
 │  │  └─ mapping
 │  └─ module
-│     └─ module_name_a
+│     ├─ module_name_a
 │     │  └─ module_name_a.module.sql
 │     └─ module_name_b
-│        └─ module_name_b.module.sql
+│        ├─ module_name_b.module.sql
 │        └─ module_name_b.condition.sql
 </code></pre></div>
 <p>Files are imported into these folders in the following order.</p>
@@ -774,55 +1076,14 @@ If the project is configured in <em><code>FlexMode</code></em>, you can freely c
 <p>Within the folders the order is alphabetical. If dbFLow finds a module file with the same file base and the extension *.condition.sql, this condition will be included in the install script.</p>
 <div class="admonition warning">
 <p class="admonition-title">Important</p>
-<p>In the Condtion file a PLSQL expression is expected which returns a boolean value. Later this expression becomes part of an IF condition.</p>
+<p>In the Condtion file a PLSQL expression is expected which returns a boolean value. Later this expression becomes part of an IF condition. In order to work that way the module file itself has to <strong>exclude</strong> then trailing slash on the last line!</p>
 </div>
-<h2 id="hooks">Hooks</h2>
-<p>On each level of the directories there are so called <code>.hooks</code> folders. You can find them in the root directory, in the db folder and in the schema folders. The <code>.hooks</code> folders are always divided into the subfolders <code>pre</code> and <code>post</code>. During the deployment process the scripts there will be executed in alphabetically order. These type of folders are meant to hold scripts which won't change too much during lifecycle of your product. For example you could place some kind of generator script inside here (Gen TableAPI, ...).</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Hookscripts outside the respective schema folders <strong>must</strong> contain the corresponding target schema in the name.</p>
-</div>
-<div class="highlight"><pre><span></span><code>├─ .hooks
-│  ├─ pre
-│  │  └─ 01_schema_a_do_something.sql
-│  │  └─ 02_schema_a_do_something.sql
-│  └─ post
-│     └─ 01_schema_c_do_something.sql
-│     └─ 02_schema_b_do_something.sql
-│     └─ 03_schema_b_do_something.sql
-├─ apex
-├─ db
-│  ├─ .hooks
-│  │  └─ pre
-│  │  └─ post
-│  ├─ schema_a
-│  └─ schema_b
-│     └─ .hooks
-│     │  └─ pre
-│     │  └─ post
-│     └─ ...
-├─ rest
-├─ static
-</code></pre></div>
-<p>To execute a hook on a specific object type, you can add this structure to the corresponding directory within the schema hook.</p>
-<div class="highlight"><pre><span></span><code>├─ db
-│  └─ schema_a
-│     └─ .hooks
-│     │  └─ pre
-│     │  └─ post
-│     │     └─ sources
-│     │        └─ packages
-│     │           └─ call_me_after_packages_applied.sql
-│     └─ sources
-│        └ packages
-│          └─ my_package.pks
-│          └─ my_package.pkb
-</code></pre></div>
 <h2 id="depot">Depot</h2>
-<p>When you create a deployment, whether INIT or PATCH, the deployment artifact is stored in a so-called depot. From this depot, a CI/CD tool, for example, can later fetch the artifact and install it on the target instance. Within the depot directory, the individual deployments are stored in subdirectories that correspond to the Git branch from which they were created.
-A deployment is stored in the ready subfolder. After a successful installation, the patch, including all logs and temporary files, is placed in the success folder. Errors during the deployment lead to an abort and are stored in the failures subfolder.</p>
+<p>When you create a deployment, whether <strong><mark>INIT</mark></strong> or <strong><mark>PATCH</mark></strong>, the deployment artifact is stored in a so-called depot. From this depot, a CI/CD tool, for example, can later fetch the artifact and install it on the target instance. Within the depot directory, the individual deployments are stored in subdirectories that correspond to the Git branch from which they were created. After a successful installation, the patch, including all logs and temporary files, is placed in the success folder. Errors during the deployment lead to an abort and are stored in the failures subfolder.</p>
 <p><img alt="" src="../images/depot_and_flow.png" /></p>
 <p>I recommend to use a separate repository or directory for each stage DB. This has the advantage that the corresponding directories serve their purpose even without Git and possibly access to the development repository. Theoretically, the repository can also be "doubled" to have a target directory at home and a source directory at the customer.</p>
+<h1 id="big-picture">Big Picture</h1>
+<p><img alt="" src="../images/comlete_process.png" /></p>
 
 
 
@@ -834,6 +1095,11 @@ A deployment is stored in the ready subfolder. After a successful installation, 
           
           
         </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12Z"/></svg>
+            Back to top
+          </button>
         
       </main>
       
@@ -860,7 +1126,7 @@ A deployment is stored in the ready subfolder. After a successful installation, 
       <div class="md-dialog__inner md-typeset"></div>
     </div>
     
-    <script id="__config" type="application/json">{"base": "..", "features": ["navigation.expand", "navigation.indexes", "navigation.sections", "toc.follow", "toc.integrate"], "search": "../assets/javascripts/workers/search.208ed371.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    <script id="__config" type="application/json">{"base": "..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.indexes", "navigation.sections", "toc.follow", "toc.integrate", "navigation.top"], "search": "../assets/javascripts/workers/search.208ed371.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
     
       <script src="../assets/javascripts/bundle.b4d07000.min.js"></script>
