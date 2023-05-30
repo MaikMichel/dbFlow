@@ -14,13 +14,14 @@ theme:
     scheme: slate
     primary: blue
   features:
-    # - navigation.tabs
-    - navigation.expand
+    - navigation.tabs
+    - navigation.tabs.sticky
+    # - navigation.expand
     - navigation.indexes
     - navigation.sections
     - toc.follow
     - toc.integrate
-    # - navigation.top
+    - navigation.top
   icon:
     admonition:
       note: octicons/tag-16
@@ -44,5 +45,7 @@ markdown_extensions:
   - pymdownx.mark
   - pymdownx.tilde
   - def_list
+  - attr_list
+  - md_in_html
   - pymdownx.tasklist:
       custom_checkbox: true
