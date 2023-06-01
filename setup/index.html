@@ -19,7 +19,7 @@
     
     
       
-        <title>How to setup - dbFLow - Documentation</title>
+        <title>Setup - dbFLow - Documentation</title>
       
     
     
@@ -143,7 +143,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              How to setup
+              Setup
             
           </span>
         </div>
@@ -202,18 +202,6 @@
 
 
   <li class="md-tabs__item">
-    <a href=".." class="md-tabs__link">
-      Home
-    </a>
-  </li>
-
-      
-        
-  
-  
-
-
-  <li class="md-tabs__item">
     <a href="../start/" class="md-tabs__link">
       Start
     </a>
@@ -227,7 +215,7 @@
 
   <li class="md-tabs__item">
     <a href="../concept/" class="md-tabs__link">
-      The Concept
+      Concept
     </a>
   </li>
 
@@ -241,7 +229,7 @@
 
   <li class="md-tabs__item">
     <a href="./" class="md-tabs__link md-tabs__link--active">
-      How to setup
+      Setup
     </a>
   </li>
 
@@ -342,21 +330,6 @@
   
   
     <li class="md-nav__item">
-      <a href=".." class="md-nav__link">
-        Home
-      </a>
-    </li>
-  
-
-    
-      
-      
-      
-
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../start/" class="md-nav__link">
         Start
       </a>
@@ -373,7 +346,7 @@
   
     <li class="md-nav__item">
       <a href="../concept/" class="md-nav__link">
-        The Concept
+        Concept
       </a>
     </li>
   
@@ -397,12 +370,12 @@
       
       
         <label class="md-nav__link md-nav__link--active" for="__toc">
-          How to setup
+          Setup
           <span class="md-nav__icon md-icon"></span>
         </label>
       
       <a href="./" class="md-nav__link md-nav__link--active">
-        How to setup
+        Setup
       </a>
       
         
@@ -467,11 +440,38 @@
     Generate Project
   </a>
   
+    <nav class="md-nav" aria-label="Generate Project">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#without-wizard" class="md-nav__link">
+    Without wizard
+  </a>
+  
 </li>
         
           <li class="md-nav__item">
-  <a href="#when-you-are-ready-just-install-the-project-with-dependencies-into-your-database" class="md-nav__link">
-    When you are ready, just install the project with dependencies into your database
+  <a href="#just-environment" class="md-nav__link">
+    Just environment
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#copy-project" class="md-nav__link">
+    Copy Project
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#install-project" class="md-nav__link">
+    Install Project
   </a>
   
 </li>
@@ -566,7 +566,7 @@
 
 <h1 id="getting-startet">Getting startet</h1>
 <h2 id="requirements">Requirements</h2>
-<p>To use dbFlow, all you need is:</p>
+<p>To use <strong>dbFlow</strong>, all you need is:</p>
 <ul>
 <li><a href="https://git-scm.com/downloads">Git</a></li>
 <li><a href="https://www.oracle.com/database/technologies/instant-client/downloads.html">SQLPlus inkl. Oracle Client</a> or <a href="https://www.oracle.com/de/tools/downloads/sqlcl-downloads.html">SQLcl</a></li>
@@ -578,12 +578,12 @@
 </li>
 </ul>
 <h2 id="installation">Installation</h2>
-<p>Basically, installing dbFLow consists of nothing more than initializing a directory with git and then cloning the repository as a submodule from GitHub. If you are using an existing git directory / project, cloning the submodule is all you need to do.</p>
+<p>Basically, installing <strong>dbFLow</strong> consists of nothing more than initializing a directory with git and then cloning the repository as a submodule from GitHub. If you are using an existing git directory / project, cloning the submodule is all you need to do.</p>
 <blockquote>
-<p>The cloning of dbFlow as a submodule has the advantage that you can source new features and bugfixes directly from Github. In addition, you always have the possibility to fall back on an older dbFLow version through branching.</p>
+<p>The cloning of <strong>dbFlow</strong> as a submodule has the advantage that you can source new features and bugfixes directly from Github. In addition, you always have the possibility to fall back on an older <strong>dbFLow</strong> version through branching.</p>
 </blockquote>
 <div class="admonition warning">
-<p class="admonition-title">Warning</p>
+<p class="admonition-title">Important!</p>
 <p>dbFlow <strong>MUST</strong> exist as a folder named ".dbFlow"</p>
 </div>
 <h3 id="starting-a-new-project">Starting a new Project</h3>
@@ -607,14 +607,15 @@ $<span class="w"> </span>git<span class="w"> </span>submodule<span class="w"> </
 <p>Sometimes it can happen that the bash files cannot be executed. If this is the case, explicit permissions must be granted here. (<code>chmod +x .dbFlow/*.sh</code>)</p>
 </blockquote>
 <h2 id="setting-up-a-project">Setting up a project</h2>
-<p>To configure a dbFlow project, set it up initially with the command <code>setup.sh generate &lt;project_name&gt;</code>. After that some informations about the project are expected. All entries are stored in the two files <code>build.env</code> and <code>apply.env</code>. <code>build.env</code> contains information about the project itself and <code>apply.env</code> contains information about the database connection and environment. The filename <code>apply.env</code> is stored in the file <code>.gitignore</code> and should not be versioned. Since this file contains environment related information, it is also exactly the one that changes per instance / environment. All settings in this file can be entered also from "outside", in order to fill these for example from a CI/CD Tool.</p>
+<p>To configure a <strong>dbFlow</strong> project, set it up initially with the command <code>.dbFlow/setup.sh --generate &lt;project_name&gt;</code>. After that some informations about the project are expected. All entries are stored in the two files <code>build.env</code> and <code>apply.env</code>. <code>build.env</code> contains information about the project itself and <code>apply.env</code> contains information about the database connection and environment. The filename <code>apply.env</code> is stored in the file <code>.gitignore</code> and should not be versioned. Since this file contains environment related information, it is also exactly the one that changes per instance / environment. All settings in this file can be entered also from "outside", in order to fill these for example from a CI/CD Tool.</p>
 <div class="admonition info">
 <p class="admonition-title">Info</p>
-<p>You can always execute a main shell script/command inside .dbFLow folder to show usage help.</p>
+<p>You can always execute a bash script/command inside <code>.dbFLow</code> folder without arguments to show usage help.</p>
 </div>
 <h3 id="generate-project">Generate Project</h3>
-<div class="highlight"><pre><span></span><code>$<span class="w"> </span>.dbFlow/setup.sh<span class="w"> </span>generate<span class="w"> </span>&lt;project_name&gt;
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>.dbFlow/setup.sh<span class="w"> </span>--generate<span class="w"> </span>&lt;project_name&gt;
 </code></pre></div>
+<p>You will be asked the following questions when creating the project:</p>
 <table>
 <thead>
 <tr>
@@ -624,8 +625,8 @@ $<span class="w"> </span>git<span class="w"> </span>submodule<span class="w"> </
 </thead>
 <tbody>
 <tr>
-<td>Would you like to have a single, multi or flex scheme app (S/M/F) [M]</td>
-<td>This is the first question. Here you define the project mode. Default is <strong>M</strong>ulti</td>
+<td>Which <strong>dbFLow</strong> project type do you want to create? <strong><mark>S</mark></strong>ingle, <strong><mark>M</mark></strong>ulti or <strong><mark>F</mark></strong>lex [M]</td>
+<td>This is the first question. Here you define the project mode. Default is <strong><mark>M</mark></strong>ulti . ( see: <a href="../concept/#project-types">project-types</a>)</td>
 </tr>
 <tr>
 <td>When running release tests, what is your prefered branch name [build]</td>
@@ -633,11 +634,11 @@ $<span class="w"> </span>git<span class="w"> </span>submodule<span class="w"> </
 </tr>
 <tr>
 <td>Would you like to process changelogs during deployment [Y]</td>
-<td>dbFlow offers the possibility to generate changlogs based on the commit messages. Here you activate this function. <a href="../changelog/#configuration">changelog</a></td>
+<td><strong>dbFlow</strong> offers the possibility to generate changlogs based on the commit messages. Here you activate this function. ( see: <a href="../changelog/#configuration">changelog</a>)</td>
 </tr>
 <tr>
-<td>What is the schema name the changelog are processed with [schema_name]</td>
-<td>WIf you want changelogs to be displayed within your application, you can specify the target schema here, with which the corresponding TemplateCode should be executed. <a href="../changelog/#configuration">changelog</a></td>
+<td>What is the schema the changelog is processed with [schema_name]</td>
+<td>If you want changelogs to be displayed within your application, you can specify the target schema here, with which the corresponding TemplateCode should be executed. ( see: <a href="../changelog/#configuration">changelog</a>)</td>
 </tr>
 <tr>
 <td>Enter database connections [localhost:1521/xepdb1]</td>
@@ -645,19 +646,19 @@ $<span class="w"> </span>git<span class="w"> </span>submodule<span class="w"> </
 </tr>
 <tr>
 <td>Enter username of admin user (admin, sys, ...) [sys]</td>
-<td>This user is responsible for all scripts inside db/_setup folder</td>
+<td>This user is responsible for all scripts inside <code>db/_setup</code> folder</td>
 </tr>
 <tr>
 <td>Enter password for sys [leave blank and you will be asked for]</td>
-<td>Nothing more to clarify. Password is written to apply.env which is mentioned in .gitignore</td>
+<td>Nothing more to clarify. Password is written to apply.env which is mentioned in .gitignore. (Keep in mind that passwords are saved obfuscated)</td>
 </tr>
 <tr>
-<td>Enter password for deployment_user (proxyuser: flex_depl) [leave blank and you will be asked for]</td>
-<td>Nothing more to clarify. Password is written to apply.env which is mentioned in .gitignore</td>
+<td>Enter password for deployment_user (proxyuser: ?_depl) [leave blank and you will be asked for]</td>
+<td>Nothing more to clarify. Password is written to apply.env which is mentioned in .gitignore. (Keep in mind that passwords are saved obfuscated)</td>
 </tr>
 <tr>
 <td>Enter path to depot [_depot]</td>
-<td>This is a relative path which points to the depot (artifactory) and is also mentioned in .gitignore when it is not starting with ".."</td>
+<td>This is a relative path which points to the depot (artifactory) and is also mentioned in .gitignore (see: <a href="../concept/#depot">depot</a>)</td>
 </tr>
 <tr>
 <td>Enter stage of this configuration mapped to branch (develop, test, master) [develop]</td>
@@ -665,31 +666,53 @@ $<span class="w"> </span>git<span class="w"> </span>submodule<span class="w"> </
 </tr>
 <tr>
 <td>Do you wish to generate and install default tooling? (Logger, utPLSQL, teplsql, tapi) [Y]</td>
-<td>Here you activate the initial installation of the different components/dependencies. These are placed in the db/_setup/features folder. There you can also place other features by yourself. If you don't need certain components, you can delete the corresponding file from the features folder (before running the actual installation)..</td>
+<td>Here you activate the initial installation of the different components/dependencies. These are placed in the <code>db/_setup/features</code> folder. There you can also place other features by yourself. If you don't need certain components, you can delete the corresponding file from the features folder (before running the actual installation)..</td>
 </tr>
 <tr>
 <td>Install with sql(cl) or sqlplus? [sqlplus]</td>
-<td>Here you define which CLI dbFLow should use to execute the SQL scripts.</td>
+<td>Here you define which CLI <strong>dbFLow</strong> should use to execute the SQL scripts.</td>
 </tr>
 <tr>
 <td>Enter application IDs (comma separated) you wish to use initialy (100,101,...)</td>
-<td>Here you can already enter the application IDs that dbFlow should initially take care of</td>
+<td>Here you can already enter the application IDs that <strong>dbFlow</strong> should initially take care of</td>
 </tr>
 <tr>
 <td>Enter restful Moduls (comma separated) you wish to use initialy (api,test,...)</td>
-<td>Here you can already specify the REST modules that dbFlow should initially take care of</td>
+<td>Here you can already specify the REST modules that <strong>dbFlow</strong> should initially take care of</td>
 </tr>
 </tbody>
 </table>
 <p>After answering all the questions, your project structure is created with some SQL and bash files inside. You can now modifiy these files and / or put some files of your own into the corresponding folders.</p>
-<h3 id="when-you-are-ready-just-install-the-project-with-dependencies-into-your-database">When you are ready, just install the project with dependencies into your database</h3>
-<div class="highlight"><pre><span></span><code>$<span class="w"> </span>.dbFlow/setup.sh<span class="w"> </span>install
+<h4 id="without-wizard">Without wizard</h4>
+<p>Sometimes you want to have this questions and answers filled directly from the environment. In this case it is enough to specify the --wizard flag.</p>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>.dbFlow/setup.sh<span class="w"> </span>--generate<span class="w"> </span>&lt;project_name&gt;<span class="w"> </span>--wizard
+</code></pre></div>
+<p>This is especially useful if you want to build such a project scripted via a CI/CD.</p>
+<h4 id="just-environment">Just environment</h4>
+<p>This is especially important for instance directories. So if you assign a directory to a target stage, you can install the actual patch from depot and get the complete directory structure written to the current directory via this.</p>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>.dbFlow/setup.sh<span class="w"> </span>--generate<span class="w"> </span>&lt;project_name&gt;<span class="w"> </span>--envonly
+</code></pre></div>
+<h3 id="copy-project">Copy Project</h3>
+<p>As an addition to the generation of a project with the <code>--envonly</code> option, one has the possibility to copy the configuration and the setup, so the foundation, into a new target directory.</p>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>.dbFlow/setup.sh<span class="w"> </span>--copyto<span class="w"> </span>&lt;target-path&gt;
+</code></pre></div>
+<p>This is useful when you want to make your target instance project ready. So after customizing the data connection in the <code>apply.env</code> in the target directory you can install all dependencies like schemas, features and workspaces in the target instance.</p>
+<h3 id="install-project">Install Project</h3>
+<blockquote>
+<p>When you fullfilled the steps in the previous section, you are ready to install the project with dependencies into your database</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>.dbFlow/setup.sh<span class="w"> </span>--install
 </code></pre></div>
 <blockquote>
 <p>This will run all SQL and bash files inside the db/_setup directory.</p>
 </blockquote>
-<p>For deployment or release purposes. This is the time to make all branches equal. So if you are on master and this your only branch, create a branch for each deployment stage (develop, test, ...) or if you allready did that, just merge these changes into your branches.</p>
-<p>Now the actual development work may start. After that have a look to the tutorial on <a href="../release">How to make a release</a></p>
+<p>For deployment or release purposes. This is the time to make all branches equal. So if you are on master and this your only branch, create a branch for each
+deployment stage (develop, test, ...) or if you allready did that, just merge these changes into your branches.</p>
+<div class="admonition warning">
+<p class="admonition-title">Important!</p>
+<p>The installation will abort if the users already exist in the DB as a schema. Furthermore, during the installation of the standard features, it will ask in each case, if they already exist, whether they should be overwritten.
+You have the option to flag this with a step <em>force</em> by using <code>.dbFlow/setup.sh --install --force</code>. In this case, all target schemas and features are deleted before the actual installation in each case.</p>
+</div>
 
 
 
