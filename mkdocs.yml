@@ -1,9 +1,8 @@
 site_name: dbFLow - Documentation
 nav:
-    - Home: index.md
     - Start: start.md
-    - The Concept: concept.md
-    - How to setup: getting_started.md
+    - Concept: concept.md
+    - Setup: setup.md
     - How to deploy: deployment.md
     - Generating a changelog: changelog.md
     - Migrating from previous: migrating.md
