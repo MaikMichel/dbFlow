@@ -282,6 +282,8 @@ function setup_env() {
 
   # if table changes are inside release, we have to call special-functionalities
   table_changes="FALSE"
+  table_array=()
+  table_set=()
 
   # folder outside git repo
   depotpath="$(pwd)/$DEPOT_PATH/$branch"
@@ -620,13 +622,29 @@ function write_install_schemas(){
             entries=("${targetpath}/db/${schema}/.hooks/pre/${path}"/*.*)
             for entry in "${entries[@]}"; do
               file=$(basename "${entry}")
+              file_ext=${file#*.}
 
-              {
-              echo "Prompt >>> db/${schema}/.hooks/pre/${path}/${file}"
-              echo "@@.hooks/pre/${path}/${file}"
-              echo "Prompt <<< db/${schema}/.hooks/pre/${path}/${file}"
-              } >> "${target_install_file}"
+              if [[ "${file_ext}" == "tables.sql" ]]; then
 
+                if [ ${#table_set[@]} -gt 0 ]; then
+                  echo "Prompt running .hooks/pre/${path}/${file} with table set" >> "${target_install_file}"
+                  for table_item in "${table_set[@]}"
+                  do
+                    echo "Prompt >>> db/${schema}/.hooks/pre/${path}/${file} ${version} ${mode} ${table_item}.sql" >> "${target_install_file}"
+                    echo "@@.hooks/pre/${path}/${file} ${version} ${mode} ${table_item}.sql" >> "${target_install_file}"
+                    echo "Prompt <<< db/${schema}/.hooks/pre/${path}/${file} ${version} ${mode} ${table_item}.sql" >> "${target_install_file}"
+                  done
+                  echo "Prompt" >> "${target_install_file}"
+                  echo "" >> "${target_install_file}"
+                fi
+
+              else
+                {
+                echo "Prompt >>> db/${schema}/.hooks/pre/${path}/${file}"
+                echo "@@.hooks/pre/${path}/${file}"
+                echo "Prompt <<< db/${schema}/.hooks/pre/${path}/${file}"
+                } >> "${target_install_file}"
+              fi
             done
 
             echo "Prompt" >> "${target_install_file}"
@@ -647,10 +665,15 @@ function write_install_schemas(){
 
             for entry in "${sorted[@]}"; do
               file=$(basename "${entry}")
+              file_ext=${file#*.}
 
               if [[ "${path}" == "tables" ]]; then
                 skipfile="FALSE"
                 table_changes="TRUE"
+
+                # store tablename in array
+                table_name="${file%%.*}"
+                table_array+=( ${table_name} )
 
                 if [[ "${mode}" == "patch" ]]; then
                   if [[ -d "${targetpath}/db/${schema}/tables/tables_ddl" ]]; then
@@ -670,17 +693,41 @@ function write_install_schemas(){
                   echo "Prompt <<< db/${schema}/${path}/${file}" >> "${target_install_file}"
                 fi
               else
-                echo "Prompt >>> db/${schema}/${path}/${file}" >> "${target_install_file}"
-                if [[ "${path}" == "ddl/pre_tst" ]] && [[ "${mode}" == "patch" ]]; then
-                  echo "--tst@@${path}/${file}" >> "${target_install_file}"
-                elif [[ "${path}" == "ddl/pre_uat" ]] && [[ "${mode}" == "patch" ]]; then
-                  echo "--uat@@${path}/${file}" >> "${target_install_file}"
+
+                if ([[ "${path}" == ".hooks/pre" ]] || [[ "${path}" == ".hooks/post" ]]) && [[ "${file_ext}" == "tables.sql" ]]; then
+
+                  if [ ${#table_set[@]} -gt 0 ]; then
+                    echo "Prompt running ${path}/${file} with table set" >> "${target_install_file}"
+                    for table_item in "${table_set[@]}"
+                    do
+                      echo "Prompt >>> db/${schema}/${path}/${file} ${version} ${mode} ${table_item}.sql" >> "${target_install_file}"
+                      echo "@@${path}/${file} ${version} ${mode} ${table_item}.sql" >> "${target_install_file}"
+                      echo "Prompt <<< db/${schema}/${path}/${file} ${version} ${mode} ${table_item}.sql" >> "${target_install_file}"
+                    done
+                    echo "Prompt" >> "${target_install_file}"
+                    echo "" >> "${target_install_file}"
+                  fi
                 else
-                  echo "@@${path}/${file}" >> "${target_install_file}"
-                  echo "Prompt <<< db/${schema}/${path}/${file}" >> "${target_install_file}"
+
+                  echo "Prompt >>> db/${schema}/${path}/${file}" >> "${target_install_file}"
+                  if [[ "${path}" == "ddl/pre_tst" ]] && [[ "${mode}" == "patch" ]]; then
+                    echo "--tst@@${path}/${file}" >> "${target_install_file}"
+                  elif [[ "${path}" == "ddl/pre_uat" ]] && [[ "${mode}" == "patch" ]]; then
+                    echo "--uat@@${path}/${file}" >> "${target_install_file}"
+                  else
+                    echo "@@${path}/${file}" >> "${target_install_file}"
+                    echo "Prompt <<< db/${schema}/${path}/${file}" >> "${target_install_file}"
+                  fi
+
                 fi
               fi
-            done
+            done #files in folder (sorted)
+
+            # union table names
+            if [[ "${path}" == "tables" ]]; then
+              # get distinct values of array
+              table_set=($(printf "%s\n" "${table_array[@]}" | sort -u))
+            fi
 
             if [[ "${path}" == "ddl/patch/pre" ]] || [[ "${path}" == "ddl/patch/pre_tst" ]] || [[ "${path}" == "ddl/patch/pre_uat" ]]|| [[ "${path}" == "views" ]]
             then
@@ -688,19 +735,34 @@ function write_install_schemas(){
             fi
 
 
-
             # post folder hooks
             echo "Prompt" >> "${target_install_file}"
             entries=("${targetpath}/db/${schema}/.hooks/post/${path}"/*.*)
             for entry in "${entries[@]}"; do
               file=$(basename "${entry}")
+              file_ext=${file#*.}
 
-              {
-              echo "Prompt >>> db/${schema}/.hooks/post/${path}/${file}"
-              echo "@@.hooks/post/${path}/${file}"
-              echo "Prompt <<< db/${schema}/.hooks/post/${path}/${file}"
-              } >> "${target_install_file}"
+              if [[ "${file_ext}" == "tables.sql" ]]; then
 
+                if [ ${#table_set[@]} -gt 0 ]; then
+                  echo "Prompt running .hooks/post/${path}/${file} with table set" >> "${target_install_file}"
+                  for table_item in "${table_set[@]}"
+                  do
+                    echo "Prompt >>> db/${schema}/.hooks/post/${path}/${file} ${version} ${mode} ${table_item}.sql" >> "${target_install_file}"
+                    echo "@@.hooks/post/${path}/${file} ${version} ${mode} ${table_item}.sql" >> "${target_install_file}"
+                    echo "Prompt <<< db/${schema}/.hooks/post/${path}/${file} ${version} ${mode} ${table_item}.sql" >> "${target_install_file}"
+                  done
+                  echo "Prompt" >> "${target_install_file}"
+                  echo "" >> "${target_install_file}"
+                fi
+
+              else
+                {
+                echo "Prompt >>> db/${schema}/.hooks/post/${path}/${file}"
+                echo "@@.hooks/post/${path}/${file}"
+                echo "Prompt <<< db/${schema}/.hooks/post/${path}/${file}"
+                } >> "${target_install_file}"
+              fi
             done
 
              # set scan to off, to make use of vars inside main schema-hooks
@@ -711,8 +773,9 @@ function write_install_schemas(){
             echo "Prompt" >> "${target_install_file}"
             echo "Prompt" >> "${target_install_file}"
             echo "" >> "${target_install_file}"
-          fi
-        done #path
+
+          fi #path exists
+        done #paths
 
         echo "prompt compiling schema" >> "${target_install_file}"
         echo "exec dbms_utility.compile_schema(schema => user, compile_all => false);" >> "${target_install_file}"
