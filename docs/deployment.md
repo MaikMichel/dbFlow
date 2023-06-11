@@ -1,10 +1,13 @@
 # Deployment
 
-As already described in the [concept](concept) dbFlow knows two types of releases. One is the initial release, which imports the complete product against empty schemas or clears them first, and the other is the patch release, which determines the delta of two commit levels and applies it on top to an existing installation.
+As already described in the [concept] dbFlow knows two types of releases. One is the initial release, which imports the complete product against empty schemas or clears them first, and the other is the patch release, which determines the delta of two commit levels and applies it on top to an existing installation.
+
+   [concept]: ../concept/#2-phase-deployment
 
 ![](images/depot_and_flow.png)
 
-A release is created in two steps.
+
+A deployment can be divided into two steps. In the first step, the artifact is built. This is done by the script `.dbFlow/build.sh`. In the second step the artifact is applied to the target environment. This is done by calling the script `.dbFlow/apply.sh.`
 
 - Step 1: **build** - This is where the artifact is created.
 - Step 2: **apply** - This is where the artifact is deployed to the respective target environment.
@@ -22,17 +25,30 @@ As with any dbFlow script, you can display the possible parameters by omitting t
 The build.sh script creates a tar ball with all relevant files and stores it in the depot. The location of the depot is determined in the file apply.env.
 
 
-### init
+### init mode
 
 In an **init**ial release, all files from the database directories are determined and imported in a specific order. The files from the directories ``\*/[ddl|dml]/patch/\*`` and ``\*/tables/tables_ddl`` are ignored.
 
 By using the flag ``-i/--init`` an **init**ial release is created. Additionally you need the target version of the release. With the flag ``-v/--version`` you name the version of the release.
-The release itself is created from the current branch. If you want to create a release from the test branch, you have to switch there with Git first.
+The release itself is created from the current branch. If you want to create a release from another branch, you have to switch there with Git first.
 
 
 !!! info "Order of the directories"
 
-    .hooks/pre sequences tables indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies sources/types sources/packages sources/functions sources/procedures views mviews sources/triggers jobs tests/packages ddl/init dml/init dml/base .hooks/post
+    | Num    | Folder                 | Num | Folder              | Num | Folder         |
+    |--------|------------------------|-----|---------------------|-----|----------------|
+    |   1    | .hooks/pre             |  11 | contexts            | 21  | tests/packages |
+    |   2    | sequences              |  12 | policies            | 22  | ddl/init       |
+    |   3    | tables                 |  13 | sources/types       | 23  | dml/init       |
+    |   4    | indexes/primaries      |  14 | sources/packages    | 24  | dml/base       |
+    |   5    | indexes/uniques        |  15 | sources/functions   | 25  | .hooks/post    |
+    |   6    | indexes/defaults       |  16 | sources/procedures  |     |                |
+    |   7    | constraints/primaries  |  17 | views               |     |                |
+    |   8    | constraints/foreigns   |  18 | mviews              |     |                |
+    |   9    | constraints/checks     |  19 | sources/triggers    |     |                |
+    |  10    | constraints/uniques    |  20 | jobs                |     |                |
+
+
 
 ```shell
 $ .dbFlow/build.sh --init --version 1.0.0
@@ -40,7 +56,16 @@ $ .dbFlow/build.sh --init --version 1.0.0
 
 > If you name the version with "install" then the release will be applied directly.
 
-### patch
+
+#### Additional arguments in init mode:
+
+***keepFolder***
+
+With the flag --k / --keepfolder the working directory, which is created in the depot to create the actual artifact, is not deleted. Especially in the beginning, when you don't have so much experience with dbFlow, this option is helpful. So after creating the artifact you can navigate to the corresponding directory and have a look at the created scripts and copied files.
+
+
+
+### patch mode
 
 In a **patch** release, all changed files are determined from the database directories and applied in a specific order. Which files are considered as modified is determined by Git. With the parameters ``-s/--start`` (defaults to ORIG_HEAD) and ``-e/--end`` (defaults to HEAD) one can set these parameters explicitly. Which files become part of the **patch** can be output by using the ``-l/--listfiles`` flag.
 
