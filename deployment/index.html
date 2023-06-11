@@ -417,15 +417,15 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#init" class="md-nav__link">
-    init
+  <a href="#init-mode" class="md-nav__link">
+    init mode
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#patch" class="md-nav__link">
-    patch
+  <a href="#patch-mode" class="md-nav__link">
+    patch mode
   </a>
   
 </li>
@@ -451,14 +451,14 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#init_1" class="md-nav__link">
+  <a href="#init" class="md-nav__link">
     init
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#patch_1" class="md-nav__link">
+  <a href="#patch" class="md-nav__link">
     patch
   </a>
   
@@ -538,9 +538,9 @@
 
 
 <h1 id="deployment">Deployment</h1>
-<p>As already described in the <a href="concept">concept</a> dbFlow knows two types of releases. One is the initial release, which imports the complete product against empty schemas or clears them first, and the other is the patch release, which determines the delta of two commit levels and applies it on top to an existing installation.</p>
+<p>As already described in the <a href="../concept/#2-phase-deployment">concept</a> dbFlow knows two types of releases. One is the initial release, which imports the complete product against empty schemas or clears them first, and the other is the patch release, which determines the delta of two commit levels and applies it on top to an existing installation.</p>
 <p><img alt="" src="../images/depot_and_flow.png" /></p>
-<p>A release is created in two steps.</p>
+<p>A deployment can be divided into two steps. In the first step, the artifact is built. This is done by the script <code>.dbFlow/build.sh</code>. In the second step the artifact is applied to the target environment. This is done by calling the script <code>.dbFlow/apply.sh.</code></p>
 <ul>
 <li>Step 1: <strong>build</strong> - This is where the artifact is created.</li>
 <li>Step 2: <strong>apply</strong> - This is where the artifact is deployed to the respective target environment.</li>
@@ -553,20 +553,116 @@
 <p>The build.sh script is used to create the so-called build file or artifact. This is used to create the actual release based on the state of the files in the directory tree / Git repo.
 As with any dbFlow script, you can display the possible parameters by omitting the parameters or explicitly with the <code>--help</code> parameter.</p>
 <p>The build.sh script creates a tar ball with all relevant files and stores it in the depot. The location of the depot is determined in the file apply.env.</p>
-<h3 id="init">init</h3>
+<h3 id="init-mode">init mode</h3>
 <p>In an <strong>init</strong>ial release, all files from the database directories are determined and imported in a specific order. The files from the directories <code>\*/[ddl|dml]/patch/\*</code> and <code>\*/tables/tables_ddl</code> are ignored.</p>
 <p>By using the flag <code>-i/--init</code> an <strong>init</strong>ial release is created. Additionally you need the target version of the release. With the flag <code>-v/--version</code> you name the version of the release.
-The release itself is created from the current branch. If you want to create a release from the test branch, you have to switch there with Git first.</p>
+The release itself is created from the current branch. If you want to create a release from another branch, you have to switch there with Git first.</p>
 <div class="admonition info">
 <p class="admonition-title">Order of the directories</p>
-<p>.hooks/pre sequences tables indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies sources/types sources/packages sources/functions sources/procedures views mviews sources/triggers jobs tests/packages ddl/init dml/init dml/base .hooks/post</p>
+<table>
+<thead>
+<tr>
+<th>Num</th>
+<th>Folder</th>
+<th>Num</th>
+<th>Folder</th>
+<th>Num</th>
+<th>Folder</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>.hooks/pre</td>
+<td>11</td>
+<td>contexts</td>
+<td>21</td>
+<td>tests/packages</td>
+</tr>
+<tr>
+<td>2</td>
+<td>sequences</td>
+<td>12</td>
+<td>policies</td>
+<td>22</td>
+<td>ddl/init</td>
+</tr>
+<tr>
+<td>3</td>
+<td>tables</td>
+<td>13</td>
+<td>sources/types</td>
+<td>23</td>
+<td>dml/init</td>
+</tr>
+<tr>
+<td>4</td>
+<td>indexes/primaries</td>
+<td>14</td>
+<td>sources/packages</td>
+<td>24</td>
+<td>dml/base</td>
+</tr>
+<tr>
+<td>5</td>
+<td>indexes/uniques</td>
+<td>15</td>
+<td>sources/functions</td>
+<td>25</td>
+<td>.hooks/post</td>
+</tr>
+<tr>
+<td>6</td>
+<td>indexes/defaults</td>
+<td>16</td>
+<td>sources/procedures</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>7</td>
+<td>constraints/primaries</td>
+<td>17</td>
+<td>views</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>8</td>
+<td>constraints/foreigns</td>
+<td>18</td>
+<td>mviews</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>9</td>
+<td>constraints/checks</td>
+<td>19</td>
+<td>sources/triggers</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>10</td>
+<td>constraints/uniques</td>
+<td>20</td>
+<td>jobs</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
 </div>
 <div class="highlight"><pre><span></span><code>$<span class="w"> </span>.dbFlow/build.sh<span class="w"> </span>--init<span class="w"> </span>--version<span class="w"> </span><span class="m">1</span>.0.0
 </code></pre></div>
 <blockquote>
 <p>If you name the version with "install" then the release will be applied directly.</p>
 </blockquote>
-<h3 id="patch">patch</h3>
+<h4 id="additional-arguments-in-init-mode">Additional arguments in init mode:</h4>
+<p><strong><em>keepFolder</em></strong></p>
+<p>With the flag --k / --keepfolder the working directory, which is created in the depot to create the actual artifact, is not deleted. Especially in the beginning, when you don't have so much experience with dbFlow, this option is helpful. So after creating the artifact you can navigate to the corresponding directory and have a look at the created scripts and copied files.</p>
+<h3 id="patch-mode">patch mode</h3>
 <p>In a <strong>patch</strong> release, all changed files are determined from the database directories and applied in a specific order. Which files are considered as modified is determined by Git. With the parameters <code>-s/--start</code> (defaults to ORIG_HEAD) and <code>-e/--end</code> (defaults to HEAD) one can set these parameters explicitly. Which files become part of the <strong>patch</strong> can be output by using the <code>-l/--listfiles</code> flag.</p>
 <blockquote>
 <p>Start should always be at least one commit prior to the end commit.</p>
@@ -618,7 +714,7 @@ By omitting the parameters you can also see what is needed.</p>
 <p class="admonition-title">Info</p>
 <p>I recommend to create a corresponding instance directory for each database and to version it as well. This directory should also contain a .dbFlow - submodule. It is sufficient to copy the files apply.env and build.env into the directory and to adjust the database connection and the stage.</p>
 </div>
-<h3 id="init_1">init</h3>
+<h3 id="init">init</h3>
 <div class="admonition danger">
 <p class="admonition-title">Warning</p>
 <p>Importing an init release leads to data loss!</p>
@@ -626,7 +722,7 @@ By omitting the parameters you can also see what is needed.</p>
 <p>By specifying the <code>-i/--init</code> flag, an init release is retrieved from the depot and then imported. If no password is stored in the apply.env (this is recommended), it will be requested at the very beginning. Because on init then content of all included schemas will be deleted you are asked to proceed. When you provide an environment variable called <code>DBFLOW_JENKINS</code> with any value the question is skipped.</p>
 <div class="highlight"><pre><span></span><code>$<span class="w"> </span>.dbFlow/apply.sh<span class="w"> </span>--init<span class="w"> </span>--version<span class="w"> </span><span class="m">1</span>.0.0
 </code></pre></div>
-<h3 id="patch_1">patch</h3>
+<h3 id="patch">patch</h3>
 <p>By specifying the <code>-p/--patch</code> flag, a patch release is searched for in the depot and then applied. If no password is stored in the apply.env (this is recommended), it will be requested at the very beginning.</p>
 <div class="highlight"><pre><span></span><code>$<span class="w"> </span>.dbFlow/apply.sh<span class="w"> </span>--patch<span class="w"> </span>--version<span class="w"> </span><span class="m">1</span>.1.0
 </code></pre></div>
@@ -674,7 +770,7 @@ By omitting the parameters you can also see what is needed.</p>
       <div class="md-dialog__inner md-typeset"></div>
     </div>
     
-    <script id="__config" type="application/json">{"base": "..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.indexes", "navigation.sections", "toc.follow", "toc.integrate", "navigation.top"], "search": "../assets/javascripts/workers/search.208ed371.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    <script id="__config" type="application/json">{"base": "..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.indexes", "toc.follow", "toc.integrate", "navigation.top"], "search": "../assets/javascripts/workers/search.208ed371.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
     
       <script src="../assets/javascripts/bundle.b4d07000.min.js"></script>
