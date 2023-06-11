@@ -282,6 +282,8 @@ function setup_env() {
 
   # if table changes are inside release, we have to call special-functionalities
   table_changes="FALSE"
+  table_array=()
+  table_set=()
 
   # folder outside git repo
   depotpath="$(pwd)/$DEPOT_PATH/$branch"
@@ -562,166 +564,226 @@ function write_install_schemas(){
         timelog ""
 
         # write some infos
-        echo "set define '^'" > "${target_install_file}"
-        echo "set concat on" >> "${target_install_file}"
-        echo "set concat ." >> "${target_install_file}"
-        echo "set verify off" >> "${target_install_file}"
-        echo "WHENEVER SQLERROR EXIT SQL.SQLCODE" >> "${target_install_file}"
+        {
+          echo "set define '^'"
+          echo "set concat on"
+          echo "set concat ."
+          echo "set verify off"
+          echo "WHENEVER SQLERROR EXIT SQL.SQLCODE"
 
-        echo "" >> "${target_install_file}"
+          echo ""
 
-        echo "define VERSION = '^1'" >> "${target_install_file}"
-        echo "define MODE = '^2'" >> "${target_install_file}"
+          echo "define VERSION = '^1'"
+          echo "define MODE = '^2'"
 
-        echo "set timing on" >> "${target_install_file}"
-        echo "set trim on" >> "${target_install_file}"
-        echo "set linesize 2000" >> "${target_install_file}"
-        echo "set sqlblanklines on" >> "${target_install_file}"
-        echo "set tab off" >> "${target_install_file}"
-        echo "set pagesize 9999" >> "${target_install_file}"
-        echo "set trimspool on" >> "${target_install_file}"
-        echo "" >> "${target_install_file}"
+          echo "set timing on"
+          echo "set trim on"
+          echo "set linesize 2000"
+          echo "set sqlblanklines on"
+          echo "set tab off"
+          echo "set pagesize 9999"
+          echo "set trimspool on"
+          echo ""
 
-        echo "Prompt .............................................................................. " >> "${target_install_file}"
-        echo "Prompt .............................................................................. " >> "${target_install_file}"
-        echo "Prompt .. Start Installation for schema: ${schema} " >> "${target_install_file}"
-        echo "Prompt ..                       Version: $mode $version " >> "${target_install_file}"
-        echo "Prompt .............................................................................. " >> "${target_install_file}"
-        echo "set serveroutput on" >> "${target_install_file}"
-        echo "set scan off" >> "${target_install_file}"
-        echo "" >> "${target_install_file}"
+          echo "Prompt .............................................................................. "
+          echo "Prompt .............................................................................. "
+          echo "Prompt .. Start Installation for schema: ${schema} "
+          echo "Prompt ..                       Version: $mode $version "
+          echo "Prompt .............................................................................. "
+          echo "set serveroutput on"
+          echo "set scan off"
+          echo ""
 
-        if [[ "${mode}" == "patch" ]]; then
-          echo "Prompt .. Commit-History to install: " >> "${target_install_file}"
-          git log --pretty=format:'Prompt ..   %h %s <%an>' "${from_commit}"..."${until_commit}" -- "db/${schema}" >> "${target_install_file}"
-          echo " " >> "${target_install_file}"
-          echo "Prompt .. " >> "${target_install_file}"
-        # echo "Prompt " >> "${target_install_file}"
-          echo "Prompt .............................................................................. " >> "${target_install_file}"
+          if [[ "${mode}" == "patch" ]]; then
+            echo "Prompt .. Commit-History to install: "
+            git log --pretty=format:'Prompt ..   %h %s <%an>' "${from_commit}"..."${until_commit}" -- "db/${schema}"
+            echo " "
+            echo "Prompt .. "
+          # echo "Prompt "
+            echo "Prompt .............................................................................. "
 
-          echo "Prompt " >> "${target_install_file}"
-          echo "Prompt " >> "${target_install_file}"
-        fi
-
+            echo "Prompt "
+            echo "Prompt "
+          fi
+        } > "${target_install_file}"
 
         # check every path in given order
         for path in "${SCAN_PATHES[@]}"
         do
           if [[ -d "${targetpath}"/db/${schema}/${path} ]]; then
             timelog "Writing calls for ${path}"
-            echo "Prompt Installing ${path} ..." >> "${target_install_file}"
+            {
+              echo "Prompt Installing ${path} ..."
 
-            # set scan to on, to make use of vars inside main schema-hooks
-            if [[ "${path}" == ".hooks/pre" ]] || [[ "${path}" == ".hooks/post" ]]; then
-              echo "set scan on" >> "${target_install_file}"
-            fi
+              # set scan to on, to make use of vars inside main schema-hooks
+              if [[ "${path}" == ".hooks/pre" ]] || [[ "${path}" == ".hooks/post" ]]; then
+                echo "set scan on"
+              fi
 
-            # pre folder-hooks (something like db/schema/.hooks/pre/tables)
-            entries=("${targetpath}/db/${schema}/.hooks/pre/${path}"/*.*)
-            for entry in "${entries[@]}"; do
-              file=$(basename "${entry}")
+              # pre folder-hooks (something like db/schema/.hooks/pre/tables)
+              entries=("${targetpath}/db/${schema}/.hooks/pre/${path}"/*.*)
+              for entry in "${entries[@]}"; do
+                file=$(basename "${entry}")
+                file_ext=${file#*.}
 
-              {
-              echo "Prompt >>> db/${schema}/.hooks/pre/${path}/${file}"
-              echo "@@.hooks/pre/${path}/${file}"
-              echo "Prompt <<< db/${schema}/.hooks/pre/${path}/${file}"
-              } >> "${target_install_file}"
+                if [[ "${file_ext}" == "tables.sql" ]]; then
 
-            done
-
-            echo "Prompt" >> "${target_install_file}"
-            if [[ "${path}" == "ddl/patch/pre" ]] || [[ "${path}" == "ddl/patch/pre_tst" ]] || [[ "${path}" == "ddl/patch/pre_uat" ]] || [[ "${path}" == "views" ]]; then
-              echo "WHENEVER SQLERROR CONTINUE" >> "${target_install_file}"
-            fi
-
-            # read files from folder
-            entries=("${targetpath}/db/${schema}/${path}"/*.*)
-
-            # if packages then sort descending
-            if [[ "${path}" == "sources/packages" ]] || [[ "${path}" == "tests/packages" ]]; then
-              IFS=$'\n' sorted=($(sort -r <<<"${entries[*]}")); unset IFS
-            else
-              sorted=("${entries[@]}")
-            fi
-
-
-            for entry in "${sorted[@]}"; do
-              file=$(basename "${entry}")
-
-              if [[ "${path}" == "tables" ]]; then
-                skipfile="FALSE"
-                table_changes="TRUE"
-
-                if [[ "${mode}" == "patch" ]]; then
-                  if [[ -d "${targetpath}/db/${schema}/tables/tables_ddl" ]]; then
-                    for f in "${targetpath}/db/${schema}/tables/tables_ddl"/${file%%.*}.*; do
-                      if [[ -e "$f" ]]; then
-                        skipfile="TRUE"
-                      fi
+                  if [ ${#table_set[@]} -gt 0 ]; then
+                    echo "Prompt running .hooks/pre/${path}/${file} with table set"
+                    for table_item in "${table_set[@]}"
+                    do
+                      echo "Prompt >>> db/${schema}/.hooks/pre/${path}/${file} ${version} ${mode} ${table_item}.sql"
+                      echo "@@.hooks/pre/${path}/${file} ${version} ${mode} ${table_item}.sql"
+                      echo "Prompt <<< db/${schema}/.hooks/pre/${path}/${file} ${version} ${mode} ${table_item}.sql"
                     done
+                    echo "Prompt"
+                    echo ""
+                  fi
+
+                else
+                  echo "Prompt >>> db/${schema}/.hooks/pre/${path}/${file}"
+                  echo "@@.hooks/pre/${path}/${file}"
+                  echo "Prompt <<< db/${schema}/.hooks/pre/${path}/${file}"
+                fi
+              done
+
+              echo "Prompt"
+              if [[ "${path}" == "ddl/patch/pre" ]] || [[ "${path}" == "ddl/patch/pre_tst" ]] || [[ "${path}" == "ddl/patch/pre_uat" ]] || [[ "${path}" == "views" ]]; then
+                echo "WHENEVER SQLERROR CONTINUE"
+              fi
+
+              # read files from folder
+              entries=("${targetpath}/db/${schema}/${path}"/*.*)
+
+              # if packages then sort descending
+              if [[ "${path}" == "sources/packages" ]] || [[ "${path}" == "tests/packages" ]]; then
+                IFS=$'\n' sorted=($(sort -r <<<"${entries[*]}")); unset IFS
+              else
+                sorted=("${entries[@]}")
+              fi
+
+
+              for entry in "${sorted[@]}"; do
+                file=$(basename "${entry}")
+                file_ext=${file#*.}
+
+                if [[ "${path}" == "tables" ]]; then
+                  skipfile="FALSE"
+                  table_changes="TRUE"
+
+                  # store tablename in array
+                  table_name="${file%%.*}"
+                  table_array+=( ${table_name} )
+
+                  if [[ "${mode}" == "patch" ]]; then
+                    if [[ -d "${targetpath}/db/${schema}/tables/tables_ddl" ]]; then
+                      for f in "${targetpath}/db/${schema}/tables/tables_ddl"/${file%%.*}.*; do
+                        if [[ -e "$f" ]]; then
+                          skipfile="TRUE"
+                        fi
+                      done
+                    fi
+                  fi
+
+                  if [[ "$skipfile" == "TRUE" ]]; then
+                    echo "Prompt ... skipped ${file}"
+                  else
+                    echo "Prompt >>> db/${schema}/${path}/${file}"
+                    echo "@@${path}/${file}"
+                    echo "Prompt <<< db/${schema}/${path}/${file}"
+                  fi
+                else
+
+                  if ([[ "${path}" == ".hooks/pre" ]] || [[ "${path}" == ".hooks/post" ]]) && [[ "${file_ext}" == "tables.sql" ]]; then
+
+                    if [ ${#table_set[@]} -gt 0 ]; then
+                      echo "Prompt running ${path}/${file} with table set"
+                      for table_item in "${table_set[@]}"
+                      do
+                        echo "Prompt >>> db/${schema}/${path}/${file} ${version} ${mode} ${table_item}.sql"
+                        echo "@@${path}/${file} ${version} ${mode} ${table_item}.sql"
+                        echo "Prompt <<< db/${schema}/${path}/${file} ${version} ${mode} ${table_item}.sql"
+                      done
+                      echo "Prompt"
+                      echo ""
+                    fi
+                  else
+
+                    echo "Prompt >>> db/${schema}/${path}/${file}"
+                    if [[ "${path}" == "ddl/pre_tst" ]] && [[ "${mode}" == "patch" ]]; then
+                      echo "--tst@@${path}/${file}"
+                    elif [[ "${path}" == "ddl/pre_uat" ]] && [[ "${mode}" == "patch" ]]; then
+                      echo "--uat@@${path}/${file}"
+                    else
+                      echo "@@${path}/${file}"
+                      echo "Prompt <<< db/${schema}/${path}/${file}"
+                    fi
+
                   fi
                 fi
+              done #files in folder (sorted)
 
-                if [[ "$skipfile" == "TRUE" ]]; then
-                  echo "Prompt ... skipped ${file}" >> "${target_install_file}"
-                else
-                  echo "Prompt >>> db/${schema}/${path}/${file}" >> "${target_install_file}"
-                  echo "@@${path}/${file}" >> "${target_install_file}"
-                  echo "Prompt <<< db/${schema}/${path}/${file}" >> "${target_install_file}"
-                fi
-              else
-                echo "Prompt >>> db/${schema}/${path}/${file}" >> "${target_install_file}"
-                if [[ "${path}" == "ddl/pre_tst" ]] && [[ "${mode}" == "patch" ]]; then
-                  echo "--tst@@${path}/${file}" >> "${target_install_file}"
-                elif [[ "${path}" == "ddl/pre_uat" ]] && [[ "${mode}" == "patch" ]]; then
-                  echo "--uat@@${path}/${file}" >> "${target_install_file}"
-                else
-                  echo "@@${path}/${file}" >> "${target_install_file}"
-                  echo "Prompt <<< db/${schema}/${path}/${file}" >> "${target_install_file}"
-                fi
+              # union table names
+              if [[ "${path}" == "tables" ]]; then
+                # get distinct values of array
+                table_set=($(printf "%s\n" "${table_array[@]}" | sort -u))
               fi
-            done
 
-            if [[ "${path}" == "ddl/patch/pre" ]] || [[ "${path}" == "ddl/patch/pre_tst" ]] || [[ "${path}" == "ddl/patch/pre_uat" ]]|| [[ "${path}" == "views" ]]
-            then
-              echo "WHENEVER SQLERROR EXIT SQL.SQLCODE" >> "${target_install_file}"
-            fi
-
+              if [[ "${path}" == "ddl/patch/pre" ]] || [[ "${path}" == "ddl/patch/pre_tst" ]] || [[ "${path}" == "ddl/patch/pre_uat" ]]|| [[ "${path}" == "views" ]]
+              then
+                echo "WHENEVER SQLERROR EXIT SQL.SQLCODE"
+              fi
 
 
-            # post folder hooks
-            echo "Prompt" >> "${target_install_file}"
-            entries=("${targetpath}/db/${schema}/.hooks/post/${path}"/*.*)
-            for entry in "${entries[@]}"; do
-              file=$(basename "${entry}")
+              # post folder hooks
+              echo "Prompt"
+              entries=("${targetpath}/db/${schema}/.hooks/post/${path}"/*.*)
+              for entry in "${entries[@]}"; do
+                file=$(basename "${entry}")
+                file_ext=${file#*.}
 
-              {
-              echo "Prompt >>> db/${schema}/.hooks/post/${path}/${file}"
-              echo "@@.hooks/post/${path}/${file}"
-              echo "Prompt <<< db/${schema}/.hooks/post/${path}/${file}"
-              } >> "${target_install_file}"
+                if [[ "${file_ext}" == "tables.sql" ]]; then
 
-            done
+                  if [ ${#table_set[@]} -gt 0 ]; then
+                    echo "Prompt running .hooks/post/${path}/${file} with table set"
+                    for table_item in "${table_set[@]}"
+                    do
+                      echo "Prompt >>> db/${schema}/.hooks/post/${path}/${file} ${version} ${mode} ${table_item}.sql"
+                      echo "@@.hooks/post/${path}/${file} ${version} ${mode} ${table_item}.sql"
+                      echo "Prompt <<< db/${schema}/.hooks/post/${path}/${file} ${version} ${mode} ${table_item}.sql"
+                    done
+                    echo "Prompt"
+                    echo ""
+                  fi
 
-             # set scan to off, to make use of vars inside main schema-hooks
-            if [[ "${path}" == ".hooks/pre" ]] || [[ "${path}" == ".hooks/post" ]]; then
-              echo "set scan off" >> "${target_install_file}"
-            fi
+                else
+                  echo "Prompt >>> db/${schema}/.hooks/post/${path}/${file}"
+                  echo "@@.hooks/post/${path}/${file}"
+                  echo "Prompt <<< db/${schema}/.hooks/post/${path}/${file}"
+                fi
+              done
 
-            echo "Prompt" >> "${target_install_file}"
-            echo "Prompt" >> "${target_install_file}"
-            echo "" >> "${target_install_file}"
-          fi
-        done #path
+              # set scan to off, to make use of vars inside main schema-hooks
+              if [[ "${path}" == ".hooks/pre" ]] || [[ "${path}" == ".hooks/post" ]]; then
+                echo "set scan off"
+              fi
 
-        echo "prompt compiling schema" >> "${target_install_file}"
-        echo "exec dbms_utility.compile_schema(schema => user, compile_all => false);" >> "${target_install_file}"
-        echo "exec dbms_session.reset_package" >> "${target_install_file}"
+              echo "Prompt"
+              echo "Prompt"
+              echo ""
+            } >> "${target_install_file}"
+          fi #path exists
+        done #paths
 
-        echo "Prompt" >> "${target_install_file}"
-        echo "Prompt" >> "${target_install_file}"
-        echo "exit" >> "${target_install_file}"
+        {
+          echo "prompt compiling schema"
+          echo "exec dbms_utility.compile_schema(schema => user, compile_all => false);"
+          echo "exec dbms_session.reset_package"
 
+          echo "Prompt"
+          echo "Prompt"
+          echo "exit"
+        } >> "${target_install_file}"
       else
         echo "  .. db/${schema} does not exist in ${targetpath}"
       fi
