@@ -252,8 +252,8 @@
 
 
   <li class="md-tabs__item">
-    <a href="../changelog/" class="md-tabs__link">
-      Generating a changelog
+    <a href="../features/" class="md-tabs__link">
+      Features
     </a>
   </li>
 
@@ -474,6 +474,13 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#big-picture" class="md-nav__link">
+    Big Picture
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -520,8 +527,8 @@
   
   
     <li class="md-nav__item">
-      <a href="../changelog/" class="md-nav__link">
-        Generating a changelog
+      <a href="../features/" class="md-nav__link">
+        Features
       </a>
     </li>
   
@@ -1099,7 +1106,7 @@ If the project is configured in <em><code>FlexMode</code></em>, you can freely c
 <p>When you create a deployment, whether <strong><mark>INIT</mark></strong> or <strong><mark>PATCH</mark></strong>, the deployment artifact is stored in a so-called depot. From this depot, a CI/CD tool, for example, can later fetch the artifact and install it on the target instance. Within the depot directory, the individual deployments are stored in subdirectories that correspond to the Git branch from which they were created. After a successful installation, the patch, including all logs and temporary files, is placed in the success folder. Errors during the deployment lead to an abort and are stored in the failures subfolder.</p>
 <p><img alt="" src="../images/depot_and_flow.png" /></p>
 <p>I recommend to use a separate repository or directory for each stage DB. This has the advantage that the corresponding directories serve their purpose even without Git and possibly access to the development repository. Theoretically, the repository can also be "doubled" to have a target directory at home and a source directory at the customer.</p>
-<h1 id="big-picture">Big Picture</h1>
+<h2 id="big-picture">Big Picture</h2>
 <p><img alt="" src="../images/comlete_process.png" /></p>
 
 

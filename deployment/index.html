@@ -12,7 +12,7 @@
         <link rel="prev" href="../setup/">
       
       
-        <link rel="next" href="../changelog/">
+        <link rel="next" href="../features/">
       
       <link rel="icon" href="../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.4.3, mkdocs-material-9.1.14">
@@ -252,8 +252,8 @@
 
 
   <li class="md-tabs__item">
-    <a href="../changelog/" class="md-tabs__link">
-      Generating a changelog
+    <a href="../features/" class="md-tabs__link">
+      Features
     </a>
   </li>
 
@@ -417,40 +417,6 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#init-mode" class="md-nav__link">
-    init mode
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#patch-mode" class="md-nav__link">
-    patch mode
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#release" class="md-nav__link">
-    release
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#apply" class="md-nav__link">
-    apply
-  </a>
-  
-    <nav class="md-nav" aria-label="apply">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
   <a href="#init" class="md-nav__link">
     init
   </a>
@@ -466,6 +432,40 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#apply" class="md-nav__link">
+    apply
+  </a>
+  
+    <nav class="md-nav" aria-label="apply">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#init_1" class="md-nav__link">
+    init
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#patch_1" class="md-nav__link">
+    patch
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#release" class="md-nav__link">
+    release
+  </a>
   
 </li>
       
@@ -485,8 +485,8 @@
   
   
     <li class="md-nav__item">
-      <a href="../changelog/" class="md-nav__link">
-        Generating a changelog
+      <a href="../features/" class="md-nav__link">
+        Features
       </a>
     </li>
   
@@ -553,9 +553,11 @@
 <p>The build.sh script is used to create the so-called build file or artifact. This is used to create the actual release based on the state of the files in the directory tree / Git repo.
 As with any dbFlow script, you can display the possible parameters by omitting the parameters or explicitly with the <code>--help</code> parameter.</p>
 <p>The build.sh script creates a tar ball with all relevant files and stores it in the depot. The location of the depot is determined in the file apply.env.</p>
-<h3 id="init-mode">init mode</h3>
-<p>In an <strong>init</strong>ial release, all files from the database directories are determined and imported in a specific order. The files from the directories <code>\*/[ddl|dml]/patch/\*</code> and <code>\*/tables/tables_ddl</code> are ignored.</p>
+<h3 id="init">init</h3>
+<p>Example: <code>.dbFlow/build.sh --init --version 1.0.0</code></p>
+<p>In an <strong>init</strong>ial release, all files from the database directories are determined and imported in a specific order.</p>
 <p>By using the flag <code>-i/--init</code> an <strong>init</strong>ial release is created. Additionally you need the target version of the release. With the flag <code>-v/--version</code> you name the version of the release.
+The files from the directories <code>\*/[ddl|dml]/patch/\*</code> and <code>\*/tables/tables_ddl</code> are ignored.
 The release itself is created from the current branch. If you want to create a release from another branch, you have to switch there with Git first.</p>
 <div class="admonition info">
 <p class="admonition-title">Order of the directories</p>
@@ -654,24 +656,126 @@ The release itself is created from the current branch. If you want to create a r
 </tbody>
 </table>
 </div>
-<div class="highlight"><pre><span></span><code>$<span class="w"> </span>.dbFlow/build.sh<span class="w"> </span>--init<span class="w"> </span>--version<span class="w"> </span><span class="m">1</span>.0.0
-</code></pre></div>
 <blockquote>
 <p>If you name the version with "install" then the release will be applied directly.</p>
 </blockquote>
 <h4 id="additional-arguments-in-init-mode">Additional arguments in init mode:</h4>
-<p><strong><em>keepFolder</em></strong></p>
-<p>With the flag --k / --keepfolder the working directory, which is created in the depot to create the actual artifact, is not deleted. Especially in the beginning, when you don't have so much experience with dbFlow, this option is helpful. So after creating the artifact you can navigate to the corresponding directory and have a look at the created scripts and copied files.</p>
-<h3 id="patch-mode">patch mode</h3>
-<p>In a <strong>patch</strong> release, all changed files are determined from the database directories and applied in a specific order. Which files are considered as modified is determined by Git. With the parameters <code>-s/--start</code> (defaults to ORIG_HEAD) and <code>-e/--end</code> (defaults to HEAD) one can set these parameters explicitly. Which files become part of the <strong>patch</strong> can be output by using the <code>-l/--listfiles</code> flag.</p>
+<ul>
+<li><strong><em>keepFolder</em></strong></li>
+</ul>
+<p>With the flag <code>-k / --keepfolder</code> the working directory, which is created in the depot to create the actual artifact, is not deleted. Especially in the beginning, when you don't have so much experience with dbFlow, this option is helpful. So after creating the artifact you can navigate to the corresponding directory and have a look at the created scripts and copied files.</p>
+<h3 id="patch">patch</h3>
+<p>Example: <code>.dbFlow/build.sh --patch --version 1.1.0</code></p>
+<p>By using the flag <code>-p/--patch</code> a patch release is created. Additionally you need the target version of the release. With the flag <code>-v/--version</code> you name the version of the release.</p>
+<p>In a <strong>patch</strong> release all changed files are determined. These files then become part of the deployment. Which files are considered as modified is determined by Git. With the parameters <code>-s/--start</code> (defaults to ORIG_HEAD) and <code>-e/--end</code> (defaults to HEAD) one can set these parameters explicitly. Which files become part of the <strong>patch</strong> can be output by using the <code>-l/--listfiles</code> flag.</p>
 <blockquote>
 <p>Start should always be at least one commit prior to the end commit.</p>
 </blockquote>
 <p>The files from the directories <code>\*/[ddl|dml]/init/\*</code> are ignored. Additionally there is the import switch, which says, that if the table to be changed exists in the <code>table</code> folder <strong>AND</strong> in the <code>table_ddl</code> folder, <strong>ONLY</strong> the files with the same name from the <code>table_ddl</code> folder are imported.</p>
-<p>By using the flag <code>-p/--patch</code> a patch release is created. Additionally you need the target version of the release. With the flag <code>-v/--version</code> you name the version of the release.</p>
 <div class="admonition info">
 <p class="admonition-title">Order of the directories</p>
-<p>.hooks/pre ddl/patch/pre_${branch} dml/patch/pre_${branch} ddl/patch/pre dml/patch/pre sequences tables tables/tables_ddl indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies sources/types sources/packages sources/functions sources/procedures views mviews sources/triggers jobs tests/packages ddl/patch/post_${branch} dml/patch/post_${branch} ddl/patch/post dml/base dml/patch/post .hooks/post</p>
+<table>
+<thead>
+<tr>
+<th>Num</th>
+<th>Folder</th>
+<th>Num</th>
+<th>Folder</th>
+<th>Num</th>
+<th>Folder</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>01</td>
+<td>.hooks/pre</td>
+<td>12</td>
+<td>constraints/primaries</td>
+<td>23</td>
+<td>mviews</td>
+</tr>
+<tr>
+<td>02</td>
+<td>ddl/patch/pre_${branch}</td>
+<td>13</td>
+<td>constraints/foreigns</td>
+<td>24</td>
+<td>sources/triggers</td>
+</tr>
+<tr>
+<td>03</td>
+<td>dml/patch/pre_${branch}</td>
+<td>14</td>
+<td>constraints/checks</td>
+<td>25</td>
+<td>jobs</td>
+</tr>
+<tr>
+<td>04</td>
+<td>ddl/patch/pre</td>
+<td>15</td>
+<td>constraints/uniques</td>
+<td>26</td>
+<td>tests/packages</td>
+</tr>
+<tr>
+<td>05</td>
+<td>dml/patch/pre</td>
+<td>16</td>
+<td>contexts</td>
+<td>27</td>
+<td>ddl/patch/post_${branch}</td>
+</tr>
+<tr>
+<td>06</td>
+<td>sequences</td>
+<td>17</td>
+<td>policies</td>
+<td>28</td>
+<td>dml/patch/post_${branch}</td>
+</tr>
+<tr>
+<td>07</td>
+<td>tables</td>
+<td>18</td>
+<td>sources/types</td>
+<td>29</td>
+<td>ddl/patch/post</td>
+</tr>
+<tr>
+<td>08</td>
+<td>tables/tables_ddl</td>
+<td>19</td>
+<td>sources/packages</td>
+<td>30</td>
+<td>dml/base</td>
+</tr>
+<tr>
+<td>09</td>
+<td>indexes/primaries</td>
+<td>20</td>
+<td>sources/functions</td>
+<td>31</td>
+<td>dml/patch/post</td>
+</tr>
+<tr>
+<td>00</td>
+<td>indexes/uniques</td>
+<td>21</td>
+<td>sources/procedures</td>
+<td>32</td>
+<td>.hooks/post</td>
+</tr>
+<tr>
+<td>11</td>
+<td>indexes/defaults</td>
+<td>22</td>
+<td>views</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
 </div>
 <div class="highlight"><pre><span></span><code>$<span class="w"> </span>.dbFlow/build.sh<span class="w"> </span>--patch<span class="w"> </span>--version<span class="w"> </span><span class="m">1</span>.1.0
 $<span class="w"> </span>.dbFlow/build.sh<span class="w"> </span>--patch<span class="w"> </span>--version<span class="w"> </span><span class="m">1</span>.2.0<span class="w"> </span>--start<span class="w"> </span><span class="m">1</span>.0.0
@@ -694,8 +798,83 @@ $<span class="w"> </span>.dbFlow/build.sh<span class="w"> </span>--patch<span cl
 <span class="c1"># build the relase artifact</span>
 @test$<span class="w"> </span>.dbFlow/build.sh<span class="w"> </span>--patch<span class="w"> </span>--version<span class="w"> </span><span class="m">1</span>.2.0
 </code></pre></div>
+<h4 id="repair">Repair</h4>
+<p>If you want to put something only in a certain stage, for example because something went wrong in a release, so you want to clean it up, you can put these scripts in the directories <code>ddl/patch/pre_${branch}</code> or <code>dml/patch/pre_${branch}</code>. Since the concept is that branches are assigned to stages, these scripts will only be executed in those stages.</p>
+<h4 id="additional-arguments-in-patch-mode">Additional arguments in patch mode:</h4>
+<ul>
+<li><strong><em>keepFolder</em></strong></li>
+</ul>
+<p>With the flag <code>-k / --keepfolder</code> the working directory, which is created in the depot to create the actual artifact, is not deleted. Especially in the beginning, when you don't have so much experience with dbFlow, this option is helpful. So after creating the artifact you can navigate to the corresponding directory and have a look at the created scripts and copied files.</p>
+<ul>
+<li><strong><em>shipAll</em></strong></li>
+</ul>
+<p>In order to always ship all files, you can specify the <code>-a / --shippall</code> flag. In this case not only the changed files but all files will be included in the patch. During the deployment only the changed files will be applied within the DB directory.</p>
+<ul>
+<li><strong><em>listFiles</em></strong></li>
+</ul>
+<p>The -l / --listfiles flag can be used to check which files would be included in the artifact. With this option no actual build takes place.</p>
+<h2 id="apply">apply</h2>
+<p>The apply.sh command applies a release to the respective configured database. The artifact is fetched from the depot and unpacked into the appropriate directory. Afterwards the installation scripts are executed. The environment variable STAGE, from the file apply.env, is used to determine the source directory of a release. The build script stores the artifacts in a directory in a depot that contains the current branch name. The naming of the variable STAGE is now used to get the artifact matching the stage / database connection.</p>
+<p><img alt="" src="../images/depot_and_flow.png" /></p>
+<blockquote>
+<p>With this method there can be n instances, which all point to the same depot directory.</p>
+</blockquote>
+<div class="admonition info">
+<p class="admonition-title">Info</p>
+<p>I recommend to create a corresponding instance directory for each database and to version it as well. This directory should also contain a .dbFlow - submodule. It is sufficient to copy the files apply.env and build.env into the directory and to adjust the database connection and the stage.
+See: <a href="../concept/#big-picture">../concept/#big-picture</a></p>
+</div>
+<h3 id="init_1">init</h3>
+<div class="admonition danger">
+<p class="admonition-title">Warning</p>
+<p>Importing an init release leads to data loss!</p>
+</div>
+<p>By specifying the <code>-i/--init</code> flag, an init release is retrieved from the depot and then applied. If no password is stored in the apply.env (this is recommended), it will be requested at the very beginning. Because on init then content of all included schemas will be deleted you are asked to proceed. When you provide an environment variable called <code>DBFLOW_JENKINS</code> with any value the question is skipped.</p>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>.dbFlow/apply.sh<span class="w"> </span>--init<span class="w"> </span>--version<span class="w"> </span><span class="m">1</span>.0.0
+</code></pre></div>
+<div class="admonition info">
+<p class="admonition-title">CI/CD</p>
+<p>All environment variables that are used in <strong>dbFlow</strong> by sourcing the files build.env and apply.env can also be provided from the outside, i.e. without the file system. Especially if you use tools like Jenkins and Co, you can influence the configuration of the targetstage.</p>
+</div>
+<h4 id="additional-arguments-in-init-mode_1">Additional arguments in init mode:</h4>
+<ul>
+<li><strong><em>noExtract</em></strong></li>
+</ul>
+<p>When using <code>-n/--noextract</code> flag, dbFlow will not not move and extract then artifact from depot. This option can be used to extract files manually or use a allready extracted artifact.</p>
+<h3 id="patch_1">patch</h3>
+<p>By specifying the <code>-p/--patch</code> flag, a patch release is imported from the depot and then applied. If no password is stored in the apply.env (this is recommended), it will be requested at the very beginning.</p>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>.dbFlow/apply.sh<span class="w"> </span>--patch<span class="w"> </span>--version<span class="w"> </span><span class="m">1</span>.1.0
+</code></pre></div>
+<p>After the installation of a release, the artifact, as well as all resulting log and installation files are stored in the depot under the directory (success or failure). Failure of course only if the installation was aborted due to an error.</p>
+<h4 id="additional-arguments-in-patch-mode_1">Additional arguments in patch mode:</h4>
+<ul>
+<li><strong><em>noExtract</em></strong></li>
+</ul>
+<p>When using <code>-n/--noextract</code> flag, dbFlow will not not move and extract then artifact from depot. This option can be used to extract files manually or use a allready extracted artifact.</p>
+<ul>
+<li><strong><em>redoLog</em></strong></li>
+</ul>
+<p>Now it can happen that you want to continue the installation after an interruption at the same place. For this the parameter <code>-r/--redolog</code> is used. If you specify the log file of the previous installation, it will be analyzed and continued with the step that leads to an abort.</p>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span><span class="c1"># get and copy the failed patch to instance folder</span>
+$<span class="w"> </span>cp<span class="w"> </span>../depot/test/failure/patch_1.1.0.tar.gz<span class="w"> </span>./
+$
+$<span class="w"> </span><span class="c1"># apply patch by installing only the uncalled db scripts</span>
+$<span class="w"> </span>.dbFlow/apply.sh<span class="w"> </span>--patch<span class="w"> </span>--version<span class="w"> </span><span class="m">1</span>.1.0<span class="w"> </span>--redolog<span class="w"> </span>../depot/test/failure/20230613121314_dpl_patch_1.1.0.log
+</code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Keep in mind that you have to implement the fixes by your own. dbFlow won't reverse anything. When you want to clean you accidental applied files, you have to ship a cleanup script and put it in your stage folders: <code>ddl/patch/pre_${branch}</code> or <code>dml/patch/pre_${branch}</code></p>
+</div>
 <h2 id="release">release</h2>
-<p>You don't have to do these steps manually if you use the release.sh script. Here you can simply specify your target branch and the script does the appropriate steps to merge the respective branches itself.
+<p>Most of the time we do a patch release. So in these cases you have to:</p>
+<ol>
+<li>Change to the target branch</li>
+<li>Merge the source branch into it</li>
+<li>Build the patch</li>
+<li>If necessary tag the version in Git <em>(optional to be implemented)</em></li>
+<li>Apply the version in the target environment <em>(optional)</em></li>
+</ol>
+<p>You don't have to do these steps manually if you use the <code>.dbFlow/release.sh</code> script. Here you can simply specify your target branch and the script does the appropriate steps to merge the respective branches itself.
 By omitting the parameters you can also see what is needed.</p>
 <blockquote>
 <p>release.sh does the handling / merging of the branches for you and calls build.sh afterwards.</p>
@@ -705,29 +884,21 @@ By omitting the parameters you can also see what is needed.</p>
 <p>To do a release test, the release script can build three artifacts for you (flag <code>-b/--build</code>). This functionality is for the so-called nightly builds. Here an initial release of the predecessor, a patch of the successor, and an initial release of the successor are built. Using a CI/CD server, such as Jenkins, you can then create these 3 artifacts and install them one after the other on the corresponding instance and of course test them.</p>
 <div class="highlight"><pre><span></span><code>.dbFlow/release.sh<span class="w"> </span>--source<span class="w"> </span>develop<span class="w"> </span>--target<span class="w"> </span>master<span class="w"> </span>-b
 </code></pre></div>
-<h2 id="apply">apply</h2>
-<p>The apply.sh command applies a release to the respective configured database. The artifact is fetched from the depot and unpacked into the appropriate directory. Afterwards the installation scripts are executed. The variable STAGE, from the file apply.env, is used to determine the source directory of a release. The build script stores the artifacts in a directory in a depot that contains the current branch name. The naming of the variable STAGE is now used to get the artifact matching the stage / database connection.</p>
-<blockquote>
-<p>With this method there can be n instances, which all point to the same depot directory.</p>
-</blockquote>
-<div class="admonition info">
-<p class="admonition-title">Info</p>
-<p>I recommend to create a corresponding instance directory for each database and to version it as well. This directory should also contain a .dbFlow - submodule. It is sufficient to copy the files apply.env and build.env into the directory and to adjust the database connection and the stage.</p>
-</div>
-<h3 id="init">init</h3>
-<div class="admonition danger">
-<p class="admonition-title">Warning</p>
-<p>Importing an init release leads to data loss!</p>
-</div>
-<p>By specifying the <code>-i/--init</code> flag, an init release is retrieved from the depot and then imported. If no password is stored in the apply.env (this is recommended), it will be requested at the very beginning. Because on init then content of all included schemas will be deleted you are asked to proceed. When you provide an environment variable called <code>DBFLOW_JENKINS</code> with any value the question is skipped.</p>
-<div class="highlight"><pre><span></span><code>$<span class="w"> </span>.dbFlow/apply.sh<span class="w"> </span>--init<span class="w"> </span>--version<span class="w"> </span><span class="m">1</span>.0.0
+<h4 id="additional-arguments-for-release">Additional arguments for release:</h4>
+<ul>
+<li><strong><em>build</em></strong></li>
+</ul>
+<p>As described above, the <code>-b/--build</code> flag creates 3 artifacts. These represent the current initial release, the previous initial release and the current patch release. All 3 artifacts can then be imported into the target environment in the appropriate order.</p>
+<ul>
+<li><strong><em>apply</em></strong></li>
+</ul>
+<p>With the option <code>-a/--apply</code> and the following argument of the instance directory, the release or releases (nightly builds) will be applied directly to the target instance.</p>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>.dbFlow/release.sh<span class="w"> </span>--source<span class="w"> </span>develop<span class="w"> </span>--target<span class="w"> </span>master<span class="w"> </span>--build<span class="w"> </span>--apply<span class="w"> </span>../instances/nightly
 </code></pre></div>
-<h3 id="patch">patch</h3>
-<p>By specifying the <code>-p/--patch</code> flag, a patch release is searched for in the depot and then applied. If no password is stored in the apply.env (this is recommended), it will be requested at the very beginning.</p>
-<div class="highlight"><pre><span></span><code>$<span class="w"> </span>.dbFlow/apply.sh<span class="w"> </span>--patch<span class="w"> </span>--version<span class="w"> </span><span class="m">1</span>.1.0
-</code></pre></div>
-<p>After the installation of a release, the artifact, as well as all resulting log and installation files are stored in the depot under the directory (success or failure). Failure of course only if the installation was aborted due to an error.</p>
-<p>Now it can happen that you want to continue the installation after an interruption at the same place. For this the parameter <code>-r/--redolog</code> is used. If you specify the log file of the previous installation, it will be analyzed and continued with the step that leads to an abort.</p>
+<ul>
+<li><strong><em>keep</em></strong></li>
+</ul>
+<p>The <code>-k/--keep</code> option prevents the working folders in the depot directory from being deleted.</p>
 
 
 
