@@ -4,7 +4,7 @@ nav:
     - Concept: concept.md
     - Setup: setup.md
     - How to deploy: deployment.md
-    - Generating a changelog: changelog.md
+    - Features: features.md
     - Migrating from previous: migrating.md
     - A Tutorial: tutorial.md
 theme:

@@ -432,7 +432,7 @@ When you create a deployment, whether **==INIT==** or **==PATCH==**, the deploym
 
 I recommend to use a separate repository or directory for each stage DB. This has the advantage that the corresponding directories serve their purpose even without Git and possibly access to the development repository. Theoretically, the repository can also be "doubled" to have a target directory at home and a source directory at the customer.
 
-# Big Picture
+## Big Picture
 
 ![](images/comlete_process.png)
 
