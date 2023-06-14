@@ -4,7 +4,8 @@ nav:
     - Concept: concept.md
     - Setup: setup.md
     - How to deploy: deployment.md
-    - Generating a changelog: changelog.md
+    - Features: features.md
+    - FAQ: faq.md
     - Migrating from previous: migrating.md
     - A Tutorial: tutorial.md
 theme:
@@ -17,7 +18,7 @@ theme:
     - navigation.tabs.sticky
     # - navigation.expand
     - navigation.indexes
-    - navigation.sections
+    # - navigation.sections
     - toc.follow
     - toc.integrate
     - navigation.top
@@ -48,3 +49,5 @@ markdown_extensions:
   - md_in_html
   - pymdownx.tasklist:
       custom_checkbox: true
+  - toc:
+      toc_depth: 3

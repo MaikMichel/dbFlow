@@ -296,6 +296,76 @@ To execute a hook on a specific object type, you can add this structure to the c
 │           └─ my_package.pkb
 ```
 
+#### Each-Table-Hook
+Since version 2.1.0 there is the option to provide schema hooks with the suffix `.tables.sql`. dbFlow will then call this script for all tables in init mode or only for the changed tables in patch mode. In these cases the respective script is called with 3 parameters.
+
+1. Version - Name of the version during install > `1.0.1`
+2. Mode    - One of known modes > `init` | `patch`
+3. Table   - Name of the table with sql as extension > `employees.sql`
+
+
+!!! tip
+
+    - You have to clear the used SQLplus/SQLcl variables yourself.
+    - I recommend to write the script in a way that it handles all tables when called without parameters. So you could handle an array of tables in the script that, if the parameter with the table name is set accordingly, handles only one table, otherwise all.
+
+
+*Example each-table-hook script `db/example_schema/.hooks/post/010_ge_example_output.tables.sql`:*
+
+```sql
+set define '^'
+set concat on
+set concat .
+set verify off
+set serveroutput on
+set linesize 2000
+set wrap off
+set trimspool on
+set termout off
+
+COLUMN 1 NEW_VALUE 1
+COLUMN 2 NEW_VALUE 2
+COLUMN 3 NEW_VALUE 3
+
+select '' "1" from dual where rownum = 0;
+select '' "2" from dual where rownum = 0;
+select '' "3" from dual where rownum = 0;
+
+define _PARAMETER_01 = ^1 "0.0.0"
+define _PARAMETER_02 = ^2 "undefined"
+define _PARAMETER_03 = ^3 "ALL_TABLES"
+
+define VERSION    = ^_PARAMETER_01
+define MODE       = ^_PARAMETER_02
+define ALL_TABLES = ^_PARAMETER_03
+
+set termout on
+set timing on;
+--
+-- place your api logic here
+
+prompt Example output for ^ALL_TABLES in version: ^VERSION and mode: ^MODE
+
+-- end api logic
+--
+Rem undefine all
+
+undefine 1;
+undefine 2;
+undefine 3;
+
+undefine _PARAMETER_01;
+undefine _PARAMETER_02;
+undefine _PARAMETER_03;
+
+undefine VERSION;
+undefine MODE;
+undefine ALL_TABLES;
+
+
+```
+
+
 ### APEX Applications
 
 Applications are stored in the apex directory. The applications will be expected in splitted form. For each application there is a corresponding folder containing the respective files (standard APEX export). For a deployment only the appropriate changes are included. A configuration option can be used here, in order to include all files into the deployment.
@@ -362,7 +432,7 @@ When you create a deployment, whether **==INIT==** or **==PATCH==**, the deploym
 
 I recommend to use a separate repository or directory for each stage DB. This has the advantage that the corresponding directories serve their purpose even without Git and possibly access to the development repository. Theoretically, the repository can also be "doubled" to have a target directory at home and a source directory at the customer.
 
-# Big Picture
+## Big Picture
 
 ![](images/comlete_process.png)
 
