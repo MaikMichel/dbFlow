@@ -9,13 +9,17 @@
       
       
       
+        <link rel="prev" href="../features/">
+      
+      
+        <link rel="next" href="../migrating/">
       
       <link rel="icon" href="../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.4.3, mkdocs-material-9.1.14">
     
     
       
-        <title>Story - dbFLow - Documentation</title>
+        <title>FAQ - dbFLow - Documentation</title>
       
     
     
@@ -103,6 +107,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#frequently-asked-questions-or-tips" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -134,7 +143,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Story
+              FAQ
             
           </span>
         </div>
@@ -243,6 +252,20 @@
   <li class="md-tabs__item">
     <a href="../features/" class="md-tabs__link">
       Features
+    </a>
+  </li>
+
+      
+        
+  
+  
+    
+  
+
+
+  <li class="md-tabs__item">
+    <a href="./" class="md-tabs__link md-tabs__link--active">
+      FAQ
     </a>
   </li>
 
@@ -392,6 +415,69 @@
 
   
   
+    
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          FAQ
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        FAQ
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#how-can-i-correct-an-existing-error-retrospectively" class="md-nav__link">
+    How can I correct an existing error retrospectively?
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#proxyuser-connection-problems" class="md-nav__link">
+    ProxyUser - connection problems
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
   
     <li class="md-nav__item">
       <a href="../migrating/" class="md-nav__link">
@@ -431,27 +517,15 @@
                   
 
 
-  <h1>Story</h1>
-
-<p>Start
-  install</p>
-<p>Concept
-  GitFlow
-  SmartFS
-  2Phase
-  Depot
-Setup
-  generate
-  install
-  copyto
-Deploy
-  build
-    init
-    patch
-  apply
-    init
-    apply
-  release</p>
+<h1 id="frequently-asked-questions-or-tips">Frequently Asked Questions or Tips</h1>
+<h2 id="how-can-i-correct-an-existing-error-retrospectively">How can I correct an existing error retrospectively?</h2>
+<p>Sometimes it happens that an error slips in. This can happen, for example, if you forget to test the current version of the initial deployment (<code>init</code>). As soon as this happens and an error appears here, the subsequent deployments cannot build their predecessor cleanly.
+If something like this happens, then you have to merge the error correction from <em>"top to bottom"</em>, i.e. from the production branch (<strong>master</strong> or <strong>main</strong>) down to the develop branch. This ensures that at the next deployment, the predecessor (e.g. version on <strong>test</strong>) can be built cleanly.</p>
+<p><center>
+  <img alt="Merging Deployment vs. Correction" src="../images/merge_deployment_vs_correction.png" width="400" />
+</center></p>
+<h2 id="proxyuser-connection-problems">ProxyUser - connection problems</h2>
+<p>Sometimes it can happen that <strong>dbFlow</strong> or <em>SQLplus</em> or <em>SQLcl</em> cannot connect to the database. The error: <code>ORA-01017: invalid username/password; logon denied</code> is displayed. This may be due to the fact that in a SingleSchema the database directory does not match the value of the variable <code>DB_APP_USER</code> from the file <code>apply.env</code>. Please also check the notation here. <strong>dbFlow</strong> will <em>ALWAYS</em>, if the directory != DB_APP_USER, perform the login as proxy user to the database (<code>proxy_user[schema_name]@database:port</code>).</p>
 
 
 
