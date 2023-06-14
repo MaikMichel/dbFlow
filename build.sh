@@ -648,7 +648,7 @@ function write_install_schemas(){
               done
 
               echo "Prompt"
-              if [[ "${path}" == "ddl/patch/pre" ]] || [[ "${path}" == "ddl/patch/pre_tst" ]] || [[ "${path}" == "ddl/patch/pre_uat" ]] || [[ "${path}" == "views" ]]; then
+              if [[ "${path}" == "ddl/patch/pre" ]] || [[ "${path}" == "ddl/patch/pre_*" ]] || [[ "${path}" == "views" ]]; then
                 echo "WHENEVER SQLERROR CONTINUE"
               fi
 
@@ -710,10 +710,9 @@ function write_install_schemas(){
                   else
 
                     echo "Prompt >>> db/${schema}/${path}/${file}"
-                    if [[ "${path}" == "ddl/pre_tst" ]] && [[ "${mode}" == "patch" ]]; then
-                      echo "--tst@@${path}/${file}"
-                    elif [[ "${path}" == "ddl/pre_uat" ]] && [[ "${mode}" == "patch" ]]; then
-                      echo "--uat@@${path}/${file}"
+                    if [[ "${path}" == "ddl/pre_*" ]] && [[ "${mode}" == "patch" ]]; then
+                      target_stage="${path/'ddl/pre_'/}"
+                      echo "--${target_stage}@@${path}/${file}"
                     else
                       echo "@@${path}/${file}"
                       echo "Prompt <<< db/${schema}/${path}/${file}"
@@ -729,7 +728,7 @@ function write_install_schemas(){
                 table_set=($(printf "%s\n" "${table_array[@]}" | sort -u))
               fi
 
-              if [[ "${path}" == "ddl/patch/pre" ]] || [[ "${path}" == "ddl/patch/pre_tst" ]] || [[ "${path}" == "ddl/patch/pre_uat" ]]|| [[ "${path}" == "views" ]]
+              if [[ "${path}" == "ddl/patch/pre" ]] || [[ "${path}" == "ddl/patch/pre_*" ]] || [[ "${path}" == "views" ]]
               then
                 echo "WHENEVER SQLERROR EXIT SQL.SQLCODE"
               fi
