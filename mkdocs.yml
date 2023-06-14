@@ -5,6 +5,7 @@ nav:
     - Setup: setup.md
     - How to deploy: deployment.md
     - Features: features.md
+    - FAQ: faq.md
     - Migrating from previous: migrating.md
     - A Tutorial: tutorial.md
 theme:
