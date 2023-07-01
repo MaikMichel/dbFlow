@@ -767,9 +767,11 @@ function install_apps() {
           appschema=$(basename $(dirname $(dirname "${line}")))
         fi
 
-        timelog "Installing $line Num: ${app_id} Workspace: ${workspace} Schema: ${appschema}"
         cd "${line}" || exit
-        $SQLCLI -S -L "$(get_connect_string "${appschema}")" <<!
+        local original_app_id=$(grep -oP 'p_default_application_id=>\K\d+' "application/set_environment.sql")
+        timelog "Installing $line Num: ${app_id} Workspace: ${workspace} Schema: ${appschema} Original Num: ${original_app_id}"
+
+        $SQLCLI -S -L "$(get_connect_string "${appschema}")" << EOF
           define VERSION="${version}"
           define MODE="${mode}"
 
@@ -777,6 +779,8 @@ function install_apps() {
           set concat on
           set concat .
           set verify off
+
+          set serveroutput on
 
           Prompt Workspace: ${workspace}
           Prompt Application: ${app_id}
@@ -790,7 +794,10 @@ function install_apps() {
 
             apex_application_install.set_workspace_id(v_workspace_id);
 
-            if nvl(${APP_OFFSET}, 0) > 0 then
+            apex_application_install.set_application_id(${app_id} + nvl(${APP_OFFSET}, 0));
+
+            if nvl(${APP_OFFSET}, 0) > 0 or ${app_id} != nvl(${original_app_id}, 0) then
+              dbms_output.put_line((chr(27) || '[33m') || 'Original APP ID differs from Target APP ID. Generating Offset.' || (chr(27) || '[0m'));
               apex_application_install.generate_offset;
               -- alias must be unique per instance, so when offset is definded
               -- it should be modified. In this case a post hook at root level
@@ -798,7 +805,6 @@ function install_apps() {
               apex_application_install.set_application_alias('${app_id}_${APP_OFFSET}');
             end if;
 
-            apex_application_install.set_application_id(${app_id} + ${APP_OFFSET});
             apex_application_install.set_schema(upper('${appschema}'));
           Exception
             when no_data_found then
@@ -807,7 +813,7 @@ function install_apps() {
           /
 
           @@install.sql
-!
+EOF
 
 
         if [[ $? -ne 0 ]]; then
