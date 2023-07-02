@@ -312,3 +312,6 @@ instances/prod$: .dbFlow/apply.sh --init --version 1.0.0
 
 Now you should be able to visit our ToDo Application on your target instance.
 
+Because the target instance folder is also a Git folder, we cann now commit everything to keep a proper history of our deployments in to that stage.
+
+
