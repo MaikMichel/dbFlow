@@ -720,6 +720,15 @@ deployment stage (develop, test, ...) or if you allready did that, just merge th
 <p>The installation will abort if the users already exist in the DB as a schema. Furthermore, during the installation of the standard features, it will ask in each case, if they already exist, whether they should be overwritten.
 You have the option to flag this with a step <em>force</em> by using <code>.dbFlow/setup.sh --install --force</code>. In this case, all target schemas and features are deleted before the actual installation in each case.</p>
 </div>
+<p>During the installation <strong>dbFlow</strong> will execute every SQL or bash file in alphabetical order. The sequence of folder will be:</p>
+<ol>
+<li>tablespaces</li>
+<li>directories</li>
+<li>users</li>
+<li>features</li>
+<li>workspaces</li>
+<li>acls</li>
+</ol>
 
 
 
