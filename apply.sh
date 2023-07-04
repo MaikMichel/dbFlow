@@ -99,6 +99,7 @@ function check_vars() {
     install_source_path=${basepath}/${DEPOT_PATH}/${STAGE}
   else
     echo_error "Targetstage ${STAGE} inside ${DEPOT_PATH} is unknown"
+    echo_warning "Check your STAGE environment var in apply.env"
     do_exit="YES"
   fi
 
