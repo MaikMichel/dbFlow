@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.2.0 - 2023-07-01]
+- New: Install APEX Apps to ID of folder, not to original
+
+## [2.1.0 - 2023-06-11]
+- New: Schema-Hooks with suffic ".table.sql" are now called for each touched table
+- Some fixes
 
 ## [2.0.0 - 2023-05-23]
 - Fix: some vars to reference as quoted content
