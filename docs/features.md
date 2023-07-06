@@ -130,3 +130,11 @@ During installation all known APEX applications will be set to unavailable. This
 ### REST modules
 
 Additionally, all REST modules are also unpublished during an installation.
+
+## MS Teams Notification
+
+After a deployment **dbFlow** is able to send a message to a Microsoft Teams hook. All you have to do is to provide the hook link set the variable TEAMS_WEBHOOK_URL.
+
+```bash
+TEAMS_WEBHOOK_URL=https://url-to-your-incoming-teams-webhook
+```
