@@ -18,8 +18,9 @@ function usage() {
   echo -e "                            This will apply on top of the target schemas and consists"
   echo -e "                            of the difference between the starthash/tag and endhash/tag"
   echo -e "  -v | --version <label>  - Required label of version this artifact represents"
-  echo -e "  -s | --start <hash|tag> - Optional hash or tag to determine the difference to the end, defaults to ORIG_HEAD"
-  echo -e "  -e | --end <hash|tag>   - Optional hash or tag to determine the difference to the start, defaults to HEAD"
+  echo -e "  -s | --start <hash|tag> - Optional hash or tag to determine the diff to the end, defaults to ORIG_HEAD"
+  echo -e "  -e | --end <hash|tag>   - Optional hash or tag to determine the diff to the start, defaults to HEAD"
+  echo -e "  -c | --cached           - Optional flag to determine the diff of Stage to HEAD, won't work with -s, -e"
   echo ""
   echo -e "  -a | --shipall          - Optional ship all folders [mode=patch]"
   echo -e "  -k | --keepfolder       - Optional keep buildfolder inside depot"
@@ -117,8 +118,9 @@ function check_params() {
   keep_option="NO"
   all_option="NO"
   list_option="NO"
+  cached_option="NO"
 
-  while getopts_long 'hipv:s:e:kal help init patch version: start: end: keepfolder shipall listfiles' OPTKEY "${@}"; do
+  while getopts_long 'hipv:s:e:ckal help init patch version: start: end: cached keepfolder shipall listfiles' OPTKEY "${@}"; do
       case ${OPTKEY} in
           'h'|'help')
               help_option="YES"
@@ -140,6 +142,9 @@ function check_params() {
           'e'|'end')
               end_option="YES"
               end_argument="${OPTARG}"
+              ;;
+          'c'|'cached')
+              cached_option="YES"
               ;;
           'k'|'keepfolder')
               keep_option="YES"
@@ -193,8 +198,13 @@ function check_params() {
     version=${version_argument}
   fi
 
-  if [[ ${init_option} == "YES" ]] && ([[ ${start_option} == "YES" ]] || [[ ${end_option} == "YES" ]]); then
-    echo_error "Start or End hash or tags are only valid in patch mode"
+  if [[ ${init_option} == "YES" ]] && ([[ ${start_option} == "YES" ]] || [[ ${end_option} == "YES" ]] || [[ ${cached_option} == "YES" ]]); then
+    echo_error "Start, End or Cached are only valid in patch mode"
+    usage 5
+  fi
+
+  if [[ ${patch_option} == "YES" ]] && ( ( [[ ${start_option} == "YES" ]] || [[ ${end_option} == "YES" ]] ) && [[ ${cached_option} == "YES" ]] ); then
+    echo_error "You can use start and/or end OR cached! Not both"
     usage 5
   fi
 
@@ -209,18 +219,26 @@ function check_params() {
 
     # Rule 3: When patch, we need git tags or hashes to build the diff
   if [[ $mode == "patch" ]]; then
-    if git cat-file -e "${start_argument}" 2> /dev/null; then
-      from_commit="${start_argument}"
+    if [[ $cached_option == "YES" ]]; then
+      diff_args="--cached"
+      log_args=""
     else
-      echo_error "Start Commit or Tag ${start_argument} not found"
-      exit 6
-    fi
+      if git cat-file -e "${start_argument}" 2> /dev/null; then
+        from_commit="${start_argument}"
+      else
+        echo_error "Start Commit or Tag ${start_argument} not found"
+        exit 6
+      fi
 
-    if git cat-file -e "${end_argument}" 2> /dev/null; then
-      until_commit="${end_argument}"
-    else
-      echo_error "End Commit or Tag ${end_argument} not found"
-      exit 7
+      if git cat-file -e "${end_argument}" 2> /dev/null; then
+        until_commit="${end_argument}"
+      else
+        echo_error "End Commit or Tag ${end_argument} not found"
+        exit 7
+      fi
+
+      diff_args="${from_commit} ${until_commit}"
+      log_args="${from_commit}...${until_commit}"
     fi
   fi
 
@@ -241,8 +259,7 @@ function check_params() {
 
   if [[ ${list_option} == "YES" ]] && [[ $mode == "patch" ]]; then
     echo -e "${PURPLE}Listing changed files (build.env .gitignore apex db reports rest .hooks)${NC}"
-
-    git --no-pager diff -r --compact-summary --dirstat --stat-width=120 --no-commit-id "${from_commit}" "${until_commit}" --diff-filter=ACMRTUXB  -- build.env .gitignore apex db reports rest .hooks
+    git --no-pager diff -r --compact-summary --dirstat --stat-width=120 --no-commit-id ${diff_args} --diff-filter=ACMRTUXB -- build.env .gitignore apex db reports rest .hooks
     exit 0
   elif [[ ${list_option} == "YES" ]] && [[ $mode == "init" ]]; then
     echo_error "Flag -l|--list is not valid on init mode, cause nothing to list as delta"
@@ -310,11 +327,16 @@ function setup_env() {
   timelog "Log File:     ${BWHITE}${log_file}${NC}"
   timelog "Branch:       ${BWHITE}${branch}${NC}"
   if [[ $mode == "patch" ]];then
+    if [[ ${diff_args} == "--cached" ]]; then
+
+  timelog "cached:       ${BWHITE}yes${NC}"
+    else
     display_from=`git rev-parse --short "${from_commit}"`
     display_until=`git rev-parse --short "${until_commit}"`
   timelog "from:         ${BWHITE}${from_commit} (${display_from})${NC}"
   timelog "until:        ${BWHITE}${until_commit} (${display_until})${NC}"
   timelog "shipall:      ${BWHITE}${SHIP_ALL}${NC}"
+    fi
   fi
   timelog "----------------------------------------------------------"
   timelog "Project              ${BWHITE}${PROJECT}${NC}"
@@ -363,7 +385,7 @@ function copy_files {
     copy_all_files
   else
     # Changes on configs?
-    num_changes=`git diff -r --name-only --no-commit-id "${from_commit}" "${until_commit}" --diff-filter=ACMRTUXB  -- build.env .gitignore | wc -l | xargs`
+    num_changes=`git diff -r --name-only --no-commit-id "${diff_args}" --diff-filter=ACMRTUXB -- build.env .gitignore | wc -l | xargs`
     if [[ $num_changes -gt 0 ]]; then
       if [ ! -d "${targetpath}" ]; then
         timelog "Creating directory '${targetpath}'"
@@ -371,17 +393,15 @@ function copy_files {
       fi
 
       if [[ $(uname) == "Darwin" ]]; then
-        rsync -Rr `git diff -r --name-only --no-commit-id "${from_commit}" "${until_commit}" --diff-filter=ACMRTUXB -- build.env .gitignore` "${targetpath}"
+        rsync -Rr `git diff -r --name-only --no-commit-id "${diff_args}" --diff-filter=ACMRTUXB -- build.env .gitignore` "${targetpath}"
       else
-        cp --parents -Rf `git diff -r --name-only --no-commit-id "${from_commit}" "${until_commit}" --diff-filter=ACMRTUXB -- build.env .gitignore` "${targetpath}"
+        cp --parents -Rf `git diff -r --name-only --no-commit-id "${diff_args}" --diff-filter=ACMRTUXB -- build.env .gitignore` "${targetpath}"
       fi
     fi
 
     # Patch
     for folder in "${MAINFOLDERS[@]}"
     do
-
-      num_changes=`git diff -r --name-only --no-commit-id "${from_commit}" "${until_commit}" --diff-filter=ACMRTUXB -- "${folder}" | wc -l | xargs`
 
       if [[ $num_changes -gt 0 ]]; then
 
@@ -392,9 +412,9 @@ function copy_files {
 
         timelog "Copy files in folder: ${folder}"
         if [[ $(uname) == "Darwin" ]]; then
-          rsync -Rr `git diff -r --name-only --no-commit-id "${from_commit}" "${until_commit}" --diff-filter=ACMRTUXB -- "${folder}"` "${targetpath}"
+          rsync -Rr `git diff -r --name-only --no-commit-id "${diff_args}" --diff-filter=ACMRTUXB -- "${folder}"` "${targetpath}"
         else
-          cp --parents -Rf `git diff -r --name-only --no-commit-id "${from_commit}" "${until_commit}" --diff-filter=ACMRTUXB -- "${folder}"` "${targetpath}"
+          cp --parents -Rf `git diff -r --name-only --no-commit-id "${diff_args}" --diff-filter=ACMRTUXB -- "${folder}"` "${targetpath}"
         fi
       else
         timelog "No changes in folder: ${folder}"
@@ -530,7 +550,7 @@ function list_files_to_remove() {
     do
 
       # to avoid dead-files
-      num_changes=`git diff -r --name-only --no-commit-id "${from_commit}" "${until_commit}" --diff-filter=D -- "${folder}" | wc -l | xargs`
+      num_changes=`git diff -r --name-only --no-commit-id "${diff_args}" --diff-filter=D -- "${folder}" | wc -l | xargs`
 
       if [[ $num_changes -gt 0 ]]; then
         timelog "removing dead-files"
@@ -596,7 +616,11 @@ function write_install_schemas(){
 
           if [[ "${mode}" == "patch" ]]; then
             echo "Prompt .. Commit-History to install: "
-            git log --pretty=format:'Prompt ..   %h %s <%an>' "${from_commit}"..."${until_commit}" -- "db/${schema}"
+            if [[ ${diff_args} == "--cached" ]]; then
+              echo "Prompt .. no logs availabe installing patch from cache"
+            else
+              git log --pretty=format:'Prompt ..   %h %s <%an>' "${log_args}" -- "db/${schema}"
+            fi
             echo " "
             echo "Prompt .. "
           # echo "Prompt "
@@ -932,8 +956,8 @@ function gen_changelog() {
 
   if [[ -n ${INTENT_PREFIXES} ]]; then
     for intent in "${!INTENT_PREFIXES[@]}"; do
-      # echo "git log ${until_commit}...${from_commit} --pretty=\"%s\" --reverse | grep -v Merge | grep \"^${INTENT_PREFIXES[$intent]}: *\""
-      readarray -t fixes <<< $(git log ${until_commit}...${from_commit} --pretty="%s" --reverse | grep -v Merge | grep "^${INTENT_PREFIXES[$intent]}: *")
+      # echo "git log ${log_args} --pretty=\"%s\" --reverse | grep -v Merge | grep \"^${INTENT_PREFIXES[$intent]}: *\""
+      readarray -t fixes <<< $(git log ${log_args} --pretty="%s" --reverse | grep -v Merge | grep "^${INTENT_PREFIXES[$intent]}: *")
       eval fixes=($(printf "%q\n" "${fixes[@]}" | sort -u))
 
       if [[ ${#fixes[@]} -gt 0 ]] && [[ ${fixes[0]} != "" ]]; then
@@ -965,8 +989,8 @@ function gen_changelog() {
   # when INTENT_ELSE is defined output goes here
   if [[ -n ${INTENT_ELSE} ]]; then
     intent_pipes=$(printf '%s|' "${INTENT_PREFIXES[@]}" | sed 's/|$//')
-    # echo "git log ${until_commit}...${from_commit} --pretty=\"%s\" --reverse | grep -v Merge | grep -v -E \"^${intent_pipes}: *\""
-    readarray -t fixes <<< $(git log ${until_commit}...${from_commit} --pretty="%s" --reverse | grep -v Merge | grep -v -E "^${intent_pipes}: *")
+    # echo "git log ${log_args} --pretty=\"%s\" --reverse | grep -v Merge | grep -v -E \"^${intent_pipes}: *\""
+    readarray -t fixes <<< $(git log ${log_args} --pretty="%s" --reverse | grep -v Merge | grep -v -E "^${intent_pipes}: *")
     eval fixes=($(printf "%q\n" "${fixes[@]}" | sort -u))
 
     if [[ ${#fixes[@]} -gt 0 ]] && [[ ${fixes[0]} != "" ]]; then
@@ -1006,36 +1030,40 @@ function gen_changelog() {
 }
 
 function write_changelog() {
-  timelog ""
-  count_commits=$(git rev-list --all --count)
-  if [ "$count_commits" -gt "0" ]; then
-    if git cat-file -e "${until_commit:-HEAD}" 2> /dev/null; then
-      current_tag=${until_commit:-HEAD}
-    else
-      timelog "End Commit or Tag ${until_commit:-HEAD} not found" "${warning}"
-      return
-    fi
-
-    if [[ ${current_tag} == "HEAD" ]]; then
-      previous_tag=$(git describe --tags --abbrev=0 --always)
-    else
-      previous_tag=$(git tag --sort=-creatordate | grep -A 1 "${current_tag}" | tail -n 1) || true
-    fi
-
-    # if start and end are the same at head, we put all into the change log
-    # otherwise we had to look for a previous commit: git log --format="%H" -n 2 | tail -1
-    if [[ ${current_tag} == "HEAD" ]]; then
-      current_commit=$(git rev-parse HEAD)
-      if [[ ${current_commit} == "${previous_tag}" ]]; then
-        previous_tag=$(git log --max-parents=0 HEAD --pretty=format:%H)
-      fi
-    fi
-
-    gen_changelog "${current_tag}" "${previous_tag}" "changelog_${mode}_${version}.md"
-
-    timelog "ChangeLog generated: ${current_tag} -- ${previous_tag}"
+  if [[ ${diff_args} == "--cached" ]]; then
+    timelog "No changelog cause installing from cache"
   else
-    timelog "ChangeLog not generated: Nothing commited yet"
+    timelog ""
+    count_commits=$(git rev-list --all --count)
+    if [ "$count_commits" -gt "0" ]; then
+      if git cat-file -e "${until_commit:-HEAD}" 2> /dev/null; then
+        current_tag=${until_commit:-HEAD}
+      else
+        timelog "End Commit or Tag ${until_commit:-HEAD} not found" "${warning}"
+        return
+      fi
+
+      if [[ ${current_tag} == "HEAD" ]]; then
+        previous_tag=$(git describe --tags --abbrev=0 --always)
+      else
+        previous_tag=$(git tag --sort=-creatordate | grep -A 1 "${current_tag}" | tail -n 1) || true
+      fi
+
+      # if start and end are the same at head, we put all into the change log
+      # otherwise we had to look for a previous commit: git log --format="%H" -n 2 | tail -1
+      if [[ ${current_tag} == "HEAD" ]]; then
+        current_commit=$(git rev-parse HEAD)
+        if [[ ${current_commit} == "${previous_tag}" ]]; then
+          previous_tag=$(git log --max-parents=0 HEAD --pretty=format:%H)
+        fi
+      fi
+
+      gen_changelog "${current_tag}" "${previous_tag}" "changelog_${mode}_${version}.md"
+
+      timelog "ChangeLog generated: ${current_tag} -- ${previous_tag}"
+    else
+      timelog "ChangeLog not generated: Nothing commited yet"
+    fi
   fi
 }
 
