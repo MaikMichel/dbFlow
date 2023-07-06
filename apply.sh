@@ -769,7 +769,12 @@ function install_apps() {
         fi
 
         cd "${line}" || exit
-        local original_app_id=$(grep -oP 'p_default_application_id=>\K\d+' "application/set_environment.sql")
+        if [[ $(uname) == "Darwin" ]]; then
+          # on macos the -P parameter does not exist for grep, so we use sed instead
+          local original_app_id=$(grep -oE "p_default_application_id=>([^[:space:]]+)" "application/set_environment.sql" | sed 's/.*>\(.*\)/\1/')
+        else
+          local original_app_id=$(grep -oP 'p_default_application_id=>\K\d+' "application/set_environment.sql")
+        fi
         timelog "Installing $line Num: ${app_id} Workspace: ${workspace} Schema: ${appschema} Original Num: ${original_app_id}"
 
         $SQLCLI -S -L "$(get_connect_string "${appschema}")" << EOF
