@@ -12,7 +12,7 @@
         <link rel="prev" href="../migrating/">
       
       
-      <link rel="icon" href="../assets/images/favicon.png">
+      <link rel="icon" href="../images/dbflux.png">
       <meta name="generator" content="mkdocs-1.4.3, mkdocs-material-9.1.14">
     
     
@@ -96,7 +96,7 @@
     
     
     
-    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="blue" data-md-color-accent="indigo">
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="light-blue">
   
     
     
@@ -124,8 +124,7 @@
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href=".." title="dbFLow - Documentation" class="md-header__button md-logo" aria-label="dbFLow - Documentation" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+  <img src="../images/dbflux.png" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -323,8 +322,7 @@
   <label class="md-nav__title" for="__drawer">
     <a href=".." title="dbFLow - Documentation" class="md-nav__button md-logo" aria-label="dbFLow - Documentation" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+  <img src="../images/dbflux.png" alt="logo">
 
     </a>
     dbFLow - Documentation
@@ -611,6 +609,40 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#07-implement-the-next-version-of-our-todo-app" class="md-nav__link">
+    07. Implement the next version of our todo app
+  </a>
+  
+    <nav class="md-nav" aria-label="07. Implement the next version of our todo app">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#download-and-unpack-files-of-version-2" class="md-nav__link">
+    Download and unpack files of version 2
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#install-changes-to-development-environment" class="md-nav__link">
+    Install Changes to development environment
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#install-changes-to-production-environment" class="md-nav__link">
+    Install Changes to production environment
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -649,15 +681,15 @@
 <p>just use dockawex and build and start your containers</p>
 </blockquote>
 <h2 id="01-configuration">01. Configuration</h2>
-<p>First we create a new root directory. In this directory we create the depot directory, where the artifacts of the deployments will be stored and fetched later. In an instance directory we create a subfolder for each target environment. In our case this is the build environment, which is the productive environment for this tutorial. Furthermore we create the actual working folder called sourcen. This is the actual development folder. This folder will be versioned via Git.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># create main directory</span>
-$<span class="w"> </span>mkdir<span class="w"> </span>todos<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>todos
+<p>First we create a new project directory <code>todos</code>. In this directory we create the <code>_depot</code> folder, where the artifacts of the deployments will be stored and fetched later. In an <code>instance</code> directory we create a subfolder for each target environment. In our case this is the <code>prod</code> folder, which is the productive environment for this tutorial. Furthermore we create the actual working directory called <code>sources</code>. This is the actual development folder. and will be versioned via Git.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># create master directory</span>
+$:<span class="w"> </span>mkdir<span class="w"> </span>todos<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>todos
 
 <span class="c1"># create folder to hold depot, target-instance and sources</span>
-$<span class="w"> </span>mkdir<span class="w"> </span>_depot<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>mkdir<span class="w"> </span>-p<span class="w"> </span>instances/prod<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>mkdir<span class="w"> </span>sources
+todos$:<span class="w"> </span>mkdir<span class="w"> </span>_depot<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>mkdir<span class="w"> </span>-p<span class="w"> </span>instances/prod<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>mkdir<span class="w"> </span>sources
 
 <span class="c1"># just to show current content</span>
-$<span class="w"> </span>find
+todos$:<span class="w"> </span>find
 
 <span class="c1"># should produce</span>
 <span class="c1"># .</span>
@@ -666,28 +698,28 @@ $<span class="w"> </span>find
 <span class="c1"># ./instances/prod</span>
 <span class="c1"># ./sources</span>
 </code></pre></div>
-<p>Now we change to our actual source directory, turn on version control and install dbFlow.</p>
+<p>Now we change to our actual source directory, turn on version control and install <strong>dbFlow</strong>.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># go to sources</span>
-$<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>sources
+todos$:<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>sources
 
 <span class="c1"># add git</span>
 sources$:<span class="w"> </span>git<span class="w"> </span>init
 
 <span class="c1"># add submodul</span>
-sources<span class="o">[</span>main<span class="o">]</span>$:<span class="w"> </span>git<span class="w"> </span>submodule<span class="w"> </span>add<span class="w"> </span>https://github.com/MaikMichel/dbFlow.git<span class="w"> </span>.dbFlow
+sources<span class="o">[</span>master<span class="o">]</span>$:<span class="w"> </span>git<span class="w"> </span>submodule<span class="w"> </span>add<span class="w"> </span>https://github.com/MaikMichel/dbFlow.git<span class="w"> </span>.dbFlow
 </code></pre></div>
 <p>Now that we have submitted the directory, we can save the current empty state and switch to a new develop branch where we will work.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># add current changes</span>
-sources<span class="o">[</span>main<span class="o">]</span>$:<span class="w"> </span>git<span class="w"> </span>add<span class="w"> </span>.
+sources<span class="o">[</span>master<span class="o">]</span>$:<span class="w"> </span>git<span class="w"> </span>add<span class="w"> </span>.
 
 <span class="c1"># do the commit</span>
-sources<span class="o">[</span>main<span class="o">]</span>$:<span class="w"> </span>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;Inital commit, with dbFlow add as submodule&quot;</span>
+sources<span class="o">[</span>master<span class="o">]</span>$:<span class="w"> </span>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;Inital commit, with dbFlow added as submodule&quot;</span>
 
 <span class="c1"># create new branch and jump right in</span>
-sources<span class="o">[</span>main<span class="o">]</span>$:<span class="w"> </span>git<span class="w"> </span>checkout<span class="w"> </span>-b<span class="w"> </span>develop
+sources<span class="o">[</span>master<span class="o">]</span>$:<span class="w"> </span>git<span class="w"> </span>checkout<span class="w"> </span>-b<span class="w"> </span>develop
 </code></pre></div>
 <h2 id="02-setup-dbflow">02. Setup dbFlow</h2>
-<p>Now that we have the directory and git set up, we can configure dbFlow. For our application and just for demo purposes a SingleSchema is completely sufficient. I leave all other settings in the default.</p>
+<p>Now that we have the directory and git set up, we can configure <strong>dbFlow</strong>. For our application and just for demo purposes a SingleSchema is completely sufficient. Additionally we place the depot a level up and negate the installation of the default features. I leave all other settings in the default.</p>
 <div class="highlight"><pre><span></span><code>sources<span class="o">[</span>develop<span class="o">]</span>$:<span class="w"> </span>.dbFlow/setup.sh<span class="w"> </span>--generate<span class="w"> </span>todo
 </code></pre></div>
 <div class="admonition note">
@@ -702,7 +734,7 @@ Enter password for sys [leave blank and you will be asked for]: ************
 Enter password for user todo [leave blank and you will be asked for]: ************
 Enter path to depot [_depot]: ../_depot
 Enter stage of this configuration mapped to branch (develop, test, master) [develop]:
-Do you wish to generate and install default tooling? (Logger, utPLSQL, teplsql, tapi) [Y]:
+Do you wish to generate and install default tooling? (Logger, utPLSQL, teplsql, tapi) [Y]: N
 Install with sql(cl) or sqlplus? [sqlplus]:
 Enter application IDs (comma separated) you wish to use initialy (100,101,...):
 Enter restful Moduls (comma separated) you wish to use initialy (api,test,...):
@@ -722,7 +754,7 @@ Enter restful Moduls (comma separated) you wish to use initialy (api,test,...):
   Location depot:                   ../_depot
   Branch is mapped to Stage:        develop
   SQl commandline:                  sqlplus
-  Install default tools:            Y
+  Install default tools:            N
   Configure with default apps:
   Configure with default modules:
   Just install environment onyl:    NO
@@ -755,26 +787,23 @@ build.env                  &gt;&gt; Project configuration
 </code></pre></div>
 </div>
 <h3 id="review-folders">Review folders</h3>
-<p>dbFLow has now created the complete directory structure for us. Additionally we see the files build.env and apply.env. In the file build.env project specific settings are stored and in the file apply.env environment specific settings are stored. Therefore dbFlow put the apply.env directly on the gitignore list. Later, when it comes to deployment to another environment, this configuration is adapted to the target system accordingly.</p>
-<p>dbFlow creates a folder db/_setup. Here we will find the scripts necessary to create the schema and the workspace for APEX. Additionally, a few features will be provided. These are utPLSQL, Logger, teplsql and TableAPI. For our tutorial we don't need them. Therefore I delete the files from the corresponding directory.</p>
-<div class="highlight"><pre><span></span><code>sources<span class="o">[</span>develop<span class="o">]</span>$:<span class="w"> </span>rm<span class="w"> </span>db/_setup/features/*.*
-</code></pre></div>
-<p>All files can be edited as required. dbFlow will install all existing files in the appropriate order. See: <a href="../setup/#install-project">install project</a></p>
+<p><strong>dbFLow</strong> has now created the complete directory structure for us. Additionally we see the files <code>build.env</code> and <code>apply.env</code>. In the file <code>build.env</code> project specific settings are stored and in the file <code>apply.env</code> environment specific settings are stored. Therefore <strong>dbFlow</strong> put the apply.env directly on the <code>gitignore</code> list. Later, when it comes to deployment to another environment, this configuration is adapted to the target system accordingly.</p>
+<p><strong>dbFlow</strong> creates a folder <code>db/_setup</code>. Here we will find the scripts necessary to create the schema and the workspace for APEX. All files can be edited as required. <strong>dbFlow</strong> will install all existing files in the appropriate order. See: <a href="../setup/#install-project">install project</a></p>
 <h2 id="03-install-project-definition-setup-to-database">03. Install project definition (setup) to database</h2>
 <p>Now that the project structure has been successfully created and we have the import scripts reviewed in the setup folder, we can import the project to the database</p>
-<div class="highlight"><pre><span></span><code>sources<span class="o">[</span>develop<span class="o">]</span>$:<span class="w"> </span>.dbFlow/setup<span class="w"> </span>--install
+<div class="highlight"><pre><span></span><code>sources<span class="o">[</span>develop<span class="o">]</span>$:<span class="w"> </span>.dbFlow/setup.sh<span class="w"> </span>--install
 </code></pre></div>
-<p>dbFlow will now execute all scripts.</p>
+<p><strong>dbFlow</strong> will now execute all scripts.</p>
 <div class="admonition danger">
 <p class="admonition-title">Important</p>
-<p>Remember, dbFlow will delete the target schema on its own and create it again. If the target schema already exists, dbFlow will abort the installation. Only the <code>--force</code> option can be used to force this behavior.</p>
+<p>Remember, <strong>dbFlow</strong> will delete the target schema on its own and create it again. If the target schema already exists, <strong>dbFlow</strong> will abort the installation. <br/>Only the <code>--force</code> option can be used to force this behavior.</p>
 </div>
 <p>When everything is done, the actual work can begin. In our case, of course, we honor this with a corresponding commit.</p>
 <div class="highlight"><pre><span></span><code>sources<span class="o">[</span>develop<span class="o">]</span>$:<span class="w"> </span>git<span class="w"> </span>add<span class="w"> </span>.<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;dbFlow Project created and applied to dev&quot;</span>
 </code></pre></div>
 <h2 id="04-implement-the-first-version-of-our-todo-app">04. Implement the first version of our todo app</h2>
 <blockquote>
-<p>I won't go to much into the details. All code fragments are meant to show you the working process with dbFlow as deployment tool and framework.</p>
+<p>I won't go to much into the details. All code fragments are meant to show you the working process with <strong>dbFlow</strong> as deployment tool and framework.</p>
 </blockquote>
 <h3 id="download-and-unpack-files-of-version-1">Download and unpack files of version 1</h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Download Release 1</span>
@@ -785,18 +814,21 @@ sources<span class="o">[</span>develop<span class="o">]</span>$:<span class="w">
 
 <span class="c1"># Unpack Schema files to db/todo</span>
 sources<span class="o">[</span>develop<span class="o">]</span>$:<span class="w"> </span>tar<span class="w"> </span>-xzvf<span class="w"> </span>release_1.tar.gz<span class="w"> </span>--directory<span class="o">=</span><span class="s2">&quot;db/todo&quot;</span><span class="w"> </span><span class="s2">&quot;dbFlow-demo-todoapp-1.0.0/db/todo&quot;</span><span class="w"> </span>--strip-components<span class="o">=</span><span class="m">3</span>
+
+<span class="c1"># Remove downloaded release_1.tar.gz</span>
+rm<span class="w"> </span>release_1.tar.gz
 </code></pre></div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>If you want to install the demo application with another ID then 108 you can rename the folder as you like (f###)</p>
 </div>
 <h3 id="install-application">Install Application</h3>
-<p>Now you have downloaded all the files and unpacked them into your prepared dbFlow project. That means we can now tell dbFLow to install all the files. All you have to do is to build an initial version and give it the version name "install". dbFlow will then directly install the freshly built version in the current environment.</p>
+<p>You have downloaded all the files and unpacked them into your prepared <strong>dbFlow</strong> project. That means we can tell <strong>dbFLow</strong> to install all the files. All you have to do is to build an <strong>initial</strong> version and give it the version name "install". <strong>dbFlow</strong> will then directly install the freshly built version into the current environment.</p>
 <div class="highlight"><pre><span></span><code>sources<span class="o">[</span>develop<span class="o">]</span>$:<span class="w"> </span>.dbFlow/build.sh<span class="w"> </span>--init<span class="w"> </span>--version<span class="w"> </span>install
 </code></pre></div>
-<p>Then you can familiarize yourself with the application and the files it contains. In the schema you will find the <code>tasks</code> table and corresponding constraints, indexes and triggers. Additionally you will find the package <code>apx_tasks_util</code>, which contains the business logic of our application.</p>
+<p>Then you can familiarize yourself with the application and the files it contains. In the schema you will find the <em>tasks</em> table and corresponding constraints, indexes and triggers. Additionally you will find the package <em>apx_tasks_util</em>, which contains the business logic of our application.</p>
 <p><img alt="Explorer Tree with files extracted" src="../images/tutorial/todo-files-v1.png" width="300" /></p>
-<p>When you go to your APEX instance, you can log in with the default user wsadmin. When you log in for the first time, you will have to enter a new password. The initial password is always the username. Unless you have changed it before installing the setup. See (<code>db\_setup\workspaces\todo\create_01_user_wsadmin.sql</code>)</p>
+<p>When you go to your APEX instance, you can log in with the default user <code>wsadmin</code>. When you log in for the first time, you will have to enter a new password. The initial password is always the username. Unless you have changed it before installing the setup. See file: <code>db/_setup/workspaces/todo/create_01_user_wsadmin.sql</code></p>
 <p><img alt="APEX Workspace Login" src="../images/tutorial/todo-ws-login.png" width="300" />
 <img alt="APEX Workspace" src="../images/tutorial/todo-ws.png" /></p>
 <p>The application is a simple task management.
@@ -807,19 +839,18 @@ sources<span class="o">[</span>develop<span class="o">]</span>$:<span class="w">
 </code></pre></div>
 <h3 id="deploy-application">Deploy Application</h3>
 <p>Now we have finished version 1 and want to deploy it to the production environment right away. To do this, we are now building our first deployment, our initial patch.
-The concept, which dbFlow is based on, assumes that there is a corresponding branch per target environment. (See: <a href="../concept/#git-flow-to-db">Concept</a>)</p>
-<p>Therefore we now merge our current state in the branch <code>develop</code> to the master branch, our target branch.</p>
-<div class="highlight"><pre><span></span><code>sources<span class="o">[</span>develop<span class="o">]</span>$:<span class="w"> </span>git<span class="w"> </span>checkout<span class="w"> </span>main
-sources<span class="o">[</span>main<span class="o">]</span>$:<span class="w"> </span>git<span class="w"> </span>merge<span class="w"> </span>develop
-sources<span class="o">[</span>main<span class="o">]</span>$:<span class="w"> </span>git<span class="w"> </span>push
+The concept, which <strong>dbFlow</strong> is based on, assumes that there is a corresponding branch per target environment. (See: <a href="../concept/#git-flow-to-db">Concept</a>)</p>
+<p>Therefore we now merge our current state in the branch <code>develop</code> to the <code>master</code> branch, our target branch.</p>
+<div class="highlight"><pre><span></span><code>sources<span class="o">[</span>develop<span class="o">]</span>$:<span class="w"> </span>git<span class="w"> </span>checkout<span class="w"> </span>master
+sources<span class="o">[</span>master<span class="o">]</span>$:<span class="w"> </span>git<span class="w"> </span>merge<span class="w"> </span>develop
 </code></pre></div>
 <p>Now we create the initial deployment for our production environment.</p>
-<div class="highlight"><pre><span></span><code>sources<span class="o">[</span>main<span class="o">]</span>$:<span class="w"> </span>.dbFlow/build.sh<span class="w"> </span>--init<span class="w"> </span>--version<span class="w"> </span><span class="m">1</span>.0.0
+<div class="highlight"><pre><span></span><code>sources<span class="o">[</span>master<span class="o">]</span>$:<span class="w"> </span>.dbFlow/build.sh<span class="w"> </span>--init<span class="w"> </span>--version<span class="w"> </span><span class="m">1</span>.0.0
 </code></pre></div>
-<p>As soon as the build of an artifact is executed by the main branch, dbFlow will ask if a tag with the corresponding version should be committed. In our case we can skip that by entering <code>N</code>dbFlow will now place the deployment artifact in the main folder in the depot.</p>
+<p>As soon as the build of an artifact is executed by the master branch, <strong>dbFlow</strong> will ask if a tag with the corresponding version should be committed. In our case we can skip that by entering <code>N</code>. <strong>dbFlow</strong> will now place the deployment artifact in the master folder in the depot.</p>
 <p><img alt="Screenshot depot tree" src="../images/tutorial/todo-depot-init_1.0.0.png" width="400px" /></p>
 <blockquote>
-<p>The target depot is always a directory with the same name as the branch from which the artifact is created.</p>
+<p>The target depot is always a sub directory with the same name as the branch from which the artifact is created.</p>
 </blockquote>
 <h2 id="05-prepare-target-instance">05. Prepare Target Instance</h2>
 <blockquote>
@@ -828,34 +859,105 @@ sources<span class="o">[</span>main<span class="o">]</span>$:<span class="w"> </
 <p>In the preparations we have already stored our directory structure. Now we want to distribute our current application to the target instance.</p>
 <h3 id="copy-configuration">Copy Configuration</h3>
 <p>In this step we copy the current configuration to the instance directory.</p>
-<div class="highlight"><pre><span></span><code>$<span class="w"> </span>.dbFlow/setup.sh<span class="w"> </span>--copyto<span class="w"> </span><span class="s2">&quot;../instances/prod&quot;</span>
+<div class="highlight"><pre><span></span><code>sources<span class="o">[</span>master<span class="o">]</span>$:<span class="w"> </span>.dbFlow/setup.sh<span class="w"> </span>--copyto<span class="w"> </span><span class="s2">&quot;../instances/prod&quot;</span>
 </code></pre></div>
-<p>dbFlow will now copy the <code>db/_setup</code> directory and the build.env and apply.env files to the target directory. Afterwards dbFlow will also add itself as a submodule in this directory.</p>
+<p><strong>dbFlow</strong> will now copy the <code>db/_setup</code> directory and the <code>build.env</code> and <code>apply.env</code> files to the target directory. Afterwards <strong>dbFlow</strong> will also add itself as a submodule in this directory.
+Let's go to the instance directory and modify some configurations.</p>
+<div class="highlight"><pre><span></span><code>sources<span class="o">[</span>master<span class="o">]</span>$:<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>../instances/prod
+instances/prod<span class="o">[</span>master<span class="o">]</span>$:<span class="w"> </span>code<span class="w"> </span>apply.env
+</code></pre></div>
+<blockquote>
+<p>I use VisualStudio Code to edit the file <code>apply.env</code> but you could any other editor too.</p>
+</blockquote>
 <h3 id="edit-tns">Edit TNS</h3>
 <p>Since the copy of the configuration of course still points to the same database environment, it <strong>must</strong> now be adapted. For this we change the corresponding entry in the file <code>../instances/prod/apply.env</code>.</p>
-<p><img alt="Eintrag von xepdb1 auf xepdb2" src="../images/tutorial/target-instance-tns.png" /></p>
+<p><img alt="Change TNS from xepdb1 to xepdb2" src="../images/tutorial/target-instance-tns.png" /></p>
 <blockquote>
 <p>In our case, this is now the xepdb2 instead of xepdb1.</p>
 </blockquote>
 <h3 id="edit-stage">Edit Stage</h3>
-<p>Additionally we adjust the entry <code>STAGE</code>, because this points to the branch folder in the depot, which corresponds to our target stage. All artifacts that dbFlow imports are expected here. Unless you use the <code>--noextract</code> option when importing.</p>
-<p><img alt="Eintrag von develop auf main" src="../images/tutorial/target-instance-stage.png" /></p>
+<p>Additionally we adjust the entry <code>STAGE</code>, because this points to the branch folder in the depot, which corresponds to our target stage. All artifacts that <strong>dbFlow</strong> imports are expected here. Unless you use the <code>--noextract</code> option when importing.</p>
+<p><img alt="Change Stage from develop to master" src="../images/tutorial/target-instance-stage.png" /></p>
 <h3 id="edit-depot">Edit Depot</h3>
 <p>Because we have an additional level in the directory tree, we also have to adjust the path to the depot and change it from <code>../_depot</code> to <code>../../_depot</code>.</p>
-<p><img alt="Eintrag von ../_depot auf ../../_depot" src="../images/tutorial/target-instance-depot.png" /></p>
+<p><img alt="Change path from ../_depot to ../../_depot" src="../images/tutorial/target-instance-depot.png" /></p>
 <h3 id="install-project-definition-setup-to-target-database">Install project definition (setup) to target database</h3>
 <p>Now we can install the setup meaning our foundation of the application on the target database.</p>
-<div class="highlight"><pre><span></span><code>instances/prod$:<span class="w"> </span>.dbFlow/setup.sh<span class="w"> </span>--install
+<div class="highlight"><pre><span></span><code>instances/prod<span class="o">[</span>master<span class="o">]</span>$:<span class="w"> </span>.dbFlow/setup.sh<span class="w"> </span>--install
 </code></pre></div>
 <h2 id="06-install-first-version-to-target-instance">06. Install first version to target instance</h2>
 <p>Now that we have everything set up, we can simply deploy the previously deployed artifact to the target instance.</p>
-<div class="highlight"><pre><span></span><code>instances/prod$:<span class="w"> </span>.dbFlow/apply.sh<span class="w"> </span>--init<span class="w"> </span>--version<span class="w"> </span><span class="m">1</span>.0.0
+<div class="highlight"><pre><span></span><code>instances/prod<span class="o">[</span>master<span class="o">]</span>$:<span class="w"> </span>.dbFlow/apply.sh<span class="w"> </span>--init<span class="w"> </span>--version<span class="w"> </span><span class="m">1</span>.0.0
 </code></pre></div>
 <blockquote>
-<p>Since we want to do an <code>init</code> here, dbFlow will ask you if you really want to do this, since an <code>init</code> will <strong>ALWAYS</strong> make all target schemas empty (delete all objects). For a CI/CD environment you can prevent this by setting the environment variable DBFLOW_JENKINS="YES".</p>
+<p>Since we want to do an <code>init</code> here, <strong>dbFlow</strong> will ask you if you really want to do this, cause an <code>init</code> will <strong>ALWAYS</strong> make all target schemas empty (delete all objects). For a CI/CD environment you can prevent this by setting the environment variable DBFLOW_JENKINS="YES".</p>
 </blockquote>
 <p>Now you should be able to visit our ToDo Application on your target instance.</p>
-<p>Because the target instance folder is also a Git folder, we cann now commit everything to keep a proper history of our deployments in to that stage.</p>
+<p>Because the target instance folder is also a Git folder, we can now commit everything to keep a proper history of our deployments in to that stage.</p>
+<div class="highlight"><pre><span></span><code>instances/prod<span class="o">[</span>master<span class="o">]</span>$:<span class="w"> </span>git<span class="w"> </span>add<span class="w"> </span>.<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;1.0.0&quot;</span>
+</code></pre></div>
+<h2 id="07-implement-the-next-version-of-our-todo-app">07. Implement the next version of our todo app</h2>
+<p>We will have to go to our development folder and checkout the develop branch.</p>
+<div class="highlight"><pre><span></span><code>instances/prod<span class="o">[</span>master<span class="o">]</span>$:<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>../../sources
+sources<span class="o">[</span>master<span class="o">]</span>$:<span class="w"> </span>git<span class="w"> </span>checkout<span class="w"> </span>develop
+sources<span class="o">[</span>develop<span class="o">]</span>$:
+</code></pre></div>
+<h3 id="download-and-unpack-files-of-version-2">Download and unpack files of version 2</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Download Release 2</span>
+sources<span class="o">[</span>develop<span class="o">]</span>$:<span class="w"> </span>curl<span class="w"> </span>-o<span class="w"> </span>release_2.tar.gz<span class="w"> </span>-L<span class="w"> </span>https://github.com/MaikMichel/dbFlow-demo-todoapp/archive/refs/tags/1.1.0.tar.gz
+
+<span class="c1"># Unpack Application f108 to apex</span>
+sources<span class="o">[</span>develop<span class="o">]</span>$:<span class="w"> </span>tar<span class="w"> </span>-xzvf<span class="w"> </span>release_2.tar.gz<span class="w"> </span>--directory<span class="o">=</span><span class="s2">&quot;apex&quot;</span><span class="w"> </span><span class="s2">&quot;dbFlow-demo-todoapp-1.1.0/apex&quot;</span><span class="w"> </span>--strip-components<span class="o">=</span><span class="m">2</span>
+
+<span class="c1"># Unpack Schema files to db/todo</span>
+sources<span class="o">[</span>develop<span class="o">]</span>$:<span class="w"> </span>tar<span class="w"> </span>-xzvf<span class="w"> </span>release_2.tar.gz<span class="w"> </span>--directory<span class="o">=</span><span class="s2">&quot;db/todo&quot;</span><span class="w"> </span><span class="s2">&quot;dbFlow-demo-todoapp-1.1.0/db/todo&quot;</span><span class="w"> </span>--strip-components<span class="o">=</span><span class="m">3</span>
+
+<span class="c1"># Remove downloaded release_2.tar.gz</span>
+rm<span class="w"> </span>release_2.tar.gz
+</code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If you want to install the demo application with another ID then 108 you can rename the folder as you like (f###). Keep in mind, that in the case you have to remove the previous application folder.</p>
+</div>
+<h3 id="install-changes-to-development-environment">Install Changes to development environment</h3>
+<p>After you extracted the changes from version 2 of the app you should have see the following changes.</p>
+<p><img alt="Files new or changed" src="../images/tutorial/todo-files-v2.png" /></p>
+<p>Let's add them an commit the changes.</p>
+<div class="highlight"><pre><span></span><code>sources<span class="o">[</span>develop<span class="o">]</span>$:<span class="w"> </span>git<span class="w"> </span>add<span class="w"> </span>.
+</code></pre></div>
+<blockquote>
+<p>You can ignore the version.md file here. This file will allways be created when applying an artifact. Normaly this would never happen in development. This is just because we installed the sources, downloaded from github, as patches.</p>
+</blockquote>
+<p>Now install changed files to develop environment by building a patch and installing it instantly.</p>
+<div class="highlight"><pre><span></span><code>sources<span class="o">[</span>develop<span class="o">]</span>$:<span class="w"> </span>.dbFlow/build.sh<span class="w"> </span>--patch<span class="w"> </span>--version<span class="w"> </span>install<span class="w"> </span>--cached
+</code></pre></div>
+<blockquote>
+<p>Remember, when using "<code>install</code>" as version identifier <strong>dbFlow</strong> will apply the patch immediatly.</p>
+</blockquote>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The flag <code>--cached</code> tells <strong>dbFlow</strong> to include only the staged files. This is a suiteable hint just for your development environment. This is about installing the extracted files of the zip directly.</p>
+</div>
+<p>We will commit the changes in order to be ready to build the first <code>patch</code> for out target environment.</p>
+<div class="highlight"><pre><span></span><code>sources<span class="o">[</span>develop<span class="o">]</span>$:<span class="w"> </span>git<span class="w"> </span>add<span class="w"> </span>.<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;Version 2 of ToDo App&quot;</span>
+</code></pre></div>
+<h2 id="install-changes-to-production-environment">Install Changes to production environment</h2>
+<p>To deploy an artifact to the production environment, we have to merge the changes to our target branch: <strong>master</strong>.</p>
+<div class="highlight"><pre><span></span><code>sources<span class="o">[</span>develop<span class="o">]</span>$:<span class="w"> </span>git<span class="w"> </span>checkout<span class="w"> </span>master
+sources<span class="o">[</span>master<span class="o">]</span>$:<span class="w"> </span>git<span class="w"> </span>merge<span class="w"> </span>develop
+</code></pre></div>
+<p>Now create the patch itself</p>
+<div class="highlight"><pre><span></span><code>sources<span class="o">[</span>master<span class="o">]</span>$:<span class="w"> </span>.dbFlow/build.sh<span class="w"> </span>--patch<span class="w"> </span>--version<span class="w"> </span><span class="m">1</span>.1.0
+</code></pre></div>
+<blockquote>
+<p><strong>dbFlow</strong> will ask you to tag this specific version. This happens, when you build on main or master branch. You can ignore this at this moment. Keep in mind, that you can turn this off whenn running inside a CI/CD environment.</p>
+</blockquote>
+<p>dbFlow has now shipped the patch to the depot (<code>../_depot/master</code>).</p>
+<p>To apply the patch to production we just have to go to the predefined instance directory and apply the patch.</p>
+<div class="highlight"><pre><span></span><code>sources<span class="o">[</span>master<span class="o">]</span>$:<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>../instances/prod
+instances/prod<span class="o">[</span>master<span class="o">]</span>$:<span class="w"> </span>.dbFlow/apply.sh<span class="w"> </span>--patch<span class="w"> </span>--version<span class="w"> </span><span class="m">1</span>.1.0
+</code></pre></div>
+<p>Thats it. After that, your production instance should reflect the current changes and display the version on the footer.</p>
 
 
 
