@@ -403,6 +403,7 @@ function copy_files {
     for folder in "${MAINFOLDERS[@]}"
     do
 
+      num_changes=`git diff -r --name-only --no-commit-id "${diff_args}" --diff-filter=ACMRTUXB -- "${folder}" | wc -l | xargs`
       if [[ $num_changes -gt 0 ]]; then
 
         if [ ! -d "${targetpath}" ]; then
