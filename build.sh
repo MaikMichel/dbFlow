@@ -1130,72 +1130,76 @@ function check_push_to_depot() {
   local current_path=$(pwd)
 
   prod_branches=( "master" "main" )
-  if [[ " ${prod_branches[@]} " =~ " ${branch} " ]]; then
-    if [[ $version != "install" ]]; then
+  if [[ -z ${DBFLOW_JENKINS:-} ]]; then
+    if [[ " ${prod_branches[@]} " =~ " ${branch} " ]]; then
+      if [[ $version != "install" ]]; then
 
-      cd "$(pwd)/$DEPOT_PATH"
-      if [[ -d ".git" ]]; then
+        cd "$(pwd)/$DEPOT_PATH"
+        if [[ -d ".git" ]]; then
 
-        if [[ "$force_push" == "FALSE" ]]; then
-          if [[ -n $(git status -s) ]]; then
+          if [[ "$force_push" == "FALSE" ]]; then
+            if [[ -n $(git status -s) ]]; then
 
-            echo
-            echo "Do you wish to push changes to depot remote?"
-            echo "  Y - ${targetpath}.tar.gz will be commited and pushed"
-            echo "  N - Nothing will happen..."
+              echo
+              echo "Do you wish to push changes to depot remote?"
+              echo "  Y - ${targetpath}.tar.gz will be commited and pushed"
+              echo "  N - Nothing will happen..."
 
-            read -r modus
+              read -r modus
 
-            shopt -s nocasematch
-            case "$modus" in
-              "Y" )
-                force_push="TRUE"
-                ;;
-              *)
-                echo "no push to depot"
-                ;;
-            esac
+              shopt -s nocasematch
+              case "$modus" in
+                "Y" )
+                  force_push="TRUE"
+                  ;;
+                *)
+                  echo "no push to depot"
+                  ;;
+              esac
+            fi
+
+            if [[ "$force_push" == "TRUE" ]]; then
+              git pull
+              git add "${targetpath}.tar.gz"
+              git commit -m "Adds ${targetpath}.tar.gz"
+              git push
+            fi
           fi
+        fi # git path
 
-          if [[ "$force_push" == "TRUE" ]]; then
-            git pull
-            git add "${targetpath}.tar.gz"
-            git commit -m "Adds ${targetpath}.tar.gz"
-            git push
-          fi
-        fi
-      fi # git path
-
-      cd "${current_path}"
+        cd "${current_path}"
+      fi
     fi
-  fi
+  fi # DBFLOW_JENKINS
 }
 
 
 function check_make_new_version() {
-  # on branch master ask if we should tag current version and conmmit
-  prod_branches=( "master" "main" )
-  if [[ " ${prod_branches[@]} " =~ " ${branch} " ]]; then
-    if [[ $version != "install" ]]; then
-      echo
-      echo "Do you wish to commit, tag and push the new version to origin"
-      echo "  Y - current version will be commited, tagged and pushed"
-      echo "  N - Nothing will happen, all generated files won't be touched"
+  if [[ -z ${DBFLOW_JENKINS:-} ]]; then
+    # on branch master ask if we should tag current version and conmmit
+    prod_branches=( "master" "main" )
+    if [[ " ${prod_branches[@]} " =~ " ${branch} " ]]; then
+      if [[ $version != "install" ]]; then
+        echo
+        echo "Do you wish to commit, tag and push the new version to origin"
+        echo "  Y - current version will be commited, tagged and pushed"
+        echo "  N - Nothing will happen, all generated files won't be touched"
 
-      read -r modus
+        read -r modus
 
-      shopt -s nocasematch
-      case "$modus" in
-        "Y" )
-          make_a_new_version
-          check_push_to_depot
-          ;;
-        *)
-          echo "Nothing has happened"
-          ;;
-      esac
+        shopt -s nocasematch
+        case "$modus" in
+          "Y" )
+            make_a_new_version
+            check_push_to_depot
+            ;;
+          *)
+            echo "Nothing has happened"
+            ;;
+        esac
+      fi
     fi
-  fi
+  fi # DBFLOW_JENKINS
 }
 
 
