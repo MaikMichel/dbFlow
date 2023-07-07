@@ -385,7 +385,7 @@ function copy_files {
     copy_all_files
   else
     # Changes on configs?
-    num_changes=`git diff -r --name-only --no-commit-id "${diff_args}" --diff-filter=ACMRTUXB -- build.env .gitignore | wc -l | xargs`
+    num_changes=`git diff -r --name-only --no-commit-id ${diff_args} --diff-filter=ACMRTUXB -- build.env .gitignore | wc -l | xargs`
     if [[ $num_changes -gt 0 ]]; then
       if [ ! -d "${targetpath}" ]; then
         timelog "Creating directory '${targetpath}'"
@@ -393,16 +393,16 @@ function copy_files {
       fi
 
       if [[ $(uname) == "Darwin" ]]; then
-        rsync -Rr `git diff -r --name-only --no-commit-id "${diff_args}" --diff-filter=ACMRTUXB -- build.env .gitignore` "${targetpath}"
+        rsync -Rr `git diff -r --name-only --no-commit-id ${diff_args} --diff-filter=ACMRTUXB -- build.env .gitignore` "${targetpath}"
       else
-        cp --parents -Rf `git diff -r --name-only --no-commit-id "${diff_args}" --diff-filter=ACMRTUXB -- build.env .gitignore` "${targetpath}"
+        cp --parents -Rf `git diff -r --name-only --no-commit-id ${diff_args} --diff-filter=ACMRTUXB -- build.env .gitignore` "${targetpath}"
       fi
     fi
 
     # Patch
     for folder in "${MAINFOLDERS[@]}"
     do
-
+      num_changes=`git diff -r --name-only --no-commit-id ${diff_args} --diff-filter=ACMRTUXB -- "${folder}" | wc -l | xargs`
       if [[ $num_changes -gt 0 ]]; then
 
         if [ ! -d "${targetpath}" ]; then
@@ -412,9 +412,9 @@ function copy_files {
 
         timelog "Copy files in folder: ${folder}"
         if [[ $(uname) == "Darwin" ]]; then
-          rsync -Rr `git diff -r --name-only --no-commit-id "${diff_args}" --diff-filter=ACMRTUXB -- "${folder}"` "${targetpath}"
+          rsync -Rr `git diff -r --name-only --no-commit-id ${diff_args} --diff-filter=ACMRTUXB -- "${folder}"` "${targetpath}"
         else
-          cp --parents -Rf `git diff -r --name-only --no-commit-id "${diff_args}" --diff-filter=ACMRTUXB -- "${folder}"` "${targetpath}"
+          cp --parents -Rf `git diff -r --name-only --no-commit-id ${diff_args} --diff-filter=ACMRTUXB -- "${folder}"` "${targetpath}"
         fi
       else
         timelog "No changes in folder: ${folder}"
@@ -550,12 +550,12 @@ function list_files_to_remove() {
     do
 
       # to avoid dead-files
-      num_changes=`git diff -r --name-only --no-commit-id "${diff_args}" --diff-filter=D -- "${folder}" | wc -l | xargs`
+      num_changes=`git diff -r --name-only --no-commit-id ${diff_args} --diff-filter=D -- "${folder}" | wc -l | xargs`
 
       if [[ $num_changes -gt 0 ]]; then
         timelog "removing dead-files"
 
-        for line in `git diff -r --name-only --no-commit-id "${from_commit}" "${until_commit}" --diff-filter=D -- "${folder}"`
+        for line in `git diff -r --name-only --no-commit-id ${diff_args} --diff-filter=D -- "${folder}"`
         do
           echo "${line}" >> "${target_drop_file}"
         done
@@ -619,7 +619,7 @@ function write_install_schemas(){
             if [[ ${diff_args} == "--cached" ]]; then
               echo "Prompt .. no logs availabe installing patch from cache"
             else
-              git log --pretty=format:'Prompt ..   %h %s <%an>' "${log_args}" -- "db/${schema}"
+              git log --pretty=format:'Prompt ..   %h %s <%an>' ${log_args} -- "db/${schema}"
             fi
             echo " "
             echo "Prompt .. "

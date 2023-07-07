@@ -142,6 +142,13 @@ deployment stage (develop, test, ...) or if you allready did that, just merge th
     You have the option to flag this with a step *force* by using `.dbFlow/setup.sh --install --force`. In this case, all target schemas and features are deleted before the actual installation in each case.
 
 
+During the installation **dbFlow** will execute every SQL or bash file in alphabetical order. The sequence of folder will be:
 
+1. tablespaces
+1. directories
+1. users
+1. features
+1. workspaces
+1. acls
 
 [How to make a release]: ../release
