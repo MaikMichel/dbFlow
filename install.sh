@@ -77,15 +77,11 @@ if [[ $# > 0 ]]; then
       exit 2
     fi
     TARGET_PATH=${1}
-else
-    echo "Kein Argument wurde übergeben."
 fi
 
 echo -e "${CYAN}Installing dbFlow in Folder: ${TARGET_PATH}${NC}"
 
-if [[ -d "${TARGET_PATH}" ]]; then
-  echo "exists"
-else
+if [[ ! -d "${TARGET_PATH}" ]]; then
   mkdir -p "${TARGET_PATH}"
 fi
 
@@ -93,14 +89,17 @@ cd "${TARGET_PATH}"
 
 # init your project with git
 if [[ ! -d ".git" ]]; then
+  echo -e "${CYAN}Initializing git${NC}"
   git init
+  echo
 fi
 
-# clone dbFlow as submodule
+echo -e "${CYAN}clone dbFlow as submodule${NC}"
 git submodule add https://github.com/MaikMichel/dbFlow.git .dbFlow
+echo
 
-echo -e "${GREEN}dbFlow installed in Folder: ${TARGET_PATH}${NC}"
-echo -e "${GREEN}you are now here: $(pwd)${NC}"
+echo -e "${GREEN}dbFlow installed in Folder: ${BUNLINE}${TARGET_PATH}${NC}"
+echo -e "${GREEN}you are now here: ${BUNLINE}$(pwd)${NC}"
 echo
 echo -e "${BGRAY}to generate and switch to your development branch type:${NC}"
 echo -e "${WHITE}git checkout -b develop${NC}"
