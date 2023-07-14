@@ -102,8 +102,9 @@ echo -e "${GREEN}dbFlow installed in Folder: ${BUNLINE}${TARGET_PATH}${NC}"
 echo
 
 if [[ ${TARGET_PATH} != "." ]]; then
-  echo -e "${BGREEN}Go to your project folder ${TARGET_PATH} and enjoy working${NC}"
+  echo -e "${YELLOW}Before you start to work, you have to go to your project folder ${BYELLOW}${TARGET_PATH}${NC}"
   echo -e "${BWHITE}cd ${TARGET_PATH}${NC}"
+  echo
 fi
 
 echo -e "${BGRAY}to generate and switch to your development branch type:${NC}"
