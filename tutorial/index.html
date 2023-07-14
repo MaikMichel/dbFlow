@@ -703,10 +703,7 @@ todos$:<span class="w"> </span>find
 todos$:<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>sources
 
 <span class="c1"># add git</span>
-sources$:<span class="w"> </span>git<span class="w"> </span>init
-
-<span class="c1"># add submodul</span>
-sources<span class="o">[</span>master<span class="o">]</span>$:<span class="w"> </span>git<span class="w"> </span>submodule<span class="w"> </span>add<span class="w"> </span>https://github.com/MaikMichel/dbFlow.git<span class="w"> </span>.dbFlow
+sources$:<span class="w"> </span>curl<span class="w"> </span>-sS<span class="w"> </span>https://raw.githubusercontent.com/MaikMichel/dbFlow/master/install.sh<span class="w"> </span><span class="p">|</span><span class="w"> </span>bash
 </code></pre></div>
 <p>Now that we have submitted the directory, we can save the current empty state and switch to a new develop branch where we will work.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># add current changes</span>
