@@ -52,6 +52,19 @@ $ git submodule add https://github.com/MaikMichel/dbFlow.git .dbFlow
 
 ```
 
+### Or with a One-Liner
+
+```bash
+
+# Without parameter current directory is used
+curl -sS https://raw.githubusercontent.com/MaikMichel/dbFlow/master/install.sh | bash
+
+# Add targetfolder as parameter
+curl -sS https://raw.githubusercontent.com/MaikMichel/dbFlow/master/install.sh | bash -s <targetfolder>
+
+```
+
+
 > Sometimes it can happen that the bash files cannot be executed. If this is the case, explicit permissions must be granted here. (`chmod +x .dbFlow/*.sh`)
 
 

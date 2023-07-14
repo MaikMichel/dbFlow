@@ -46,10 +46,7 @@ Now we change to our actual source directory, turn on version control and instal
 todos$: cd sources
 
 # add git
-sources$: git init
-
-# add submodul
-sources[master]$: git submodule add https://github.com/MaikMichel/dbFlow.git .dbFlow
+sources$: curl -sS https://raw.githubusercontent.com/MaikMichel/dbFlow/master/install.sh | bash
 
 ```
 

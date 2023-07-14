@@ -71,12 +71,30 @@
 
 ## Getting Started
 
+### With a One-Liner
+
+```bash
+
+# Without parameter current directory is used
+curl -sS https://raw.githubusercontent.com/MaikMichel/dbFlow/master/install.sh | bash
+
+# Add targetfolder as parameter
+curl -sS https://raw.githubusercontent.com/MaikMichel/dbFlow/master/install.sh | bash -s <targetfolder>
+
+```
+
+### Manual
+
 1. create a git repositoy
 2. add dbFlow as `.dbFlow` submodule to your project
+
+### Generate project and setup install to database
+
 3. run `.dbFlow/setup.sh --generate <project_name>`
 4. answer some question based on your requirements
 6. Review files, generated for you and make some adjustments
 5. after that just run `.dbFlow/setup.sh --install`
+
 
 ```bash
 # create a folder for your project and change directory into
