@@ -102,7 +102,7 @@ echo -e "${GREEN}dbFlow installed in Folder: ${BUNLINE}${TARGET_PATH}${NC}"
 echo
 
 if [[ ${TARGET_PATH} != "." ]]; then
-  echo -e "${YELLOW}Before you start to work, you have to go to your project folder ${BYELLOW}${TARGET_PATH}${NC}"
+  echo -e "${YELLOW}Before you start to work, you have to go to your project folder ${BUNLINE}${TARGET_PATH}${NC}"
   echo -e "${BWHITE}cd ${TARGET_PATH}${NC}"
   echo
 fi
