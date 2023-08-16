@@ -25,6 +25,9 @@ function usage() {
   echo -e "                                 - ${RED}workspace will be dropped and recreated${NC}"
   echo -e ""
   echo -e "  -c | --copyto <target-path>   - copy db/_setup, env files, and .dbFlow to target"
+  echo -e ""
+  echo -e "  -a | --apply                   - Generate and write apply.env only"
+  echo -e "     └─[ -w | --wizard ]         - do NOT start with a wizard questionare, import from env"
   echo
   echo -e "${BWHITE}Examples:${NC}"
   echo -e "  ${0} --generate mytest"
@@ -342,41 +345,49 @@ function copytopath() {
 function wizard() {
   wiz_project_name="${1}"
   env_only=${2}
+  apply_only=${3}
 
   if [[ ${env_only} == "NO" ]]; then
-    echo -e "Generate Project: ${BWHITE}${wiz_project_name}${NC}"
+    if [[ ${apply_only} == "NO" ]]; then
+      echo -e "Generate Project: ${BWHITE}${wiz_project_name}${NC}"
+    else
+      echo -e "Generate ${BGRAY}apply.env${NC} of Project: ${BWHITE}${wiz_project_name}${NC}"
+    fi
   else
     echo -e "Configure Project: ${BWHITE}${wiz_project_name}${NC} (${BGRAY}Environment only option${NC})"
   fi
 
-  local local_project_mode=${PROJECT_MODE-"M"}
-  read -r -p "$(echo -e "Which dbFLow project type do you want to create? ${BUNLINE}S${NC}ingle, ${BUNLINE}M${NC}ulti or ${BUNLINE}F${NC}lex [${BGRAY}${local_project_mode:0:1}${NC}]: ")" wiz_project_mode
-  wiz_project_mode=${wiz_project_mode:-"${local_project_mode:0:1}"}
 
-  local local_build_branch=${BUILD_BRANCH-"build"}
-  read -r -p "$(echo -e "When running release tests, what is your prefered branch name [${BGRAY}${local_build_branch}${NC}]: ")" wiz_build_branch
-  wiz_build_branch=${wiz_build_branch:-"${local_build_branch}"}
+  if [[ ${apply_only} == "NO" ]]; then
+    local local_project_mode=${PROJECT_MODE-"M"}
+    read -r -p "$(echo -e "Which dbFLow project type do you want to create? ${BUNLINE}S${NC}ingle, ${BUNLINE}M${NC}ulti or ${BUNLINE}F${NC}lex [${BGRAY}${local_project_mode:0:1}${NC}]: ")" wiz_project_mode
+    wiz_project_mode=${wiz_project_mode:-"${local_project_mode:0:1}"}
 
-  if [[ -z ${CHANGELOG_SCHEMA} ]]; then
-    local_gen_chlog_yn="N"
-  else
-    local_gen_chlog_yn="Y"
-  fi
-  read -r -p "$(echo -e "Would you like to process changelogs during deployment [${BGRAY}${local_gen_chlog_yn}${NC}]: ")" wiz_create_changelogs
-  wiz_create_changelogs=${wiz_create_changelogs:-"${local_gen_chlog_yn}"}
+    local local_build_branch=${BUILD_BRANCH-"build"}
+    read -r -p "$(echo -e "When running release tests, what is your prefered branch name [${BGRAY}${local_build_branch}${NC}]: ")" wiz_build_branch
+    wiz_build_branch=${wiz_build_branch:-"${local_build_branch}"}
 
-  if [[ $(toLowerCase "${wiz_create_changelogs:-${local_gen_chlog_yn}}") == "y" ]]; then
-    if [[ $(toLowerCase "${wiz_project_mode}") == "s" ]]; then
-      # when SingleSchema then there is only one possibility
-      wiz_chl_schema=${wiz_project_name}
-    elif [[ $(toLowerCase "${wiz_project_mode}") == "f" ]]; then
-      local_default_chlog_schema=${CHANGELOG_SCHEMA:-"${wiz_project_name}_app"}
-      read -r -p "$(echo -e "What is the schema name the changelog is processed with [${BGRAY}${local_default_chlog_schema}${NC}]: ")" wiz_chl_schema
-      wiz_chl_schema=${wiz_chl_schema:-"${local_default_chlog_schema}"}
-    elif [[ $(toLowerCase "${wiz_project_mode}") == "m" ]]; then
-      local_default_chlog_schema=${CHANGELOG_SCHEMA:-"${wiz_project_name}_app"}
-      read -r -p "$(echo -e "What is the schema the changelog is processed with (${BUNLINE}${wiz_project_name}_data${NC}, ${BUNLINE}${wiz_project_name}_logic${NC}, ${BUNLINE}${wiz_project_name}_app${NC}) [${BGRAY}${local_default_chlog_schema}${NC}]: ")" wiz_chl_schema
-      wiz_chl_schema=${wiz_chl_schema:-"${local_default_chlog_schema}"}
+    if [[ -z ${CHANGELOG_SCHEMA} ]]; then
+      local_gen_chlog_yn="N"
+    else
+      local_gen_chlog_yn="Y"
+    fi
+    read -r -p "$(echo -e "Would you like to process changelogs during deployment [${BGRAY}${local_gen_chlog_yn}${NC}]: ")" wiz_create_changelogs
+    wiz_create_changelogs=${wiz_create_changelogs:-"${local_gen_chlog_yn}"}
+
+    if [[ $(toLowerCase "${wiz_create_changelogs:-${local_gen_chlog_yn}}") == "y" ]]; then
+      if [[ $(toLowerCase "${wiz_project_mode}") == "s" ]]; then
+        # when SingleSchema then there is only one possibility
+        wiz_chl_schema=${wiz_project_name}
+      elif [[ $(toLowerCase "${wiz_project_mode}") == "f" ]]; then
+        local_default_chlog_schema=${CHANGELOG_SCHEMA:-"${wiz_project_name}_app"}
+        read -r -p "$(echo -e "What is the schema name the changelog is processed with [${BGRAY}${local_default_chlog_schema}${NC}]: ")" wiz_chl_schema
+        wiz_chl_schema=${wiz_chl_schema:-"${local_default_chlog_schema}"}
+      elif [[ $(toLowerCase "${wiz_project_mode}") == "m" ]]; then
+        local_default_chlog_schema=${CHANGELOG_SCHEMA:-"${wiz_project_name}_app"}
+        read -r -p "$(echo -e "What is the schema the changelog is processed with (${BUNLINE}${wiz_project_name}_data${NC}, ${BUNLINE}${wiz_project_name}_logic${NC}, ${BUNLINE}${wiz_project_name}_app${NC}) [${BGRAY}${local_default_chlog_schema}${NC}]: ")" wiz_chl_schema
+        wiz_chl_schema=${wiz_chl_schema:-"${local_default_chlog_schema}"}
+      fi
     fi
   fi
 
@@ -412,26 +423,82 @@ function wizard() {
   read -r -p "$(echo -e "Enter stage of this configuration mapped to branch (${BUNLINE}develop${NC}, ${BUNLINE}test${NC}, ${BUNLINE}master${NC}) [${BGRAY}${local_stage}${NC}]: ")" wiz_stage
   wiz_stage=${wiz_stage:-"${local_stage}"}
 
-  if [[ ${env_only} == "NO" ]]; then
-    read -r -p "$(echo -e "Do you wish to generate and install default tooling? (Logger, utPLSQL, teplsql, tapi) [${BGRAY}Y${NC}]: ")" wiz_with_tools
-    wiz_with_tools=${wiz_with_tools:-"Y"}
-  else
-    wiz_with_tools="N"
-  fi
-
   local local_sqlcli=${SQLCLI-"sqlplus"}
   read -r -p "$(echo -e "Install with ${BUNLINE}sql(cl)${NC} or ${BUNLINE}sqlplus${NC}? [${BGRAY}${local_sqlcli}${NC}]: ")" wiz_sqlcli
   wiz_sqlcli=${wiz_sqlcli:-"${local_sqlcli}"}
 
-  if [[ ${env_only} == "NO" ]]; then
-  # ask for application IDs
-    wiz_apex_ids=""
-    read -r -p "Enter application IDs (comma separated) you wish to use initialy (100,101,...): " wiz_apex_ids
+  if [[ ${apply_only} == "NO" ]]; then
 
-    # ask for restful Modulsa
-    wiz_rest_modules=""
-    read -r -p "Enter restful Moduls (comma separated) you wish to use initialy (api,test,...): " wiz_rest_modules
+    if [[ ${env_only} == "NO" ]]; then
+      read -r -p "$(echo -e "Do you wish to generate and install default tooling? (Logger, utPLSQL, teplsql, tapi) [${BGRAY}Y${NC}]: ")" wiz_with_tools
+      wiz_with_tools=${wiz_with_tools:-"Y"}
+
+      # ask for application IDs
+      wiz_apex_ids=""
+      read -r -p "Enter application IDs (comma separated) you wish to use initialy (100,101,...): " wiz_apex_ids
+
+      # ask for restful Modulsa
+      wiz_rest_modules=""
+      read -r -p "Enter restful Moduls (comma separated) you wish to use initialy (api,test,...): " wiz_rest_modules
+    else
+      wiz_with_tools="N"
+    fi
+
   fi
+}
+
+function write_apply() {
+  if [[ -z ${wiz_db_tns+x} ]] || \
+     [[ -z ${wiz_db_app_user+x} ]] || \
+     [[ -z ${wiz_db_admin_user+x} ]] || \
+     [[ -z ${wiz_depot_path+x} ]] ||\
+     [[ -z ${wiz_stage+x} ]] ||\
+     [[ -z ${wiz_sqlcli+x} ]]
+    then
+    echo_error "Not all vars set"
+    exit 1
+  fi
+
+  # apply.env
+  {
+    echo "# DB Connection"
+    echo "DB_TNS=${wiz_db_tns}"
+    echo ""
+    echo "# Deployment User"
+    echo "DB_APP_USER=${wiz_db_app_user}"
+    if [[ ${wiz_db_app_pwd} != "" ]]; then
+      wiz_db_app_pwd=`echo "${wiz_db_app_pwd}" | base64`
+      echo "DB_APP_PWD=\"!${wiz_db_app_pwd}\""
+    else
+      echo "DB_APP_PWD="
+    fi
+    echo ""
+    echo "# SYS/ADMIN Pass"
+    echo "DB_ADMIN_USER=${wiz_db_admin_user}"
+    if [[ ${wiz_db_admin_pwd} != "" ]]; then
+      wiz_db_admin_pwd=`echo "${wiz_db_admin_pwd}" | base64`
+      echo "DB_ADMIN_PWD=\"!${wiz_db_admin_pwd}\""
+    else
+      echo "DB_ADMIN_PWD="
+    fi
+    echo ""
+    echo "# Path to Depot"
+    echo "DEPOT_PATH=${wiz_depot_path}"
+    echo ""
+    echo "# Stage mapped to source branch ( develop test master )"
+    echo "# this is used to get artifacts from depot_path"
+    echo "STAGE=${wiz_stage}"
+    echo ""
+    echo ""
+    echo "# ADD this to original APP-NUM"
+    echo "APP_OFFSET=0"
+    echo ""
+    echo "# Scripts are executed with"
+    echo "SQLCLI=${wiz_sqlcli}"
+    echo ""
+    echo "# TEAMS Channel to Post to on success"
+    echo "TEAMS_WEBHOOK_URL="
+  } > apply.env
 }
 
 function generate() {
@@ -566,46 +633,7 @@ function generate() {
     echo ""
   } > build.env
 
-  # apply.env
-  {
-    echo "# DB Connection"
-    echo "DB_TNS=${wiz_db_tns}"
-    echo ""
-    echo "# Deployment User"
-    echo "DB_APP_USER=${wiz_db_app_user}"
-    if [[ ${wiz_db_app_pwd} != "" ]]; then
-      wiz_db_app_pwd=`echo "${wiz_db_app_pwd}" | base64`
-      echo "DB_APP_PWD=\"!${wiz_db_app_pwd}\""
-    else
-      echo "DB_APP_PWD="
-    fi
-    echo ""
-    echo "# SYS/ADMIN Pass"
-    echo "DB_ADMIN_USER=${wiz_db_admin_user}"
-    if [[ ${wiz_db_admin_pwd} != "" ]]; then
-      wiz_db_admin_pwd=`echo "${wiz_db_admin_pwd}" | base64`
-      echo "DB_ADMIN_PWD=\"!${wiz_db_admin_pwd}\""
-    else
-      echo "DB_ADMIN_PWD="
-    fi
-    echo ""
-    echo "# Path to Depot"
-    echo "DEPOT_PATH=${wiz_depot_path}"
-    echo ""
-    echo "# Stage mapped to source branch ( develop test master )"
-    echo "# this is used to get artifacts from depot_path"
-    echo "STAGE=${wiz_stage}"
-    echo ""
-    echo ""
-    echo "# ADD this to original APP-NUM"
-    echo "APP_OFFSET=0"
-    echo ""
-    echo "# Scripts are executed with"
-    echo "SQLCLI=${wiz_sqlcli}"
-    echo ""
-    echo "# TEAMS Channel to Post to on success"
-    echo "TEAMS_WEBHOOK_URL="
-  } > apply.env
+  write_apply
 
   # write gitignore
   [[ -f .gitignore ]] || touch .gitignore
@@ -762,8 +790,9 @@ function check_params_and_run_command() {
   envonly_option="NO"
   force_option="NO"
   wizard_option="NO"
+  apply_option="NO"
 
-  while getopts_long 'hg:ic:efw help generate: install copyto: envonly force wizard' OPTKEY "${@}"; do
+  while getopts_long 'hg:ic:efwa help generate: install copyto: envonly force wizard apply' OPTKEY "${@}"; do
       case ${OPTKEY} in
           'h'|'help')
               help_option="YES"
@@ -787,6 +816,9 @@ function check_params_and_run_command() {
               ;;
           'w'|'wizard')
               wizard_option="YES"
+              ;;
+          'a'|'apply')
+              apply_option="YES"
               ;;
           '?')
               echo_error "INVALID OPTION -- ${OPTARG}" >&2
@@ -852,6 +884,29 @@ function check_params_and_run_command() {
     install ${force_option}
     exit 0
   fi
+
+  if [[ ${apply_option} == "YES" ]]; then
+    if [[ -f "./build.env" ]]; then
+      source "./build.env"
+
+      if [[ ${wizard_option} != "YES" ]]; then
+        wizard ${PROJECT} ${envonly_option} ${apply_option}
+      fi
+
+      write_apply
+
+      echo
+      echo -e "${BGREEN}apply.env successfully written${NC}"
+      echo -e "For your daily work I recommend the use of the extension: "
+      echo -e "${BLBACK}dbFlux - https://marketplace.visualstudio.com/items?itemName=MaikMichel.dbflow${NC}"
+      echo -e "For more information refer to readme: ${CYAN}.dbFlow/readme.md${NC} or the online docs: https://maikmichel.github.io/dbFlow"
+
+      exit 0
+    else
+      echo -e "${RED}A valid dbFlow project has to exist, before you are able to generate an apply.env file.${NC}" 1>&2
+      exit 6
+    fi
+  fi;
 
   ####
 
