@@ -200,7 +200,7 @@ function show_generate_summary() {
   echo -e "To configure changelog settings, just modify corresponding parameters in \`${BWHITE}build.env${NC}\`"
   echo
   if [[ ${env_only} == "NO" ]]; then
-  echo -e "${BORANGE}Keep in mind that the script to create the workspace **${BWHITE}$PROJECT${NC}** ${BORANGE}will drop the one with the same name!${NC}"
+  echo -e "${BORANGE}Keep in mind that the script to create the workspace **${BWHITE}$PROJECT${NC}${BORANGE}** will drop the one with the same name!${NC}"
   fi
 
   if [[ -f "${log_file}.colored" ]]; then
