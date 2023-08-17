@@ -21,6 +21,7 @@ function usage() {
   echo -e "  -n | --noextract        - Optional do not move and extract artifact from depot "
   echo -e "                            Can be used to extract files manually or use a allready extracted build"
   echo -e "  -r | --redolog          - Optional to redo an installation and skip installation-step allready run"
+  echo -e "  -s | --stepwise         - Runs the installation interactively step by step"
   echo ""
  	echo -e "${BWHITE}Examples:${NC}"
   echo -e "  ${0} --init --version 1.0.0"
@@ -152,8 +153,9 @@ function check_params() {
   noextract_option="NO"
   redolog_option="NO"
   redolog_argument="-"
+  stepwise_option="NO"
 
-  while getopts_long 'hipv:nr: help init patch version: noextract redolog:' OPTKEY "${@}"; do
+  while getopts_long 'hipv:nr:s help init patch version: noextract redolog: stepwise' OPTKEY "${@}"; do
       case ${OPTKEY} in
           'h'|'help')
               help_option="YES"
@@ -174,6 +176,9 @@ function check_params() {
           'r'|'redolog')
               redolog_option="YES"
               redolog_argument="${OPTARG}"
+              ;;
+          's'|'stepwise')
+              stepwise_option="YES"
               ;;
           '?')
               echo_error "INVALID OPTION -- ${OPTARG}" >&2
@@ -240,6 +245,7 @@ function print_info() {
   timelog "Version:      ${BWHITE}${version}${NC}"
   timelog "Log File:     ${BWHITE}$log_file${NC}"
   timelog "Extract:      ${BWHITE}$must_extract${NC}"
+  timelog "Stepwise:     ${BWHITE}${stepwise_option}${NC}"
   if [[ $oldlogfile != "" ]]; then
     timelog "Redolog:      ${BWHITE}$oldlogfile${NC}"
   fi
@@ -314,7 +320,7 @@ function validate_dbflow_version() {
       timelog ":${version_apply}: != :${version_built}:" "${warning}"
 
       if [[ -z ${DBFLOW_JENKINS:-} ]]; then
-        read -r -p "Do you want to proceed? " -n 1
+        read -r -p "$(echo -e "${BORANGE}Version mismatch${NC}Do you want to proceed? (y/n)" ) " -n 1
         echo    # (optional) move to a new line
         if [[ ! $REPLY =~ ^[Yy]$ ]]
         then
@@ -333,7 +339,7 @@ function validate_init_mode() {
     if [[ -z ${DBFLOW_JENKINS:-} ]] && [[ "${version}" != "install" ]]; then
       timelog "You are using init mode. All content will be dropped from schemas included in this artifact" "${warning}"
       timelog "If you are running dbFLow inside CI/CD you can place DBFLOW_JENKINS as environment var with any value" "${warning}"
-      read -r -p "Do you want to proceed? " -n 1
+      read -r -p "$(echo -e "${RED}CI/CD not set${NC} - Do you want to proceed? (y/n)" ) " -n 1
       echo    # (optional) move to a new line
       if [[ ! $REPLY =~ ^[Yy]$ ]]
       then
@@ -472,6 +478,7 @@ function execute_global_hook_scripts() {
 
 function clear_db_schemas_on_init() {
   if [[ "${mode}" == "init" ]]; then
+    [[ ${stepwise_option} == "NO" ]] || ask_step "${RED}INIT! > clear schemas${NC}"
     timelog "INIT - Mode, Schemas will be cleared"
     # loop through schemas reverse
     for (( idx=${#SCHEMAS[@]}-1 ; idx>=0 ; idx-- )) ; do
@@ -1068,6 +1075,16 @@ function manage_result() {
   fi
 }
 
+function ask_step() {
+  local step=${1}
+  read -r -p "$(echo -e "${BWHITE}Step:${NC} - ${step} - proceed (y/n) ? ") " -n 1
+  echo    # (optional) move to a new line
+  if [[ ! $REPLY =~ ^[Yy]$ ]]
+  then
+      [[ "$0" = "$BASH_SOURCE" ]] && exit 1 || return 1 # handle exits from shell or function but don't exit interactive shell
+  fi
+}
+
 #################################################################################################
 function notify() {
     [[ ${1} = 0 ]] || echo ❌ EXIT "${1}"
@@ -1099,6 +1116,7 @@ check_vars
 # print some global vars to output
 print_info
 
+[[ ${stepwise_option} == "NO" ]] || ask_step "Validate deplyoment file"
 # preparation and validation
 extract_patchfile
 validate_dbflow_version
@@ -1106,9 +1124,11 @@ read_db_pass
 validate_connections
 prepare_redo
 
+[[ ${stepwise_option} == "NO" ]] || ask_step "Remove dropped files"
 # files to be removed
 remove_dropped_files
 
+[[ ${stepwise_option} == "NO" ]] || ask_step "Set APPs or RESTmodules offline"
 # now disable all, so that during build noone can do anything
 set_apps_unavailable
 set_rest_publish_state "NOT_PUBLISHED"
@@ -1117,27 +1137,35 @@ set_rest_publish_state "NOT_PUBLISHED"
 # dropped
 clear_db_schemas_on_init
 
-
+[[ ${stepwise_option} == "NO" ]] || ask_step "exec global PRE hooks"
 # execute pre hooks in root folder
 execute_global_hook_scripts ".hooks/pre"
 execute_global_hook_scripts ".hooks/pre/${mode}"
 
 # install product
+[[ ${stepwise_option} == "NO" ]] || ask_step "Install db schema(s)"
 install_db_schemas
+
+[[ ${stepwise_option} == "NO" ]] || ask_step "Install APP(s)"
 install_apps
+
+[[ ${stepwise_option} == "NO" ]] || ask_step "Install RESTmodule(s)"
 install_rest
 
+[[ ${stepwise_option} == "NO" ]] || ask_step "exec global POST hooks"
 # execute post hooks in root folder
 execute_global_hook_scripts ".hooks/post"
 execute_global_hook_scripts ".hooks/post/${mode}"
 
+[[ ${stepwise_option} == "NO" ]] || ask_step "Process changelogs"
 # take care of changelog
 process_changelog
 
+[[ ${stepwise_option} == "NO" ]] || ask_step "Set Apps or RESTmodules online"
 # now enable all,
 set_apps_available
 set_rest_publish_state "PUBLISHED"
 
-
+[[ ${stepwise_option} == "NO" ]] || ask_step "Cleaning Artefacts"
 # final works
 manage_result "success"
