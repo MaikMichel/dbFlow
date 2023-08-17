@@ -119,20 +119,28 @@ function print2envsql() {
 function show_generate_summary() {
   local env_only=$2
   # target environment
-[ ! -f ./build.env ] || source ./build.env
-[ ! -f ./apply.env ] || source ./apply.env
+  [ ! -f ./build.env ] || source ./build.env
+  [ ! -f ./apply.env ] || source ./apply.env
+
+
+  log_file="readme.md"
+  if [[ ! -f ${log_file} ]]; then
+    touch "${log_file}.colored"
+    exec &> >(tee -a "${log_file}.colored")
+  fi
 
   echo -e
+  echo -e "# Project - ${BWHITE}$PROJECT${NC}"
   echo -e
-  echo -e "${BUNLINE}Congratulations!${NC}"
-  echo -e "Your project ${BWHITE}$PROJECT${NC} has been ${GREEN}successfully${NC} created. "
+  echo -e "Your project **${BWHITE}$PROJECT${NC}** has been ${GREEN}successfully${NC} created. "
   if [[ ${env_only} == "NO" ]]; then
-    echo -e "Scripts have been added inside directory: ${CYAN}db/_setup${NC} that allow you "
+    echo -e "Scripts have been added inside directory: \`${CYAN}db/_setup${NC}\` that allow you "
     echo -e "to create the respective schemas, workspaces as well as ACLs and features, as long "
     echo -e "as you specified them during the configuration. "
   fi
   echo
   echo -e "${BWHITE}${PROJECT} - directory structure${NC}"
+  echo "\`\`\`"
   if [[ ${env_only} == "NO" ]]; then
   printf "|-- %-22b %b\n" "${DEPOT_PATH}" ">> Path to store your build artifacts"
   fi
@@ -173,9 +181,10 @@ function show_generate_summary() {
   fi
   printf "%-26b %b\n" "apply.env" ">> Environment configuration added to .gitignore"
   printf "%-26b %b\n" "build.env" ">> Project configuration"
+  echo "\`\`\`"
   echo
   if [[ ${env_only} == "NO" ]]; then
-  echo -e "To execute the installation just run: ${CYAN}.dbFlow/setup.sh --install${NC}"
+  echo -e "To execute the installation just run: ${CYAN}\`.dbFlow/setup.sh --install\`${NC}"
   else
   echo -e "This was an environment only generation. This is meant for environments you are"
   echo -e "not allowed to install your initial setup on your own. For example create users"
@@ -183,14 +192,22 @@ function show_generate_summary() {
   echo -e "To apply any patch you built run e.g. ${CYAN}.dbFlow/apply.sh --patch --version 1.2.3${NC}"
   fi
   echo
-  echo -e "For your daily work I recommend the use of the extension: "
-  echo -e "${BLBACK}dbFlux - https://marketplace.visualstudio.com/items?itemName=MaikMichel.dbflow${NC}"
-  echo -e "For more information refer to readme: ${CYAN}.dbFlow/readme.md${NC}"
+  echo -e ">For your daily work I recommend the use of the extension: "
+  echo -e "><br/>${BLBACK}**dbFlux** - https://marketplace.visualstudio.com/items?itemName=MaikMichel.dbflow${NC}"
+  echo -e ">"
+  echo -e ">For more information refer to readme: \`${CYAN}.dbFlow/readme.md${NC}\`"
   echo
-  echo -e "To configure changelog settings, just modify corresponding parameters in ${BWHITE}build.env${NC}"
+  echo -e "To configure changelog settings, just modify corresponding parameters in \`${BWHITE}build.env${NC}\`"
   echo
   if [[ ${env_only} == "NO" ]]; then
-  echo -e "${BORANGE}Keep in mind that the script to create the workspace ${BWHITE}$PROJECT${NC} ${BORANGE}will drop the one with the same name!${NC}"
+  echo -e "${BORANGE}Keep in mind that the script to create the workspace **${BWHITE}$PROJECT${NC}** ${BORANGE}will drop the one with the same name!${NC}"
+  fi
+
+  if [[ -f "${log_file}.colored" ]]; then
+    cat "${log_file}.colored" | sed -r "s/\x1B\[([0-9]{1,3}((;[0-9]{1,3})*)?)?[m|K]//g" > "${log_file}"
+    rm "${log_file}.colored"
+
+    cat ".dbFlow/read_part.md" >> "${log_file}"
   fi
 }
 
@@ -535,7 +552,7 @@ function generate() {
     echo_error "Not all vars set"
     exit 1
   fi
-  echo -e "${BGRAY}... workinging ... ${NC}"
+  echo -e "${BGRAY}... working ... ${NC}"
 
   # create directories :: wiz_project_mode
   if [[ ${env_only} == "NO" ]]; then
@@ -864,7 +881,7 @@ function check_params_and_run_command() {
       if [[ "${pname_argument}" =~ ^[a-zA-Z][a-zA-Z0-9_]*$ ]]; then
         # Default: use wizard
         if [[ ${wizard_option} != "YES" ]]; then
-          wizard ${pname_argument} ${envonly_option}
+          wizard ${pname_argument} ${envonly_option} "NO"
         fi
         generate
         exit 0
