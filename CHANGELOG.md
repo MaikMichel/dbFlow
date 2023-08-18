@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.3.0 - 2023-08-18]
+- New: Create readme.md when generating project
+- New: apply.sh can now run a stepwise installation using flag --stepwise
+- New: setup.sh --apply will only generate apply.env file
+- Fix: Synonyms will be dropped in init mode as well
+
 ## [2.2.0 - 2023-07-01]
 - New: Install APEX Apps to ID of folder, not to original
 
