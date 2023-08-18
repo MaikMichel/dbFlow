@@ -12,39 +12,39 @@ echo " ==   Installing utPLSQL"
 echo " ============================================================================="
 echo
 yes=${1:-"NO"}
-DB_PASSWORD=${2:-$DB_PASSWORD}
+DB_ADMIN_PWD=${2:-$DB_ADMIN_PWD}
 
 utplsql_schema="ut3"
 utplsql_pass=$(base64 < /dev/urandom | tr -d 'O0Il1+/' | head -c 20; printf '\n')
 utplsql_tspace="users"
 
-tag_name=$(curl --silent "https://github.com/utPLSQL/utPLSQL/releases/latest" | sed 's#.*tag/\(.*\)\".*#\1#')
+tag_name=$(basename $(curl -fs -o/dev/null -w %{redirect_url} https://github.com/utPLSQL/utPLSQL/releases/latest))
+echo "Downloading ... https://github.com/utPLSQL/utPLSQL/releases/download/${tag_name}/utPLSQL.zip"
 curl -OL "https://github.com/utPLSQL/utPLSQL/releases/download/${tag_name}/utPLSQL.zip"
+
 
 unzip utPLSQL.zip -d utplsql
 rm utPLSQL.zip
 
 cd utplsql/utPLSQL/source
 
-if [ -z "$DB_ADMINUSER" ]
-then
-  read -p "Enter username of admin user (admin, sys, ...) [sys]: " DB_ADMINUSER
-  DB_ADMINUSER=${DB_ADMINUSER:-"sys"}
+if [[ -z "$DB_ADMIN_USER" ]]; then
+  read -r -p "Enter username of admin user (admin, sys, ...) [sys]: " DB_ADMIN_USER
+  DB_ADMIN_USER=${DB_ADMIN_USER:-"sys"}
 fi
 
-if [[ $(toLowerCase $DB_ADMINUSER) != "sys" ]]; then
+if [[ $(toLowerCase $DB_ADMIN_USER) != "sys" ]]; then
   DBA_OPTION=""
   utplsql_tspace="data" # no users tablespace when using autonomous db
 fi
 
-if [ -z "$DB_PASSWORD" ]
-then
-  ask4pwd "Enter password für user ${DB_ADMINUSER}: "
-  DB_PASSWORD=${pass}
+if [[ -z "$DB_ADMIN_PWD" ]]; then
+  ask4pwd "Enter password für user ${DB_ADMIN_USER}: "
+  DB_ADMIN_PWD=${pass}
 fi
 
 is_utplsql_installed () {
-    ${SQLCLI} -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
+    ${SQLCLI} -s ${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION} <<!
     set heading off
     set feedback off
     set pages 0
@@ -59,17 +59,17 @@ is_utplsql_installed () {
 UTPLSQL_INSTALLED=$(is_utplsql_installed)
 if [[ "${UTPLSQL_INSTALLED}" == *"true"* ]]
 then
-  if [ $yes == "YES" ]; then
+  if [[ $yes == "YES" ]]; then
     reinstall="Y"
   else
-    read -p "$(echo -e ${BWHITE}"UTPLSQL is allready installed. Would you like to reinstall? (Y/N) [Y]: "${NC})" reinstall
+    read -r -p "$(echo -e ${BWHITE}"UTPLSQL is allready installed. Would you like to reinstall? (Y/N) [Y]: "${NC})" reinstall
     reinstall=${reinstall:-"Y"}
   fi
 
-  if [ $(toLowerCase $reinstall) == "y" ]; then
-    ${SQLCLI} -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} @uninstall.sql ${utplsql_schema}
+  if [[ $(toLowerCase $reinstall) == "y" ]]; then
+    ${SQLCLI} -s ${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION} @uninstall.sql ${utplsql_schema}
 
-    ${SQLCLI} -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} <<!
+    ${SQLCLI} -s ${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION} <<!
   Prompt ${utplsql_schema} droppen
   drop user ${utplsql_schema} cascade;
 !
@@ -80,7 +80,7 @@ then
   fi
 fi
 
-${SQLCLI} -s ${DB_ADMINUSER}/${DB_PASSWORD}@${DB_TNS}${DBA_OPTION} @install_headless.sql ${utplsql_schema} ${utplsql_pass} ${utplsql_tspace}
+${SQLCLI} -s ${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION} @install_headless.sql ${utplsql_schema} ${utplsql_pass} ${utplsql_tspace}
 
 cd ../../..
 rm -rf utplsql

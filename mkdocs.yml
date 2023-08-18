@@ -1,0 +1,58 @@
+site_name: dbFLow - Documentation
+nav:
+    - Start: start.md
+    - Concept: concept.md
+    - Setup: setup.md
+    - How to deploy: deployment.md
+    - Features: features.md
+    - FAQ: faq.md
+    - Migrating from previous: migrating.md
+    - A Tutorial: tutorial.md
+theme:
+  name: material
+  palette:
+    scheme: slate
+    primary: indigo
+    accent: light blue
+
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    # - navigation.expand
+    - navigation.indexes
+    # - navigation.sections
+    - toc.follow
+    - toc.integrate
+    - navigation.top
+  icon:
+    admonition:
+      note: octicons/tag-16
+      abstract: octicons/checklist-16
+      info: octicons/info-16
+      tip: octicons/squirrel-16
+      success: octicons/check-16
+      question: octicons/question-16
+      warning: octicons/alert-16
+      failure: octicons/x-circle-16
+      danger: octicons/zap-16
+      bug: octicons/bug-16
+      example: octicons/beaker-16
+      quote: octicons/quote-16
+
+  logo: images/dbflux.png
+  favicon: images/dbflux.png
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.caret
+  - pymdownx.mark
+  - pymdownx.tilde
+  - def_list
+  - attr_list
+  - md_in_html
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - toc:
+      toc_depth: 3
