@@ -212,6 +212,12 @@ $ # apply patch by installing only the uncalled db scripts
 $ .dbFlow/apply.sh --patch --version 1.1.0 --redolog ../depot/test/failure/20230613121314_dpl_patch_1.1.0.log
 ```
 
+
+### Interactive Execution
+
+By using the option `-s/--stepwise` you are able to run the execution stepwise. Before each section of execution you will be asked to proceed.
+
+
 !!! note "Note"
 
     Keep in mind that you have to implement the fixes by your own. dbFlow won't reverse anything. When you want to clean you accidental applied files, you have to ship a cleanup script and put it in your stage folders: `ddl/patch/pre_${branch}` or `dml/patch/pre_${branch}`
