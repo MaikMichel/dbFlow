@@ -320,7 +320,7 @@ function validate_dbflow_version() {
       timelog ":${version_apply}: != :${version_built}:" "${warning}"
 
       if [[ -z ${DBFLOW_JENKINS:-} ]]; then
-        read -r -p "$(echo -e "${BORANGE}Version mismatch${NC}Do you want to proceed? (y/n)" ) " -n 1
+        read -r -p "$(echo -e "${BORANGE}Version mismatch${NC} - Do you want to proceed? (y/n)" ) " -n 1
         echo    # (optional) move to a new line
         if [[ ! $REPLY =~ ^[Yy]$ ]]
         then
@@ -979,14 +979,41 @@ function post_message_to_teams() {
 }
 
 function process_logs() {
+  local target_move=$1
+  local view_output=$2
+
+  # Send stdout back to stdin
+  exec 1>&0
+
   # remove colorcodes from file
   echo "Processing logs"
   cat "${full_log_file}" | sed -r "s/\x1B\[([0-9]{1,3}((;[0-9]{1,3})*)?)?[m|K]//g" > "${full_log_file}.colorless"
   rm "${full_log_file}"
   mv "${full_log_file}.colorless" "${full_log_file}"
 
+  local lfile=$(basename "${full_log_file}")
+  # copy logs or define var
+  if [[ -n ${LOG_PATH} ]] && [[ ${LOG_PATH-"undefined"} != "undefined" ]]; then
+    [[ -d "${LOG_PATH}" ]] || mkdir "${LOG_PATH}"
+    [[ -d "${LOG_PATH}/${target_move}" ]] || mkdir "${LOG_PATH}/${target_move}"
+    cp ./*"${mode}"*"${version}"*.log "${LOG_PATH}/${target_move}"
+
+    view_output="${LOG_PATH}/${target_move}/$(basename "${full_log_file}")"
+  else
+    if [[ -f "apply.env" && -z "$(grep 'LOG_PATH=' "apply.env")" ]]; then
+      {
+      echo ""
+      echo "# auto added @${MDATE}"
+      echo "# Path to copy logs to after installation"
+      echo "LOG_PATH="
+      } >> apply.env
+    fi
+  fi
+
   # move all logs
   mv ./*"${mode}"*"${version}"* "${target_finalize_path}"
+
+  echo_debug "view output: \"${view_output}\""
 }
 
 function manage_result() {
@@ -1014,10 +1041,12 @@ function manage_result() {
     depth=2
   fi
 
-  for restfile in $(find rest -maxdepth ${depth} -mindepth ${depth} -type f)
-  do
-    mv "${restfile}" "${target_finalize_path}"
-  done
+  if [[ -d rest ]]; then
+    for restfile in $(find rest -maxdepth ${depth} -mindepth ${depth} -type f)
+    do
+      mv "${restfile}" "${target_finalize_path}"
+    done
+  fi
 
   # loop through schemas
   for schema in "${DBFOLDERS[@]}"
@@ -1047,9 +1076,7 @@ function manage_result() {
   if [[ $target_move == "success" ]]; then
     post_message_to_teams "Release ${version}" "4CCC3B" "Release ${version} has been successfully applied to stage: <b>${STAGE}</b>."
 
-    echo "view output: \"${basepath}/$DEPOT_PATH/$STAGE/$target_move/$version/${finallog}\""
-
-    process_logs;
+    process_logs ${target_move} "$DEPOT_PATH/$STAGE/$target_move/$version/${finallog}";
     exit 0
   else
     redolog=$(basename "${full_log_file}")
@@ -1068,9 +1095,7 @@ function manage_result() {
       echo_debug "as redolog parameter. This will not repeat the steps that have already been successfully executed."
     fi
 
-    echo_debug "view output: \"$DEPOT_PATH/$STAGE/$target_move/$version/${finallog}\""
-
-    process_logs
+    process_logs ${target_move} "$DEPOT_PATH/$STAGE/$target_move/$version/${finallog}";
     exit 1
   fi
 }
