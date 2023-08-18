@@ -445,7 +445,7 @@ function wizard() {
   wiz_sqlcli=${wiz_sqlcli:-"${local_sqlcli}"}
 
   local local_logpath=${LOG_PATH-""}
-  read -r -p "$(echo -e "Enter path to place logfiles into after installation.? [${BGRAY}${local_logpath}${NC}]: ")" wiz_logpath
+  read -r -p "$(echo -e "Enter path to place logfiles into after installation? [${BGRAY}${local_logpath}${NC}]: ")" wiz_logpath
   wiz_logpath=${wiz_logpath:-"${local_logpath}"}
 
   if [[ ${apply_only} == "NO" ]]; then
