@@ -891,7 +891,7 @@ If the project is configured in <em><code>FlexMode</code></em>, you can freely c
 <li>Changes to tables are always made 2 times. Once for a new installation (<strong><mark>init</mark></strong>) and once for an update (<strong><mark>patch</mark></strong>).</li>
 <li>Table scripts may only contain the pure tables and comments. Constraints and indexes must be stored in the appropriate directories.</li>
 <li>Files from the table directory are executed if it is a new installation (<strong><mark>init</mark></strong>) or if the table is to be newly created in this update (<strong><mark>patch</mark></strong>).</li>
-<li>Within the directories the files to be imported are sorted alphabetically, except for the package directory.</li>
+<li>Within the directories the files to be imported are sorted alphabetically, inside pacages or types all files are sorted alphabetically too but grouped in chunke specs, bodies, sql-files directory.</li>
 </ul>
 </div>
 <h4 id="init">init</h4>

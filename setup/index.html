@@ -439,6 +439,20 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#clone-an-existing-dbflow-project-multiple-steps" class="md-nav__link">
+    Clone an existing dbFlow project (multiple steps)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clone-an-existing-dbflow-project-one-steps" class="md-nav__link">
+    Clone an existing dbFlow project (one steps)
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -462,6 +476,13 @@
           <li class="md-nav__item">
   <a href="#copy-project" class="md-nav__link">
     Copy Project
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#generating-applyenv-only" class="md-nav__link">
+    Generating apply.env only
   </a>
   
 </li>
@@ -622,6 +643,20 @@ curl<span class="w"> </span>-sS<span class="w"> </span>https://raw.githubusercon
 <span class="c1"># Add targetfolder as parameter</span>
 curl<span class="w"> </span>-sS<span class="w"> </span>https://raw.githubusercontent.com/MaikMichel/dbFlow/master/install.sh<span class="w"> </span><span class="p">|</span><span class="w"> </span>bash<span class="w"> </span>-s<span class="w"> </span>&lt;targetfolder&gt;
 </code></pre></div>
+<h3 id="clone-an-existing-dbflow-project-multiple-steps">Clone an existing dbFlow project (multiple steps)</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># create project folder and change into</span>
+mkdir<span class="w"> </span>your_project<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>your_project
+
+<span class="c1"># clone the repo itself</span>
+git<span class="w"> </span>clone<span class="w"> </span>https://path-to-your-db-flow-project-where-dbFlow-is-allready-installed.git<span class="w"> </span>.
+
+<span class="c1"># pull submodule(s) =&gt; .dbFlow</span>
+git<span class="w"> </span>submodule<span class="w"> </span>update<span class="w"> </span>--init<span class="w"> </span>--recursive
+</code></pre></div>
+<h3 id="clone-an-existing-dbflow-project-one-steps">Clone an existing dbFlow project (one steps)</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># clone the repo recursive and change into it</span>
+git<span class="w"> </span>clone<span class="w"> </span>--recursive<span class="w"> </span>https://path-to-your-db-flow-project-where-dbFlow-is-allready-installed.git<span class="w"> </span>your_project<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>your_project
+</code></pre></div>
 <blockquote>
 <p>Sometimes it can happen that the bash files cannot be executed. If this is the case, explicit permissions must be granted here. (<code>chmod +x .dbFlow/*.sh</code>)</p>
 </blockquote>
@@ -692,6 +727,10 @@ curl<span class="w"> </span>-sS<span class="w"> </span>https://raw.githubusercon
 <td>Here you define which CLI <strong>dbFLow</strong> should use to execute the SQL scripts.</td>
 </tr>
 <tr>
+<td>Enter path to place logfiles into after installation?</td>
+<td>You can define a path where the log files will be stored as well. This is useful when you have instance repos and want to have a history of your deployments near by the instance itself.</td>
+</tr>
+<tr>
 <td>Enter application IDs (comma separated) you wish to use initialy (100,101,...)</td>
 <td>Here you can already enter the application IDs that <strong>dbFlow</strong> should initially take care of</td>
 </tr>
@@ -716,6 +755,14 @@ curl<span class="w"> </span>-sS<span class="w"> </span>https://raw.githubusercon
 <div class="highlight"><pre><span></span><code>$<span class="w"> </span>.dbFlow/setup.sh<span class="w"> </span>--copyto<span class="w"> </span>&lt;target-path&gt;
 </code></pre></div>
 <p>This is useful when you want to make your target instance project ready. So after customizing the data connection in the <code>apply.env</code> in the target directory you can install all dependencies like schemas, features and workspaces in the target instance.</p>
+<h3 id="generating-applyenv-only">Generating apply.env only</h3>
+<p>Mostly you will clone an existing dbFlow project and configure your environment to start working. In that case you just have to generate the apply.env file.</p>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>.dbFlow/setup.sh<span class="w"> </span>--apply
+</code></pre></div>
+<p>This will walk you through the wizard steps and outputs the file apply.env. So the fastest way to get into a dbFlow project would be the folloing snippet</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># clone the repo recursive and change into it</span>
+$<span class="w"> </span>git<span class="w"> </span>clone<span class="w"> </span>--recursive<span class="w"> </span>https://path-to-your-db-flow-project-where-dbFlow-is-allready-installed.git<span class="w"> </span>your_project<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>your_project<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>.dbFLow/setup.sh<span class="w"> </span>--apply
+</code></pre></div>
 <h3 id="install-project">Install Project</h3>
 <blockquote>
 <p>When you fullfilled the steps in the previous section, you are ready to install the project with dependencies into your database</p>

@@ -467,6 +467,13 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#interactive-execution" class="md-nav__link">
+    Interactive Execution
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -886,6 +893,8 @@ $
 $<span class="w"> </span><span class="c1"># apply patch by installing only the uncalled db scripts</span>
 $<span class="w"> </span>.dbFlow/apply.sh<span class="w"> </span>--patch<span class="w"> </span>--version<span class="w"> </span><span class="m">1</span>.1.0<span class="w"> </span>--redolog<span class="w"> </span>../depot/test/failure/20230613121314_dpl_patch_1.1.0.log
 </code></pre></div>
+<h3 id="interactive-execution">Interactive Execution</h3>
+<p>By using the option <code>-s/--stepwise</code> you are able to run the execution stepwise. Before each section of execution you will be asked to proceed.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>Keep in mind that you have to implement the fixes by your own. dbFlow won't reverse anything. When you want to clean you accidental applied files, you have to ship a cleanup script and put it in your stage folders: <code>ddl/patch/pre_${branch}</code> or <code>dml/patch/pre_${branch}</code></p>
