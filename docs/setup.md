@@ -78,7 +78,7 @@ git submodule update --init --recursive
 
 ```
 
-### Clone an existing dbFlow project (one steps)
+### Clone an existing dbFlow project (one step)
 ```bash
 
 # clone the repo recursive and change into it
