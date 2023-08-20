@@ -32,7 +32,7 @@ begin
                 object_type,
                 object_name
           from user_objects
-          where object_type in ( 'TABLE', 'VIEW','MATERIALIZED VIEW', 'PACKAGE', 'TYPE', 'PROCEDURE', 'FUNCTION', 'TRIGGER', 'SEQUENCE' )
+          where object_type in ( 'TABLE', 'VIEW','MATERIALIZED VIEW', 'PACKAGE', 'TYPE', 'PROCEDURE', 'FUNCTION', 'TRIGGER', 'SEQUENCE', 'SYNONYM' )
           and object_name not like 'SYS_PLSQL_%'
           and object_name not like 'ISEQ$$_%'
           minus -- we have to remove the drop table command for materialized views as they appear twice above

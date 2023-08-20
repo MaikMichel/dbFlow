@@ -677,13 +677,13 @@ function write_install_schemas(){
               fi
 
               # read files from folder
-              entries=("${targetpath}/db/${schema}/${path}"/*.*)
-
-              # if packages then sort descending
-              if [[ "${path}" == "sources/packages" ]] || [[ "${path}" == "tests/packages" ]]; then
-                IFS=$'\n' sorted=($(sort -r <<<"${entries[*]}")); unset IFS
+              # if packages then sort by extension descending
+              if [[ "${path}" == "sources/packages" ]] || [[ "${path}" == "sources/types" ]] || [[ "${path}" == "tests/packages" ]]; then
+                sorted=("${targetpath}/db/${schema}/${path}"/*.*ks) #pks|tks
+                sorted+=("${targetpath}/db/${schema}/${path}"/*.*kb) #pkb|tkb
+                sorted+=("${targetpath}/db/${schema}/${path}"/*.sql)
               else
-                sorted=("${entries[@]}")
+                sorted=("${targetpath}/db/${schema}/${path}"/*.*)
               fi
 
 

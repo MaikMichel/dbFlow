@@ -162,7 +162,7 @@ alter table employees add (
     - Changes to tables are always made 2 times. Once for a new installation (**==init==**) and once for an update (**==patch==**).
     - Table scripts may only contain the pure tables and comments. Constraints and indexes must be stored in the appropriate directories.
     - Files from the table directory are executed if it is a new installation (**==init==**) or if the table is to be newly created in this update (**==patch==**).
-    - Within the directories the files to be imported are sorted alphabetically, except for the package directory.
+    - Within the directories the files to be imported are sorted alphabetically, inside pacages or types all files are sorted alphabetically too but grouped in chunke specs, bodies, sql-files directory.
 
 
 #### init

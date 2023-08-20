@@ -311,7 +311,11 @@ create_merged_report_file() {
   local base64_file=${source_file}.base64.txt
 
   # gen base64 from input
-  base64 -w 1000 "${source_file}" > "${base64_file}"
+  if [[ $(uname) == "Darwin" ]]; then
+    base64 -i "${source_file}" | tr -d '\n' > "${base64_file}"
+  else
+    base64 -w 1000 "${source_file}" > "${base64_file}"
+  fi
 
   ## write the output sql
   echo "set serveroutput on" > "${output_file}"

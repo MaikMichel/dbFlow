@@ -64,6 +64,27 @@ curl -sS https://raw.githubusercontent.com/MaikMichel/dbFlow/master/install.sh |
 
 ```
 
+### Clone an existing dbFlow project (multiple steps)
+```bash
+
+# create project folder and change into
+mkdir your_project && cd your_project
+
+# clone the repo itself
+git clone https://path-to-your-db-flow-project-where-dbFlow-is-allready-installed.git .
+
+# pull submodule(s) => .dbFlow
+git submodule update --init --recursive
+
+```
+
+### Clone an existing dbFlow project (one step)
+```bash
+
+# clone the repo recursive and change into it
+git clone --recursive https://path-to-your-db-flow-project-where-dbFlow-is-allready-installed.git your_project && cd your_project
+
+```
 
 > Sometimes it can happen that the bash files cannot be executed. If this is the case, explicit permissions must be granted here. (`chmod +x .dbFlow/*.sh`)
 
@@ -99,6 +120,7 @@ You will be asked the following questions when creating the project:
 | Enter stage of this configuration mapped to branch (develop, test, master) [develop] | When importing the deployment, this setting assigns the database connection to the source branch |
 | Do you wish to generate and install default tooling? (Logger, utPLSQL, teplsql, tapi) [Y] | Here you activate the initial installation of the different components/dependencies. These are placed in the `db/_setup/features` folder. There you can also place other features by yourself. If you don't need certain components, you can delete the corresponding file from the features folder (before running the actual installation)..
 | Install with sql(cl) or sqlplus? [sqlplus] | Here you define which CLI **dbFLow** should use to execute the SQL scripts. |
+| Enter path to place logfiles into after installation? | You can define a path where the log files will be stored as well. This is useful when you have instance repos and want to have a history of your deployments near by the instance itself. |
 | Enter application IDs (comma separated) you wish to use initialy (100,101,...) | Here you can already enter the application IDs that **dbFlow** should initially take care of |
 | Enter restful Moduls (comma separated) you wish to use initialy (api,test,...) | Here you can already specify the REST modules that **dbFlow** should initially take care of |
 
@@ -136,6 +158,21 @@ $ .dbFlow/setup.sh --copyto <target-path>
 ```
 
 This is useful when you want to make your target instance project ready. So after customizing the data connection in the `apply.env` in the target directory you can install all dependencies like schemas, features and workspaces in the target instance.
+
+### Generating apply.env only
+
+Mostly you will clone an existing dbFlow project and configure your environment to start working. In that case you just have to generate the apply.env file.
+
+```bash
+$ .dbFlow/setup.sh --apply
+```
+
+This will walk you through the wizard steps and outputs the file apply.env. So the fastest way to get into a dbFlow project would be the folloing snippet
+
+```bash
+# clone the repo recursive and change into it
+$ git clone --recursive https://path-to-your-db-flow-project-where-dbFlow-is-allready-installed.git your_project && cd your_project && .dbFLow/setup.sh --apply
+```
 
 ### Install Project
 
