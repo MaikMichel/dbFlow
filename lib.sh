@@ -312,7 +312,7 @@ create_merged_report_file() {
 
   # gen base64 from input
   if [[ $(uname) == "Darwin" ]]; then
-    base64 -i "${source_file}" | tr -d '\n' > "${base64_file}"
+    openssl base64 -in "${source_file}" -out "${base64_file}"
   else
     base64 -w 1000 "${source_file}" > "${base64_file}"
   fi
