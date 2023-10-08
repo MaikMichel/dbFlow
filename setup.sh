@@ -444,7 +444,7 @@ function wizard() {
   read -r -p "$(echo -e "Install with ${BUNLINE}sql(cl)${NC} or ${BUNLINE}sqlplus${NC}? [${BGRAY}${local_sqlcli}${NC}]: ")" wiz_sqlcli
   wiz_sqlcli=${wiz_sqlcli:-"${local_sqlcli}"}
 
-  local local_logpath=${LOG_PATH-""}
+  local local_logpath=${LOG_PATH-"_logs"}
   read -r -p "$(echo -e "Enter path to place logfiles into after installation? [${BGRAY}${local_logpath}${NC}]: ")" wiz_logpath
   wiz_logpath=${wiz_logpath:-"${local_logpath}"}
 
@@ -474,8 +474,8 @@ function write_apply() {
      [[ -z ${wiz_db_admin_user+x} ]] || \
      [[ -z ${wiz_depot_path+x} ]] ||\
      [[ -z ${wiz_stage+x} ]] ||\
-     [[ -z ${wiz_sqlcli+x} ]] ||\
-     [[ -z ${wiz_logpath+x} ]]
+     [[ -z ${wiz_sqlcli+x} ]] #||\
+    #  [[ -z ${wiz_logpath+x} ]]
     then
     echo_error "Not all vars set"
     exit 1
