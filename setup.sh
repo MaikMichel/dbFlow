@@ -194,7 +194,7 @@ function show_generate_summary() {
   fi
   echo
   echo -e ">For your daily work I recommend the use of the extension: "
-  echo -e "><br/>${BLBACK}**dbFlux** - https://marketplace.visualstudio.com/items?itemName=MaikMichel.dbflow${NC}"
+  echo -e ">${BLBACK}**dbFlux** - https://marketplace.visualstudio.com/items?itemName=MaikMichel.dbflow${NC}"
   echo -e ">"
   echo -e ">For more information refer to readme: \`${CYAN}.dbFlow/readme.md${NC}\`"
   echo
