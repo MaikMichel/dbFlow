@@ -143,6 +143,7 @@ function show_generate_summary() {
   echo "\`\`\`"
   if [[ ${env_only} == "NO" ]]; then
   printf "|-- %-22b %b\n" "${DEPOT_PATH}" ">> Path to store your build artifacts"
+  printf "|-- %-22b %b\n" "${LOG_PATH}"   ">> Path to store installation logs to"
   fi
   printf "|-- ${CYAN}%-22b${NC} %b\n" ".dbFlow" ">> ${CYAN}dbFlow itself${NC}"
   if [[ ${env_only} == "NO" ]]; then
@@ -193,7 +194,7 @@ function show_generate_summary() {
   fi
   echo
   echo -e ">For your daily work I recommend the use of the extension: "
-  echo -e "><br/>${BLBACK}**dbFlux** - https://marketplace.visualstudio.com/items?itemName=MaikMichel.dbflow${NC}"
+  echo -e ">${BLBACK}**dbFlux** - https://marketplace.visualstudio.com/items?itemName=MaikMichel.dbflow${NC}"
   echo -e ">"
   echo -e ">For more information refer to readme: \`${CYAN}.dbFlow/readme.md${NC}\`"
   echo
@@ -341,6 +342,8 @@ function copytopath() {
   echo "copy ${targetpath} to ${target_path}"
   cp -r ./${targetpath} "${target_path}"/db
 
+  chmod +x "${target_path}"/db/_setup/features/*.sh
+
   echo "copy env files to ${target_path}"
   cp ./build.env "${target_path}"
   cp ./apply.env "${target_path}"
@@ -444,7 +447,7 @@ function wizard() {
   read -r -p "$(echo -e "Install with ${BUNLINE}sql(cl)${NC} or ${BUNLINE}sqlplus${NC}? [${BGRAY}${local_sqlcli}${NC}]: ")" wiz_sqlcli
   wiz_sqlcli=${wiz_sqlcli:-"${local_sqlcli}"}
 
-  local local_logpath=${LOG_PATH-""}
+  local local_logpath=${LOG_PATH-"_logs"}
   read -r -p "$(echo -e "Enter path to place logfiles into after installation? [${BGRAY}${local_logpath}${NC}]: ")" wiz_logpath
   wiz_logpath=${wiz_logpath:-"${local_logpath}"}
 
@@ -474,8 +477,7 @@ function write_apply() {
      [[ -z ${wiz_db_admin_user+x} ]] || \
      [[ -z ${wiz_depot_path+x} ]] ||\
      [[ -z ${wiz_stage+x} ]] ||\
-     [[ -z ${wiz_sqlcli+x} ]] ||\
-     [[ -z ${wiz_logpath+x} ]]
+     [[ -z ${wiz_sqlcli+x} ]]
     then
     echo_error "Not all vars set"
     exit 1
@@ -538,6 +540,7 @@ function generate() {
   echo -e "  Admin User:                       ${BWHITE}${wiz_db_admin_user}${NC}"
   echo -e "  Deployment User:                  ${BWHITE}${wiz_db_app_user}${NC}"
   echo -e "  Location depot:                   ${BWHITE}${wiz_depot_path}${NC}"
+  echo -e "  Location logs:                    ${BWHITE}${wiz_logpath}${NC}"
   echo -e "  Branch is mapped to Stage:        ${BWHITE}${wiz_stage}${NC}"
   echo -e "  SQl commandline:                  ${BWHITE}${wiz_sqlcli}${NC}"
   echo -e "  Install default tools:            ${BWHITE}${wiz_with_tools}${NC}"
@@ -678,10 +681,16 @@ function generate() {
   write_line_if_not_exists "# vscode configuration" .gitignore
   write_line_if_not_exists ".vscode" .gitignore
 
-  if [[ ${wiz_depot_path} != ".."* ]]; then
+  if [[ ${wiz_depot_path} != ".."* ]] || [[ ${wiz_depot_path} != "/"* ]]; then
     echo "" >> .gitignore
-    write_line_if_not_exists "# depot inside wording dir" .gitignore
+    write_line_if_not_exists "# depot inside working dir" .gitignore
     write_line_if_not_exists "${wiz_depot_path}" .gitignore
+  fi
+
+  if [[ ${wiz_log_path} != ".."* ]] || [[ ${wiz_log_path} != "/"* ]]; then
+    echo "" >> .gitignore
+    write_line_if_not_exists "# logpath inside working dir" .gitignore
+    write_line_if_not_exists "${wiz_log_path}" .gitignore
   fi
 
   if [[ ${env_only} == "NO" ]]; then

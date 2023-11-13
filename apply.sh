@@ -141,6 +141,7 @@ function check_vars() {
   touch "${log_file}"
   full_log_file="$( cd "$( dirname "${log_file}" )" >/dev/null 2>&1 && pwd )/${log_file}"
 
+  exec 3>&1 4>&2
   exec &> >(tee -a "$log_file")
 }
 
@@ -243,7 +244,7 @@ function print_info() {
   timelog "----------------------------------------------------------"
   timelog "Mode:         ${BWHITE}$mode${NC}"
   timelog "Version:      ${BWHITE}${version}${NC}"
-  timelog "Log File:     ${BWHITE}$log_file${NC}"
+  timelog "Log File:     ${BWHITE}${log_file}${NC}"
   timelog "Extract:      ${BWHITE}$must_extract${NC}"
   timelog "Stepwise:     ${BWHITE}${stepwise_option}${NC}"
   if [[ $oldlogfile != "" ]]; then
@@ -983,7 +984,8 @@ function process_logs() {
   local view_output=$2
 
   # Send stdout back to stdin
-  exec 1>&0
+  exec >&3 2>&4
+  #exec 1>&0
 
   # remove colorcodes from file
   echo "Processing logs"
