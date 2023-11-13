@@ -342,6 +342,8 @@ function copytopath() {
   echo "copy ${targetpath} to ${target_path}"
   cp -r ./${targetpath} "${target_path}"/db
 
+  chmod +x "${target_path}"/db/_setup/features/*.sh
+
   echo "copy env files to ${target_path}"
   cp ./build.env "${target_path}"
   cp ./apply.env "${target_path}"
