@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.4.0 - 2023-11-17]
+- New: Add flag -a/--apply to build.sh
+- New: Old flag -a/--shipall is renamed to -t/--transferall
+- Fix: Missing privileges on sh files after copyto target
+- Fix: Logpath is added to .gitignore
+- Some fixes
+
 ## [2.3.0 - 2023-08-18]
 - New: Create readme.md when generating project
 - New: apply.sh can now run a stepwise installation using flag --stepwise
