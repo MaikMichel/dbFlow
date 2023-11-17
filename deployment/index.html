@@ -689,7 +689,7 @@ The release itself is created from the current branch. If you want to create a r
 </table>
 </div>
 <blockquote>
-<p>If you name the version with "install" then the release will be applied directly.</p>
+<p>If you use the flag -a/--apply then the release will be directly applied to the current environment.</p>
 </blockquote>
 <h4 id="additional-arguments-in-init-mode">Additional arguments in init mode:</h4>
 <ul>
@@ -838,13 +838,17 @@ $<span class="w"> </span>.dbFlow/build.sh<span class="w"> </span>--patch<span cl
 </ul>
 <p>With the flag <code>-k / --keepfolder</code> the working directory, which is created in the depot to create the actual artifact, is not deleted. Especially in the beginning, when you don't have so much experience with dbFlow, this option is helpful. So after creating the artifact you can navigate to the corresponding directory and have a look at the created scripts and copied files.</p>
 <ul>
-<li><strong><em>shipAll</em></strong></li>
+<li><strong><em>transferAll</em></strong></li>
 </ul>
-<p>In order to always ship all files, you can specify the <code>-a / --shippall</code> flag. In this case not only the changed files but all files will be included in the patch. During the deployment only the changed files will be applied within the DB directory.</p>
+<p>In order to always transsper/copy all files, you can specify the <code>-t / --transferall</code> flag. In this case not only the changed files but all files will be included in the patch. During the deployment only the changed files will be applied within the DB directory.</p>
 <ul>
 <li><strong><em>listFiles</em></strong></li>
 </ul>
 <p>The -l / --listfiles flag can be used to check which files would be included in the artifact. With this option no actual build takes place.</p>
+<ul>
+<li><strong><em>apply</em></strong></li>
+</ul>
+<p>The -a / --apply flag can be used to apply the created artifact immediatly in to the current environment after building the patch.</p>
 <h2 id="apply">apply</h2>
 <p>The apply.sh command applies a release to the respective configured database. The artifact is fetched from the depot and unpacked into the appropriate directory. Afterwards the installation scripts are executed. The environment variable STAGE, from the file apply.env, is used to determine the source directory of a release. The build script stores the artifacts in a directory in a depot that contains the current branch name. The naming of the variable STAGE is now used to get the artifact matching the stage / database connection.</p>
 <p><img alt="" src="../images/depot_and_flow.png" /></p>
