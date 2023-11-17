@@ -55,7 +55,7 @@ The release itself is created from the current branch. If you want to create a r
 
 
 
-> If you name the version with "install" then the release will be applied directly.
+> If you use the flag -a/--apply then the release will be directly applied to the current environment.
 
 
 #### Additional arguments in init mode:
@@ -133,13 +133,17 @@ If you want to put something only in a certain stage, for example because someth
 
 With the flag ``-k / --keepfolder`` the working directory, which is created in the depot to create the actual artifact, is not deleted. Especially in the beginning, when you don't have so much experience with dbFlow, this option is helpful. So after creating the artifact you can navigate to the corresponding directory and have a look at the created scripts and copied files.
 
-- ***shipAll***
+- ***transferAll***
 
-In order to always ship all files, you can specify the ``-a / --shippall`` flag. In this case not only the changed files but all files will be included in the patch. During the deployment only the changed files will be applied within the DB directory.
+In order to always transsper/copy all files, you can specify the ``-t / --transferall`` flag. In this case not only the changed files but all files will be included in the patch. During the deployment only the changed files will be applied within the DB directory.
 
 - ***listFiles***
 
 The -l / --listfiles flag can be used to check which files would be included in the artifact. With this option no actual build takes place.
+
+- ***apply***
+
+The -a / --apply flag can be used to apply the created artifact immediatly in to the current environment after building the patch.
 
 
 ## apply
