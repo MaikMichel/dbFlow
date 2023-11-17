@@ -22,9 +22,11 @@ function usage() {
   echo -e "  -e | --end <hash|tag>   - Optional hash or tag to determine the diff to the start, defaults to HEAD"
   echo -e "  -c | --cached           - Optional flag to determine the diff of Stage to HEAD, won't work with -s, -e"
   echo ""
-  echo -e "  -a | --shipall          - Optional ship all folders [mode=patch]"
+  echo -e "  -t | --transferall      - Optional transfer (copy) all folders [mode=patch]"
   echo -e "  -k | --keepfolder       - Optional keep buildfolder inside depot"
   echo -e "  -l | --listfiles        - Optional flag to list files which will be a part of the patch"
+  echo -e "  -a | --apply            - Optional flag to call apply directly after patch is build."
+  echo -e "                            This will install the artifact in current environment."
   echo ""
   echo -e "${BWHITE}Examples:${NC}"
   echo -e "  ${0} --init --version 1.0.0"
@@ -119,8 +121,9 @@ function check_params() {
   all_option="NO"
   list_option="NO"
   cached_option="NO"
+  apply_option="NO"
 
-  while getopts_long 'hipv:s:e:ckal help init patch version: start: end: cached keepfolder shipall listfiles' OPTKEY "${@}"; do
+  while getopts_long 'hipv:s:e:cktla help init patch version: start: end: cached keepfolder transferall listfiles apply' OPTKEY "${@}"; do
       case ${OPTKEY} in
           'h'|'help')
               help_option="YES"
@@ -149,11 +152,14 @@ function check_params() {
           'k'|'keepfolder')
               keep_option="YES"
               ;;
-          'a'|'shipall')
+          't'|'transferall')
               all_option="YES"
               ;;
           'l'|'listfiles')
               list_option="YES"
+              ;;
+          'a'|'apply')
+              apply_option="YES"
               ;;
           '?')
               echo_error "INVALID OPTION -- ${OPTARG}" >&2
@@ -257,6 +263,13 @@ function check_params() {
     SHIP_ALL="FALSE"
   fi
 
+  # now check ship all files
+  if [[ ${apply_option} == "YES" ]]; then
+    APPLY_DIRECTLY="TRUE"
+  else
+    APPLY_DIRECTLY="FALSE"
+  fi
+
   if [[ ${list_option} == "YES" ]] && [[ $mode == "patch" ]]; then
     echo -e "${PURPLE}Listing changed files (build.env .gitignore apex db reports rest .hooks)${NC}"
     git --no-pager diff -r --compact-summary --dirstat --stat-width=120 --no-commit-id ${diff_args} --diff-filter=ACMRTUXB -- build.env .gitignore apex db reports rest .hooks
@@ -335,7 +348,7 @@ function setup_env() {
     display_until=`git rev-parse --short "${until_commit}"`
   timelog "from:         ${BWHITE}${from_commit} (${display_from})${NC}"
   timelog "until:        ${BWHITE}${until_commit} (${display_until})${NC}"
-  timelog "shipall:      ${BWHITE}${SHIP_ALL}${NC}"
+  timelog "transfer all: ${BWHITE}${SHIP_ALL}${NC}"
     fi
   fi
   timelog "----------------------------------------------------------"
@@ -1203,8 +1216,8 @@ function check_make_new_version() {
 }
 
 
-function call_apply_on_install() {
-  if [[ $version == "install" ]]; then
+function call_apply_when_flag_is_set() {
+  if [[ ${APPLY_DIRECTLY} == "TRUE" ]]; then
     echo "calling apply"
 
     .dbFlow/apply.sh --"${mode}" --version "${version}"
@@ -1253,5 +1266,5 @@ check_push_to_depot
 # # ask if this version should be there as tag too
 check_make_new_version
 
-# if you name vour version install, then just do it
-call_apply_on_install
+# if you used flag -a/--apply, then just do it
+call_apply_when_flag_is_set
