@@ -699,7 +699,7 @@ function write_install_schemas(){
                 sorted=("${targetpath}/db/${schema}/${path}"/*.*)
               fi
 
-
+              echo "set define off"
               for entry in "${sorted[@]}"; do
                 file=$(basename "${entry}")
                 file_ext=${file#*.}
@@ -758,6 +758,8 @@ function write_install_schemas(){
                   fi
                 fi
               done #files in folder (sorted)
+
+              echo "set define '^'"
 
               # union table names
               if [[ "${path}" == "tables" ]]; then
