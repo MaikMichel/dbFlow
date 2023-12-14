@@ -342,7 +342,7 @@ function copytopath() {
   echo "copy ${targetpath} to ${target_path}"
   cp -r ./${targetpath} "${target_path}"/db
 
-  chmod +x "${target_path}"/db/_setup/features/*.sh
+  chmod +x "${target_path}"/db/_setup/features/*.sh 2>/dev/null || echo "no files to grant access to"
 
   echo "copy env files to ${target_path}"
   cp ./build.env "${target_path}"
@@ -705,7 +705,7 @@ function generate() {
 
     if [[ $(toLowerCase "${wiz_with_tools}") == "y" ]]; then
       cp -rf .dbFlow/scripts/setup/features/* "${targetpath}/features"
-      chmod +x "${targetpath}"/features/*.sh
+      chmod +x "${targetpath}"/features/*.sh 2>/dev/null || echo "no files to grant access to"
     else
       mkdir -p "${targetpath}"/features
     fi
