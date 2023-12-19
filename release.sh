@@ -62,6 +62,7 @@ usage() {
   echo -e "  -d | --debug            - Show additionaly output messages"
   echo -e "  -s | --source <branch>  - Optional Source branch (default current)to merge target branch into and determine the files to include in patch"
   echo -e "  -t | --target <branch>  - Required Target branch to reflect the predecessor of the source branch"
+  echo -e "  -g | --gate             - Optional Gate branch to free source branch. If this is set, then the source branch will be merged into that"
   echo -e "  -v | --version <label>  - Required label of version this artifact represents (optional when buildflag is submitted)"
   echo ""
   echo -e "  -b | --build            - Optional buildflag to create 3 artifact for using as nighlybuilds"
@@ -72,6 +73,7 @@ usage() {
   echo -e "  $0 --target release --version 1.2.3"
   echo -e "  $0 --source release --target test --version 1.2.3"
   echo -e "  $0 --source develop --target master -b"
+  echo -e "  $0 --source develop --gate release --target test --version 2.0.3 --apply ../instances/test"
   exit 1
 }
 
@@ -87,6 +89,7 @@ build_release() {
   apply_tasks=()
 
   log "${BWHITE}Sourcebranch:   ${NC}${RLS_SOURCE_BRANCH}"
+  log "${BWHITE}Gatebranch:     ${NC}${RLS_GATE_BRANCH}"
   log "${BWHITE}Targetbranch:   ${NC}${RLS_TARGET_BRANCH}"
   log "${BWHITE}Version:        ${NC}${RLS_VERSION}"
   log "${BWHITE}Buildtest:      ${NC}${RLS_BUILD}"
@@ -105,6 +108,30 @@ build_release() {
     pulled="no"
   }
   log "Head is $(git rev-parse --short HEAD)"
+
+  # merge through gate
+  if [[ ${RLS_GATE_BRANCH} != ${RLS_SOURCE_BRANCH} ]]; then
+    log "change to Branch: ${RLS_GATE_BRANCH}"
+
+    if git show-ref --quiet refs/heads/"${RLS_GATE_BRANCH}"; then
+      # exists
+      git checkout "${RLS_GATE_BRANCH}"
+
+      { #try
+        pulled=$(git pull)
+      } || { # catch
+        pulled="no"
+      }
+
+      log "merging changes from $RLS_SOURCE_BRANCH"
+      git merge "${RLS_SOURCE_BRANCH}"
+      git push
+    else
+      git checkout -b "${RLS_GATE_BRANCH}"
+      git push --set-upstream origin release
+    fi
+
+  fi
 
   # switch to target branch
   log "change to Branch: ${RLS_TARGET_BRANCH}"
@@ -134,10 +161,10 @@ build_release() {
   fi
 
   # following makes only sense when source not the same as target
-  if [[ $RLS_SOURCE_BRANCH != "${RLS_TARGET_BRANCH}" ]]; then
+  if [[ $RLS_GATE_BRANCH != "${RLS_TARGET_BRANCH}" ]]; then
     # merging target with source
-    log "merging changes from $RLS_SOURCE_BRANCH"
-    git merge "${RLS_SOURCE_BRANCH}"
+    log "merging changes from $RLS_GATE_BRANCH"
+    git merge "${RLS_GATE_BRANCH}"
 
     # build diff patch
     log "build patch upgrade ${version_next} (current version)"
@@ -152,17 +179,9 @@ build_release() {
       .dbFlow/build.sh -i -v "${version_next}" "${keep}"
       apply_tasks+=( ".dbFlow/apply.sh --init --version ${version_next}" )
     else
-      # not on build branch
-      # for master and main branch the build script asks to push
-      # for all others we will push here
-      if [ ${build_patch_worked} -eq 0 ]; then
-        prod_branches=( "master" "main" )
-        if [[ ! " ${prod_branches[@]} " =~ " ${RLS_TARGET_BRANCH} " ]]; then
-          if branchrev=$(git rev-parse -q --verify origin/"${RLS_TARGET_BRANCH}"); then
-            git push
-          fi
-        fi
-      fi
+      git push
+      git tag "${version_next}"
+      git push origin "${version_next}"
     fi
   fi
 
@@ -172,7 +191,7 @@ build_release() {
 
   log "${GREEN}go to your instance directory where you host $RLS_TARGET_BRANCH and apply the following commands/patches${NC}"
 
-  if [[ ${RLS_BUILD} == 'Y' ]] && [[ ${RLS_TOFOLDER} != '-' ]]; then
+  if [[ ${RLS_TOFOLDER} != '-' ]]; then
     cd "${RLS_TOFOLDER}" || exit
     if [[ -d ".dbFlow" ]]; then
       cd ".dbFlow" || exit
@@ -188,12 +207,19 @@ build_release() {
   for task in "${apply_tasks[@]}"
   do
     echo -e "${GREEN}${task}${NC}"
-    if [[ ${RLS_BUILD} == 'Y' ]] && [[ ${RLS_TOFOLDER} != '-' ]]; then
+    if [[ ${RLS_TOFOLDER} != '-' ]]; then
       ${task}
+
+      # if is git and we are not on build then commit
+      if [[ ${RLS_BUILD} != 'Y' ]] && [[ -d ".git" ]]; then
+        git add --all
+        git commit -m "${version_next}"
+        git push
+      fi
     fi
   done
 
-  if [[ ${RLS_BUILD} == 'Y' ]] && [[ ${RLS_TOFOLDER} != '-' ]]; then
+  if [[ ${RLS_TOFOLDER} != '-' ]]; then
     cd "${CUR_DIRECTORY}" || exit
   fi
 
@@ -209,10 +235,10 @@ trap 'rc=$?; notify $rc; exit $rc' EXIT
 
 
 function check_params() {
-  debug="n" help="n" version="-" source_branch="-" target_branch="-" build="n" apply_folder="-"
-  d=$debug h=$help v=$version s=$source_branch t=$target_branch b=$build a=$apply_folder
+  debug="n" help="n" version="-" source_branch="-" target_branch="-" build="n" apply_folder="-" gate_branch="-"
+  d=$debug h=$help v=$version s=$source_branch t=$target_branch b=$build a=$apply_folder g=$gate_branch
 
-  while getopts_long 'dhv:s:t:ba:k debug help version: source: target: build apply: keep' OPTKEY "${@}"; do
+  while getopts_long 'dhv:s:t:g:ba:k debug help version: source: target: gate: build apply: keep' OPTKEY "${@}"; do
       case ${OPTKEY} in
           'd'|'debug')
               d=y
@@ -228,6 +254,9 @@ function check_params() {
               ;;
           't'|'target')
               target_branch="${OPTARG}"
+              ;;
+          'g'|'gate')
+              gate_branch="${OPTARG}"
               ;;
           'b'|'build')
               build=y
@@ -282,11 +311,17 @@ function check_params() {
   RLS_VERSION=$version
   RLS_BUILD=${build^^}
 
-  if [[ ${RLS_BUILD} == 'Y' ]] && [[ ${apply_folder} != '-' ]] && [[ ! -d ${apply_folder} ]]; then
+  if [[ ${apply_folder} != '-' ]] && [[ ! -d ${apply_folder} ]]; then
     echo_error "Folder to apply to does not exist!"
     usage
   else
     RLS_TOFOLDER=${apply_folder}
+  fi
+
+  if [[ -z $gate_branch ]] || [[ $gate_branch == "-" ]]; then
+    RLS_GATE_BRANCH=${RLS_SOURCE_BRANCH}
+  else
+    RLS_GATE_BRANCH=${gate_branch}
   fi
 }
 
