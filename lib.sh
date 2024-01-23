@@ -130,7 +130,7 @@ function define_folders() {
     post=( "ddl" ddl/patch/post dml dml/base dml/patch/post .hooks/post )
 
     SCAN_PATHES=( ${pres[@]} )
-    SCAN_PATHES+=( sequences tables tables/tables_ddl indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies sources/types sources/packages sources/functions sources/procedures views mviews sources/triggers jobs tests/packages )
+    SCAN_PATHES+=( sequences tables "tables/tables_ddl/${l_branch}" tables/tables_ddl indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies sources/types sources/packages sources/functions sources/procedures views mviews sources/triggers jobs tests/packages )
     SCAN_PATHES+=( ${post[@]} )
   fi
 }

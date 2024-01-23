@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.5.0 - 2024-01-23]
+- New: During patch, scan explicitly for a subfolder
+       inside `tables/tables_ddl` with the name of the target-branch
+       This is when fixing a create table script in a release
+       which was not released on production yet
+
 ## [2.4.0 - 2023-11-17]
 - New: Add flag -a/--apply to build.sh
 - New: Old flag -a/--shipall is renamed to -t/--transferall

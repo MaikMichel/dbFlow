@@ -713,8 +713,18 @@ function write_install_schemas(){
                   table_array+=( ${table_name} )
 
                   if [[ "${mode}" == "patch" ]]; then
+                    # is there any matching file in tables_ddl
                     if [[ -d "${targetpath}/db/${schema}/tables/tables_ddl" ]]; then
                       for f in "${targetpath}/db/${schema}/tables/tables_ddl"/${file%%.*}.*; do
+                        if [[ -e "$f" ]]; then
+                          skipfile="TRUE"
+                        fi
+                      done
+                    fi
+
+                    # is there any matching file in tables_ddl defined just for the target branch?
+                    if [[ -d "${targetpath}/db/${schema}/tables/tables_ddl/${branch}" ]]; then
+                      for f in "${targetpath}/db/${schema}/tables/tables_ddl/${branch}"/${file%%.*}.*; do
                         if [[ -e "$f" ]]; then
                           skipfile="TRUE"
                         fi
