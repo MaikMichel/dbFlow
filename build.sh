@@ -1028,9 +1028,9 @@ function gen_changelog() {
         fix_issue=$(echo "${fix_line}" | grep -e "${TICKET_MATCH}" -o || true)
 
         if [[ $fix_issue != "" ]]; then
-          printf "* ${fix_line} [View]($(force_trailing_slash ${TICKET_URL})${fix_issue})\n" >> ${logf}
+          echo "* ${fix_line} [View]($(force_trailing_slash ${TICKET_URL})${fix_issue})\n" >> ${logf}
         else
-          printf "* ${fix_line}\n" >> ${logf}
+          echo "* ${fix_line}\n" >> ${logf}
         fi
       done
       printf "\n\n" >> ${logf}
