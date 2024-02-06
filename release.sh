@@ -64,6 +64,7 @@ usage() {
   echo -e "  -t | --target <branch>  - Required Target branch to reflect the predecessor of the source branch"
   echo -e "  -g | --gate             - Optional Gate branch to free source branch. If this is set, then the source branch will be merged into that"
   echo -e "  -v | --version <label>  - Required label of version this artifact represents (optional when buildflag is submitted)"
+  echo -e "                          - Set <label> to major, minor or patch and the next semantic version is calculated automatically"
   echo ""
   echo -e "  -b | --build            - Optional buildflag to create 3 artifact for using as nighlybuilds"
   echo -e "  -a | --apply <folder>   - Optional path to apply the build(s) when buildflag is set"
@@ -82,16 +83,55 @@ log() {
   echo -e "${YELLOW}OnBranch: ${NC}${PURPLE}$branch${NC} ${YELLOW}>>> ${NC}${BLUE}${1}${NC}"
 }
 
+get_next_version() {
+  local inc_by_type="$1"
+  local regexp='[^0-9]*\([0-9]*\)[.]\([0-9]*\)[.]\([0-9]*\)\([0-9A-Za-z-]*\)'
+
+  if [ -z "$inc_by_type" ]; then
+    inc_by_type="patch"
+  fi
+
+  local last_version=$(git describe --tags $(git rev-list --tags --max-count=1))
+
+  local MAJOR=$(echo $last_version | sed -e "s#$regexp#\1#")
+  local MINOR=$(echo $last_version | sed -e "s#$regexp#\2#")
+  local PATCH=$(echo $last_version | sed -e "s#$regexp#\3#")
+
+  case "$inc_by_type" in
+    "major")
+      ((MAJOR += 1))
+      ((MINOR = 0))
+      ((PATCH = 0))
+      ;;
+    "minor")
+      ((MINOR += 1))
+      ((PATCH = 0))
+      ;;
+    "patch")
+      ((PATCH += 1))
+      ;;
+  esac
+
+  local NEXT_VERSION="$MAJOR.$MINOR.$PATCH"
+  echo "$NEXT_VERSION"
+}
+
 build_release() {
   starting_branch=$(git branch --show-current)
   version_previous="0.0.0"
   version_next="${RLS_VERSION}"
   apply_tasks=()
 
+  if [[ ${RLS_INC_TYPE} != "-" ]]; then
+    RLS_INC_TYPE=" - (${RLS_INC_TYPE})"
+  else
+    RLS_INC_TYPE=""
+  fi
+
   log "${BWHITE}Sourcebranch:   ${NC}${RLS_SOURCE_BRANCH}"
   log "${BWHITE}Gatebranch:     ${NC}${RLS_GATE_BRANCH}"
   log "${BWHITE}Targetbranch:   ${NC}${RLS_TARGET_BRANCH}"
-  log "${BWHITE}Version:        ${NC}${RLS_VERSION}"
+  log "${BWHITE}Version:        ${NC}${RLS_VERSION}${RLS_INC_TYPE}"
   log "${BWHITE}Buildtest:      ${NC}${RLS_BUILD}"
 
   if [[ ${RLS_BUILD} == 'Y' ]]; then
@@ -308,6 +348,25 @@ function check_params() {
     echo_error "Missing version, use --verion 1.2.3 or --build $build"
     usage
   fi
+
+  RLS_INC_TYPE="-"
+  local lowercase_version=$(toLowerCase "${version}")
+  if [[ "$lowercase_version" == "patch" ]] || [[ "$lowercase_version" == "minor" ]] || [[ "$lowercase_version" == "major" ]]; then
+    version=$(get_next_version "$lowercase_version")
+
+    if [[ $version =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+      RLS_INC_TYPE=${lowercase_version}
+    else
+      echo_error "Could not determine next version, based on git semantic tag informations. Is there any version tag? There has to be at least one!"
+      exit 1
+    fi
+  fi
+
+  if [[ $(git tag -l "$version") ]]; then
+    echo_error "The version tag: $version is allready used. Please use another one!"
+    exit 1
+  fi
+
   RLS_VERSION=$version
   RLS_BUILD=${build^^}
 
