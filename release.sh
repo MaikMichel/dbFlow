@@ -363,6 +363,8 @@ function check_params() {
   fi
 
   if [[ $(git tag -l "$version") ]]; then
+    # if this tag points to the same tag as the source commit, then everything should be ok
+
     echo_error "The version tag: $version is allready used. Please use another one!"
     exit 1
   fi
