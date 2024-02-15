@@ -881,7 +881,7 @@ See: <a href="../concept/#big-picture">../concept/#big-picture</a></p>
 <p>By specifying the <code>-p/--patch</code> flag, a patch release is imported from the depot and then applied. If no password is stored in the apply.env (this is recommended), it will be requested at the very beginning.</p>
 <div class="highlight"><pre><span></span><code>$<span class="w"> </span>.dbFlow/apply.sh<span class="w"> </span>--patch<span class="w"> </span>--version<span class="w"> </span><span class="m">1</span>.1.0
 </code></pre></div>
-<p>After the installation of a release, the artifact, as well as all resulting log and installation files are stored in the depot under the directory (success or failure). Failure of course only if the installation was aborted due to an error.</p>
+<p>After the installation of a release, all resulting log and installation files are stored in the configured <code>LOG_PATH</code> under a version directory and <em>success</em> or <em>failure</em>. Failure of course only if the installation was aborted due to an error.</p>
 <h4 id="additional-arguments-in-patch-mode_1">Additional arguments in patch mode:</h4>
 <ul>
 <li><strong><em>noExtract</em></strong></li>
@@ -895,7 +895,7 @@ See: <a href="../concept/#big-picture">../concept/#big-picture</a></p>
 $<span class="w"> </span>cp<span class="w"> </span>../depot/test/failure/patch_1.1.0.tar.gz<span class="w"> </span>./
 $
 $<span class="w"> </span><span class="c1"># apply patch by installing only the uncalled db scripts</span>
-$<span class="w"> </span>.dbFlow/apply.sh<span class="w"> </span>--patch<span class="w"> </span>--version<span class="w"> </span><span class="m">1</span>.1.0<span class="w"> </span>--redolog<span class="w"> </span>../depot/test/failure/20230613121314_dpl_patch_1.1.0.log
+$<span class="w"> </span>.dbFlow/apply.sh<span class="w"> </span>--patch<span class="w"> </span>--version<span class="w"> </span><span class="m">1</span>.1.0<span class="w"> </span>--redolog<span class="w"> </span>./_log_path/test/failure/20230613121314_dpl_patch_1.1.0.log
 </code></pre></div>
 <h3 id="interactive-execution">Interactive Execution</h3>
 <p>By using the option <code>-s/--stepwise</code> you are able to run the execution stepwise. Before each section of execution you will be asked to proceed.</p>

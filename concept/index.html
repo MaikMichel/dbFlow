@@ -485,6 +485,13 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#logging" class="md-nav__link">
+    Logging
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#big-picture" class="md-nav__link">
     Big Picture
   </a>
@@ -1128,9 +1135,14 @@ If the project is configured in <em><code>FlexMode</code></em>, you can freely c
 <p>In the Condtion file a PLSQL expression is expected which returns a boolean value. Later this expression becomes part of an IF condition. In order to work that way the module file itself has to <strong>exclude</strong> then trailing slash on the last line!</p>
 </div>
 <h2 id="depot">Depot</h2>
-<p>When you create a deployment, whether <strong><mark>INIT</mark></strong> or <strong><mark>PATCH</mark></strong>, the deployment artifact is stored in a so-called depot. From this depot, a CI/CD tool, for example, can later fetch the artifact and install it on the target instance. Within the depot directory, the individual deployments are stored in subdirectories that correspond to the Git branch from which they were created. After a successful installation, the patch, including all logs and temporary files, is placed in the success folder. Errors during the deployment lead to an abort and are stored in the failures subfolder.</p>
+<p>When you create a deployment, whether <strong><mark>INIT</mark></strong> or <strong><mark>PATCH</mark></strong>, the deployment artifact is stored in a so-called depot. From this depot, a CI/CD tool, for example, can later fetch the artifact and install it on the target instance. Within the depot directory, the individual deployments are stored in subdirectories that correspond to the Git branch from which they were created.</p>
 <p><img alt="" src="../images/depot_and_flow.png" /></p>
 <p>I recommend to use a separate repository or directory for each stage DB. This has the advantage that the corresponding directories serve their purpose even without Git and possibly access to the development repository. Theoretically, the repository can also be "doubled" to have a target directory at home and a source directory at the customer.</p>
+<h2 id="logging">Logging</h2>
+<p>After a successful installation, all logs and temporary created artifacs, are placed in a log folder. Errors during the deployment lead to an abort and are stored in the failures subfolder. The location of the log folder itself is configured in apply.env.</p>
+<blockquote>
+<p>We recommend using the actual instance folder to ensure greater transparency.</p>
+</blockquote>
 <h2 id="big-picture">Big Picture</h2>
 <p><img alt="" src="../images/comlete_process.png" /></p>
 
