@@ -1141,12 +1141,17 @@ function manage_artifact () {
 }
 
 function make_a_new_version() {
-  # Merge pushen
-  git push
+  # is there a remote origin?
+  if git remote -v | grep -q "^origin"; then
+    git push
+  fi
 
   # Tag erstellen und pushen
-  git tag -a "V${version}" -m "neue Version V${version} angelegt"
-  git push origin "V${version}"
+  git tag -a "V${version}" -m "new release with tag V${version} created"
+
+  if [[ -n "$(git remote)" ]]; then
+    git push origin "V${version}"
+  fi
 
 }
 
@@ -1186,25 +1191,24 @@ function check_make_new_version() {
     # on branch master ask if we should tag current version and conmmit
     prod_branches=( "master" "main" )
     if [[ " ${prod_branches[@]} " =~ " ${branch} " ]]; then
-      if [[ $version != "install" ]]; then
-        echo
-        echo "Do you wish to commit, tag and push the new version to origin"
-        echo "  Y - current version will be commited, tagged and pushed"
-        echo "  N - Nothing will happen, all generated files won't be touched"
 
-        read -r modus
+      echo
+      echo "Do you wish to commit, tag and push the new version to origin"
+      echo "  Y - current version will be commited, tagged and pushed"
+      echo "  N - Nothing will happen, all generated files won't be touched"
 
-        shopt -s nocasematch
-        case "$modus" in
-          "Y" )
-            make_a_new_version
-            check_push_to_depot
-            ;;
-          *)
-            echo "Nothing has happened"
-            ;;
-        esac
-      fi
+      read -r modus
+
+      shopt -s nocasematch
+      case "$modus" in
+        "Y" )
+          make_a_new_version
+          ;;
+        *)
+          echo "Nothing has happened"
+          ;;
+      esac
+
     fi
   fi # DBFLOW_JENKINS
 }
