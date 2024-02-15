@@ -426,11 +426,19 @@ Within the folders the order is alphabetical. If dbFLow finds a module file with
 
 ## Depot
 
-When you create a deployment, whether **==INIT==** or **==PATCH==**, the deployment artifact is stored in a so-called depot. From this depot, a CI/CD tool, for example, can later fetch the artifact and install it on the target instance. Within the depot directory, the individual deployments are stored in subdirectories that correspond to the Git branch from which they were created. After a successful installation, the patch, including all logs and temporary files, is placed in the success folder. Errors during the deployment lead to an abort and are stored in the failures subfolder.
+When you create a deployment, whether **==INIT==** or **==PATCH==**, the deployment artifact is stored in a so-called depot. From this depot, a CI/CD tool, for example, can later fetch the artifact and install it on the target instance. Within the depot directory, the individual deployments are stored in subdirectories that correspond to the Git branch from which they were created.
+
 
 ![](images/depot_and_flow.png)
 
 I recommend to use a separate repository or directory for each stage DB. This has the advantage that the corresponding directories serve their purpose even without Git and possibly access to the development repository. Theoretically, the repository can also be "doubled" to have a target directory at home and a source directory at the customer.
+
+
+## Logging
+
+After a successful installation, all logs and temporary created artifacs, are placed in a log folder. Errors during the deployment lead to an abort and are stored in the failures subfolder. The location of the log folder itself is configured in apply.env.
+
+>We recommend using the actual instance folder to ensure greater transparency.
 
 ## Big Picture
 

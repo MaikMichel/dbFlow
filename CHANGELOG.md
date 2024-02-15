@@ -1,5 +1,15 @@
 # Changelog
 
+
+## [2.6.0 - 2024-02-15]
+New: Input new  version for tagging when on main or master and no pipeline is running
+New: Changes to depot are always pushed, when not in Pipeline
+New: Enablement occurs explizit only on untouched applictaions
+New: All Logs and Artifacts are written to log_path. No changes on apply to depot
+New: Support translated Apps during deployment
+New: validate tag existence and calculate next version by version label
+Fix: echo out instead of printf when writing changelog
+
 ## [2.5.0 - 2024-01-23]
 - New: During patch, scan explicitly for a subfolder
        inside `tables/tables_ddl` with the name of the target-branch

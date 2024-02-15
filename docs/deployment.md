@@ -196,7 +196,7 @@ By specifying the ``-p/--patch`` flag, a patch release is imported from the depo
 $ .dbFlow/apply.sh --patch --version 1.1.0
 ```
 
-After the installation of a release, the artifact, as well as all resulting log and installation files are stored in the depot under the directory (success or failure). Failure of course only if the installation was aborted due to an error.
+After the installation of a release, all resulting log and installation files are stored in the configured `LOG_PATH` under a version directory and *success* or *failure*. Failure of course only if the installation was aborted due to an error.
 
 #### Additional arguments in patch mode:
 
@@ -213,7 +213,7 @@ $ # get and copy the failed patch to instance folder
 $ cp ../depot/test/failure/patch_1.1.0.tar.gz ./
 $
 $ # apply patch by installing only the uncalled db scripts
-$ .dbFlow/apply.sh --patch --version 1.1.0 --redolog ../depot/test/failure/20230613121314_dpl_patch_1.1.0.log
+$ .dbFlow/apply.sh --patch --version 1.1.0 --redolog ./_log_path/test/failure/20230613121314_dpl_patch_1.1.0.log
 ```
 
 
