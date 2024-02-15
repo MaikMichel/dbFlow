@@ -721,83 +721,91 @@ function set_apps_available() {
       local app_name=$(basename "${d}")
       local app_id=${app_name/f}
 
-      local workspace=${WORKSPACE}
-      local appschema=${APP_SCHEMA}
+      # Enable only Applications which were not part of the current deployment process
+      if grep -q "${app_name}" "${app_install_file}"; then
+        timelog "no enabling APEX-App ${app_id} in workspace ${workspace}because it was part of the deployment"
+        timelog "...any existent translated apps have to be published on your own, using hooks"
+      else
 
-      if [[ ${PROJECT_MODE} == "FLEX" ]]; then
-        workspace=$(basename $(dirname ${d}))
-        appschema=$(basename $(dirname $(dirname ${d})))
-      fi
+        local workspace=${WORKSPACE}
+        local appschema=${APP_SCHEMA}
+
+        if [[ ${PROJECT_MODE} == "FLEX" ]]; then
+          workspace=$(basename $(dirname ${d}))
+          appschema=$(basename $(dirname $(dirname ${d})))
+        fi
 
 
-      timelog "enabling APEX-App ${app_id} in workspace ${workspace} for schema ${appschema}..."
-      $SQLCLI -S -L "$(get_connect_string "${appschema}")" <<!
-      set serveroutput on;
-      set define off;
-      Declare
-        v_application_id  apex_application_build_options.application_id%type := ${app_id} + ${APP_OFFSET};
-        v_workspace_id    apex_workspaces.workspace_id%type;
-        l_text            varchar2(100);
-      Begin
-        select workspace_id
-          into v_workspace_id
-          from apex_workspaces
-          where workspace = upper('${workspace}');
+        timelog "enabling APEX-App ${app_id} in workspace ${workspace} for schema ${appschema}..."
+        $SQLCLI -S -L "$(get_connect_string "${appschema}")" <<!
+        set serveroutput on;
+        set define off;
 
-        apex_application_install.set_workspace_id(v_workspace_id);
-        apex_util.set_security_group_id(p_security_group_id => apex_application_install.get_workspace_id);
+        Declare
+          v_application_id  apex_application_build_options.application_id%type := ${app_id} + ${APP_OFFSET};
+          v_workspace_id    apex_workspaces.workspace_id%type;
+          l_text            varchar2(100);
+        Begin
 
-        begin
-          select substr(unavailable_text, 1, 50)
-            into l_text
-            from apex_applications
-           where application_id = v_application_id;
+          select workspace_id
+            into v_workspace_id
+            from apex_workspaces
+            where workspace = upper('${workspace}');
 
-          -- only enable, what has been disabled by dbFlow with the marker "<span />"
-          if (apex_util.get_application_status(p_application_id => v_application_id) = 'UNAVAILABLE' and l_text like '<span />%') then
-            apex_util.set_application_status(p_application_id     => v_application_id,
-                                             p_application_status => 'AVAILABLE_W_EDIT_LINK',
-                                             p_unavailable_value  => null );
+          apex_application_install.set_workspace_id(v_workspace_id);
+          apex_util.set_security_group_id(p_security_group_id => apex_application_install.get_workspace_id);
 
-            dbms_output.put_line('.. APP: '|| v_application_id || ' has been enabled');
+          begin
+            select substr(unavailable_text, 1, 50)
+              into l_text
+              from apex_applications
+            where application_id = v_application_id;
 
-            -- check translated Applications additionally
-            for cur in ( select translated_application_id, translated_app_language
-                           from apex_application_trans_map
-                          where primary_application_id = v_application_id )
-            loop
-              begin
-                apex_util.set_application_status(p_application_id     => cur.translated_application_id,
-                                                 p_application_status => 'AVAILABLE_W_EDIT_LINK',
-                                                 p_unavailable_value  => null );
+            -- only enable, what has been disabled by dbFlow with the marker "<span />"
+            if (apex_util.get_application_status(p_application_id => v_application_id) = 'UNAVAILABLE' and l_text like '<span />%') then
 
-                apex_lang.publish_application (p_application_id => cur.translated_application_id,
-                                               p_language       => cur.translated_app_language);
+              apex_util.set_application_status(p_application_id     => v_application_id,
+                                              p_application_status => 'AVAILABLE_W_EDIT_LINK',
+                                              p_unavailable_value  => null );
 
-                dbms_output.put_line('.... Translated APP: '|| cur.translated_application_id || ' (' || cur.translated_app_language || ') has been enabled');
-              exception
-                when others then
-                  if sqlerrm like '%Application not found%' then
-                    dbms_output.put_line((chr(27) || '[31m') || 'Application: '||upper(v_application_id)||' probably not published!' || (chr(27) || '[0m'));
-                  else
-                    raise;
-                  end if;
-              end;
-            end loop;
+              dbms_output.put_line('.. APP: '|| v_application_id || ' has been enabled');
 
-          end if;
-        exception
+
+              -- check translated Applications additionally
+              for cur in ( select translated_application_id, translated_app_language
+                              from apex_application_trans_map
+                            where primary_application_id = v_application_id )
+              loop
+                begin
+                  apex_util.set_application_status(p_application_id     => cur.translated_application_id,
+                                                  p_application_status => 'AVAILABLE_W_EDIT_LINK',
+                                                  p_unavailable_value  => null );
+
+                  dbms_output.put_line('.... Translated APP: '|| cur.translated_application_id || ' (' || cur.translated_app_language || ') has been enabled');
+                exception
+                  when others then
+                    if sqlerrm like '%Application not found%' then
+                      dbms_output.put_line((chr(27) || '[31m') || 'Application: '||upper(v_application_id)||' probably not published!' || (chr(27) || '[0m'));
+                    else
+                      raise;
+                    end if;
+                end;
+              end loop;
+            end if;
+          exception
+            when no_data_found then
+              dbms_output.put_line((chr(27) || '[31m') || 'Application: '||upper(v_application_id)||' not found!' || (chr(27) || '[0m'));
+          end;
+        Exception
           when no_data_found then
-            dbms_output.put_line((chr(27) || '[31m') || 'Application: '||upper(v_application_id)||' not found!' || (chr(27) || '[0m'));
-        end;
-      Exception
-        when no_data_found then
-          dbms_output.put_line((chr(27) || '[31m') || 'Workspace: '||upper('${workspace}')||' not found!' || (chr(27) || '[0m'));
-      End;
+            dbms_output.put_line((chr(27) || '[31m') || 'Workspace: '||upper('${workspace}')||' not found!' || (chr(27) || '[0m'));
+        End;
 /
 !
-
+      fi # grep
     done
+
+
   else
     timelog "Directory apex does not exist" "${warning}"
   fi
