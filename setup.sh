@@ -687,12 +687,6 @@ function generate() {
     write_line_if_not_exists "${wiz_depot_path}" .gitignore
   fi
 
-  if [[ ${wiz_log_path} != ".."* ]] || [[ ${wiz_log_path} != "/"* ]]; then
-    echo "" >> .gitignore
-    write_line_if_not_exists "# logpath inside working dir" .gitignore
-    write_line_if_not_exists "${wiz_log_path}" .gitignore
-  fi
-
   if [[ ${env_only} == "NO" ]]; then
     # create targetpath directory
     mkdir -p "${targetpath}"/{tablespaces,directories,users,features,workspaces/"${wiz_project_name}",acls}
