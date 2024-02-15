@@ -104,6 +104,11 @@ function check_vars() {
     do_exit="YES"
   fi
 
+  if [[ -z ${LOG_PATH:-} ]]; then
+    echo_error "Logpath not defined"
+    do_exit="YES"
+  fi
+
   if [[ ${PROJECT_MODE} == "FLEX" ]]; then
     SCHEMAS=(${DBSCHEMAS[@]})
   else
@@ -278,6 +283,7 @@ function print_info() {
   timelog "----------------------------------------------------------"
   timelog "Stage:               ${BWHITE}${STAGE}${NC}"
   timelog "Depot:               ${BWHITE}${DEPOT_PATH}${NC}"
+  timelog "Logs :               ${BWHITE}${LOG_PATH}${NC}"
   timelog "Application Offset:  ${BWHITE}${APP_OFFSET}${NC}"
   timelog "Deployment User:     ${BWHITE}${DB_APP_USER}${NC}"
   timelog "DB Connection:       ${BWHITE}${DB_TNS}${NC}"
@@ -292,7 +298,7 @@ function extract_patchfile() {
       timelog "${install_source_file} exists"
 
       # copy patch to _installed
-      mv "${install_source_file}" "${install_target_path}"/
+      cp "${install_source_file}" "${install_target_path}"/
     else
       if [[ -e "${install_target_file}" ]]; then
         timelog "${install_target_file} allready copied"
@@ -1037,27 +1043,34 @@ function process_logs() {
   mv "${full_log_file}.colorless" "${full_log_file}"
 
   local lfile=$(basename "${full_log_file}")
-  # copy logs or define var
-  if [[ -n ${LOG_PATH} ]] && [[ ${LOG_PATH-"undefined"} != "undefined" ]]; then
-    [[ -d "${LOG_PATH}" ]] || mkdir "${LOG_PATH}"
-    [[ -d "${LOG_PATH}/${target_move}" ]] || mkdir "${LOG_PATH}/${target_move}"
-    cp ./*"${mode}"*"${version}"*.log "${LOG_PATH}/${target_move}"
 
-    view_output="${LOG_PATH}/${target_move}/$(basename "${full_log_file}")"
-  else
-    if [[ -f "apply.env" && -z "$(grep 'LOG_PATH=' "apply.env")" ]]; then
-      {
-      echo ""
-      echo "# auto added @${MDATE}"
-      echo "# Path to copy logs to after installation"
-      echo "LOG_PATH="
-      } >> apply.env
-    fi
+  # write definition to current apply.env
+  if [[ -f "apply.env" && -z "$(grep 'LOG_PATH=' "apply.env")" ]]; then
+    {
+    echo ""
+    echo "# auto added @${MDATE}"
+    echo "# Path to copy logs to after installation"
+    echo "LOG_PATH=_logs"
+    } >> apply.env
+    echo -e "${LWHITE}set LOG_PATH to ${NC}${BWHITE}_logs${NC} ${LWHITE} in your apply.env - please configure as you like with a relative path${NC}"
+    LOG_PATH="_logs"
   fi
 
-  # move all logs
-  mv ./*"${mode}"*"${version}"* "${target_finalize_path}"
 
+  # create path if needed
+  [[ -d "${LOG_PATH}" ]] || mkdir "${LOG_PATH}"
+
+  # create succcess or failure subfolder
+  [[ -d "${LOG_PATH}/${target_move}" ]] || mkdir "${LOG_PATH}/${target_move}"
+
+
+  # rm tarball
+  rm ${install_target_file}
+
+  # move all artifacts
+  mv ./*"${mode}"*"${version}"* "${target_relative_path}"
+
+  view_output="${target_relative_path}/$(basename "${full_log_file}")"
   echo_debug "view output: \"${view_output}\""
 }
 
@@ -1065,8 +1078,8 @@ function manage_result() {
   cd "${basepath}" || exit
 
   local target_move=$1
-  target_relative_path=${DEPOT_PATH}/${STAGE}/${target_move}/${version}
-  target_finalize_path=${install_source_path}/${target_move}/${version}
+  target_relative_path=${LOG_PATH}/${target_move}/${version}
+  target_finalize_path=${basepath}/${target_relative_path}
 
   # create path if not exists
   [ -d "${target_finalize_path}" ] || mkdir -p "${target_finalize_path}"
@@ -1120,8 +1133,7 @@ function manage_result() {
 
   if [[ $target_move == "success" ]]; then
     post_message_to_teams "Release ${version}" "4CCC3B" "Release ${version} has been successfully applied to stage: <b>${STAGE}</b>."
-
-    process_logs ${target_move} "$DEPOT_PATH/$STAGE/$target_move/$version/${finallog}";
+    process_logs ${target_move} "${target_relative_path}/${finallog}";
     exit 0
   else
     redolog=$(basename "${full_log_file}")
@@ -1140,7 +1152,7 @@ function manage_result() {
       echo_debug "as redolog parameter. This will not repeat the steps that have already been successfully executed."
     fi
 
-    process_logs ${target_move} "$DEPOT_PATH/$STAGE/$target_move/$version/${finallog}";
+    process_logs ${target_move} "${target_relative_path}/${finallog}";
     exit 1
   fi
 }

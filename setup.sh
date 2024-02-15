@@ -143,7 +143,7 @@ function show_generate_summary() {
   echo "\`\`\`"
   if [[ ${env_only} == "NO" ]]; then
   printf "|-- %-22b %b\n" "${DEPOT_PATH}" ">> Path to store your build artifacts"
-  printf "|-- %-22b %b\n" "${LOG_PATH}"   ">> Path to store installation logs to"
+  printf "|-- %-22b %b\n" "${LOG_PATH}"   ">> Path to store installation logs and artifacts to"
   fi
   printf "|-- ${CYAN}%-22b${NC} %b\n" ".dbFlow" ">> ${CYAN}dbFlow itself${NC}"
   if [[ ${env_only} == "NO" ]]; then
@@ -448,7 +448,7 @@ function wizard() {
   wiz_sqlcli=${wiz_sqlcli:-"${local_sqlcli}"}
 
   local local_logpath=${LOG_PATH-"_logs"}
-  read -r -p "$(echo -e "Enter path to place logfiles into after installation? [${BGRAY}${local_logpath}${NC}]: ")" wiz_logpath
+  read -r -p "$(echo -e "Enter path to place logfiles and artifacts into after installation? [${BGRAY}${local_logpath}${NC}]: ")" wiz_logpath
   wiz_logpath=${wiz_logpath:-"${local_logpath}"}
 
   if [[ ${apply_only} == "NO" ]]; then
@@ -523,7 +523,7 @@ function write_apply() {
     echo "# TEAMS Channel to Post to on success"
     echo "TEAMS_WEBHOOK_URL="
     echo ""
-    echo "# Path to copy logs to after installation"
+    echo "# Path to pace logs and artifacts into after installation"
     echo "LOG_PATH=${wiz_logpath}"
 
   } > apply.env
