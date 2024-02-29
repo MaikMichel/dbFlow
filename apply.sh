@@ -247,39 +247,39 @@ function check_params() {
 function print_info() {
   timelog "Installing    ${BWHITE}${mode} ${version}${NC}"
   timelog "----------------------------------------------------------"
-  timelog "Mode:               ${BWHITE}$mode${NC}"
-  timelog "Version:            ${BWHITE}${version}${NC}"
-  timelog "Log File:           ${BWHITE}${log_file}${NC}"
-  timelog "Extract:            ${BWHITE}$must_extract${NC}"
-  timelog "Stepwise:           ${BWHITE}${stepwise_option}${NC}"
+  timelog "Mode:                ${BWHITE}$mode${NC}"
+  timelog "Version:             ${BWHITE}${version}${NC}"
+  timelog "Log File:            ${BWHITE}${log_file}${NC}"
+  timelog "Extract:             ${BWHITE}$must_extract${NC}"
+  timelog "Stepwise:            ${BWHITE}${stepwise_option}${NC}"
   if [[ $oldlogfile != "" ]]; then
-    timelog "Redolog:            ${BWHITE}$oldlogfile${NC}"
+    timelog "Redolog:             ${BWHITE}$oldlogfile${NC}"
   fi
-  timelog "Bash-Version:       ${BWHITE}${BASH_VERSION}${NC}"
+  timelog "Bash-Version:        ${BWHITE}${BASH_VERSION}${NC}"
   timelog "----------------------------------------------------------"
-  timelog "Project:            ${BWHITE}${PROJECT}${NC}"
+  timelog "Project:             ${BWHITE}${PROJECT}${NC}"
   if [[ ${PROJECT_MODE} != "FLEX" ]]; then
-    timelog "App Schema          ${BWHITE}${APP_SCHEMA}${NC}"
+    timelog "App Schema           ${BWHITE}${APP_SCHEMA}${NC}"
     if [[ ${PROJECT_MODE} != "SINGLE" ]]; then
-      timelog "Data Schema:        ${BWHITE}${DATA_SCHEMA}${NC}"
-      timelog "Logic Schema:       ${BWHITE}${LOGIC_SCHEMA}${NC}"
+      timelog "Data Schema:         ${BWHITE}${DATA_SCHEMA}${NC}"
+      timelog "Logic Schema:        ${BWHITE}${LOGIC_SCHEMA}${NC}"
     fi
-    timelog "Workspace:          ${BWHITE}${WORKSPACE}${NC}"
+    timelog "Workspace:           ${BWHITE}${WORKSPACE}${NC}"
   fi
 
-  timelog "Schemas:            ${BWHITE}${SCHEMAS[*]}${NC}"
+  timelog "Schemas:             ${BWHITE}${SCHEMAS[*]}${NC}"
   if [[ -n ${CHANGELOG_SCHEMA} ]]; then
     timelog "----------------------------------------------------------"
-    timelog "Changelog Schema:   ${BWHITE}${CHANGELOG_SCHEMA}${NC}"
-    timelog "Intent Prefixes:    ${BWHITE}${INTENT_PREFIXES[@]}${NC}"
-    timelog "Intent Names:       ${BWHITE}${INTENT_NAMES[@]}${NC}"
-    timelog "Intent Else:        ${BWHITE}${INTENT_ELSE}${NC}"
-    timelog "Ticket Match:       ${BWHITE}${TICKET_MATCH}${NC}"
-    timelog "Ticket URL:         ${BWHITE}${TICKET_URL}${NC}"
+    timelog "Changelog Schema:    ${BWHITE}${CHANGELOG_SCHEMA}${NC}"
+    timelog "Intent Prefixes:     ${BWHITE}${INTENT_PREFIXES[@]}${NC}"
+    timelog "Intent Names:        ${BWHITE}${INTENT_NAMES[@]}${NC}"
+    timelog "Intent Else:         ${BWHITE}${INTENT_ELSE}${NC}"
+    timelog "Ticket Match:        ${BWHITE}${TICKET_MATCH}${NC}"
+    timelog "Ticket URL:          ${BWHITE}${TICKET_URL}${NC}"
   fi
 
   if [[ -n ${TEAMS_WEBHOOK_URL} ]]; then
-    timelog "Teams WebHook:      ${BWHITE}TRUE${NC}"
+    timelog "Teams WebHook:       ${BWHITE}TRUE${NC}"
   fi
 
   timelog "----------------------------------------------------------"
