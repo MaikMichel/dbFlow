@@ -335,33 +335,34 @@ function setup_env() {
 
   timelog "Building ${BWHITE}${mode}${NC} deployment version: ${BWHITE}${version}${NC}"
   timelog "----------------------------------------------------------"
-  timelog "Mode:         ${BWHITE}${mode}${NC}"
-  timelog "Version       ${BWHITE}${version}${NC}"
-  timelog "Log File:     ${BWHITE}${log_file}${NC}"
-  timelog "Branch:       ${BWHITE}${branch}${NC}"
+  timelog "Mode:          ${BWHITE}${mode}${NC}"
+  timelog "Version        ${BWHITE}${version}${NC}"
+  timelog "Log File:      ${BWHITE}${log_file}${NC}"
+  timelog "Branch:        ${BWHITE}${branch}${NC}"
   if [[ $mode == "patch" ]];then
     if [[ ${diff_args} == "--cached" ]]; then
 
-  timelog "cached:       ${BWHITE}yes${NC}"
+  timelog "cached:        ${BWHITE}yes${NC}"
     else
     display_from=`git rev-parse --short "${from_commit}"`
     display_until=`git rev-parse --short "${until_commit}"`
-  timelog "from:         ${BWHITE}${from_commit} (${display_from})${NC}"
-  timelog "until:        ${BWHITE}${until_commit} (${display_until})${NC}"
-  timelog "transfer all: ${BWHITE}${SHIP_ALL}${NC}"
+  timelog "from:          ${BWHITE}${from_commit} (${display_from})${NC}"
+  timelog "until:         ${BWHITE}${until_commit} (${display_until})${NC}"
+  timelog "transfer all:  ${BWHITE}${SHIP_ALL}${NC}"
     fi
   fi
+  timelog "Bash-Version:  ${BWHITE}${BASH_VERSION}${NC}"
   timelog "----------------------------------------------------------"
-  timelog "Project              ${BWHITE}${PROJECT}${NC}"
+  timelog "Project        ${BWHITE}${PROJECT}${NC}"
   if [[ ${PROJECT_MODE} != "FLEX" ]]; then
-      timelog "Application Schema:  ${BWHITE}${APP_SCHEMA}${NC}"
+    timelog "App Schema:    ${BWHITE}${APP_SCHEMA}${NC}"
     if [[ ${PROJECT_MODE} != "SINGLE" ]]; then
-      timelog "Data Schema:         ${BWHITE}${DATA_SCHEMA}${NC}"
-      timelog "Logic Schema:        ${BWHITE}${LOGIC_SCHEMA}${NC}"
+    timelog "Data Schema:   ${BWHITE}${DATA_SCHEMA}${NC}"
+    timelog "Logic Schema:  ${BWHITE}${LOGIC_SCHEMA}${NC}"
     fi
-    timelog "Workspace:           ${BWHITE}${WORKSPACE}${NC}"
+    timelog "Workspace:     ${BWHITE}${WORKSPACE}${NC}"
   fi
-     timelog "Schemas:             (${BWHITE}${SCHEMAS[*]}${NC})"
+  timelog "Schemas:       (${BWHITE}${SCHEMAS[*]}${NC})"
   timelog "----------------------------------------------------------"
   timelog "Depotpath:     ${BWHITE}${rel_depotpath}${NC}"
   timelog "Targetpath:    ${BWHITE}${rel_targetpath}${NC}"
