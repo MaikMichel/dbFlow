@@ -550,6 +550,25 @@ function copy_files {
         cp --parents -Rf "${sourcepath}/.hooks" "${targetpath}"
       fi
     fi
+
+    # if there are table scripts that are new in this delta and there are also table_ddl scripts
+    # for these new table scripts, we leave out the table_ddl scripts
+    timelog " "
+    for schema in "${SCHEMAS[@]}"
+    do
+      local table_folder="${sourcepath}/db/${schema}/tables"
+      local table_files=`git diff -r --name-only --no-commit-id ${diff_args} --diff-filter=A -- "${table_folder}" ":!${table_folder}/tables_ddl"`
+
+      # for each new (A) table file
+      for file in $table_files; do
+        local file_base=$(basename "${file}")
+        for f in "${targetpath}/db/${schema}/tables/tables_ddl"/${file_base%%.*}.*; do
+          timelog "New table detected: db/${schema}/tables/${file_base}"
+          timelog "└─> removing table_ddl db/${schema}/tables/tables_ddl/$(basename ${f})" warning
+          rm "$f"
+        done
+      done
+    done
   fi
 
   timelog " "
