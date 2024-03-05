@@ -168,7 +168,7 @@ build_release() {
       git push
     else
       git checkout -b "${RLS_GATE_BRANCH}"
-      git push --set-upstream origin release
+      git push --set-upstream origin ${RLS_GATE_BRANCH}
     fi
 
   fi
@@ -220,15 +220,21 @@ build_release() {
       apply_tasks+=( ".dbFlow/apply.sh --init --version ${version_next}" )
     else
       git push
+
+      # create tag on source or gate branch
+      git checkout "${RLS_GATE_BRANCH}"
       git tag "${version_next}"
       git push origin "${version_next}"
     fi
   fi
 
+  local check_branch=$(git rev-parse --symbolic-full-name --abbrev-ref HEAD)
+  if [[ $check_branch != "${starting_branch}" ]]; then
+    git checkout "${starting_branch}"
+  fi
+
   # some summarizings
   log "${GREEN}Done${NC}"
-  git checkout "${starting_branch}"
-
   log "${GREEN}go to your instance directory where you host $RLS_TARGET_BRANCH and apply the following commands/patches${NC}"
 
   if [[ ${RLS_TOFOLDER} != '-' ]]; then
