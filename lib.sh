@@ -118,7 +118,8 @@ SCAN_PATHES=()
 
 function define_folders() {
   local l_mode="${1}";
-  local l_branch="${2}";
+  local undef_branch="_undefined_branch";
+  local l_branch="${2:-${undef_branch}}";
 
   # at INIT there is no pretreatment or an evaluation of the table_ddl
   # !: Don't forgett to change documentation when changing these arrays
