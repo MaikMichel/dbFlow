@@ -105,8 +105,20 @@ function check_vars() {
   fi
 
   if [[ -z ${LOG_PATH:-} ]]; then
-    echo_error "Logpath not defined"
-    do_exit="YES"
+    if [[ -f "apply.env" && -z "$(grep 'LOG_PATH=' "apply.env")" ]]; then
+      {
+        echo ""
+        echo "# auto added @${MDATE}"
+        echo "# Path to copy logs to after installation"
+        echo "LOG_PATH=_logs"
+      } >> apply.env
+
+      echo -e "${LWHITE}set LOG_PATH to ${NC}${BWHITE}_logs${NC} ${LWHITE} in your apply.env - please configure as you like with a relative path${NC}"
+      LOG_PATH="_logs"
+    else
+      echo_error "Logpath not defined"
+      do_exit="YES"
+    fi
   fi
 
   if [[ ${PROJECT_MODE} == "FLEX" ]]; then
