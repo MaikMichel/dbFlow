@@ -27,6 +27,8 @@ function usage() {
   echo -e "  -l | --listfiles        - Optional flag to list files which will be a part of the patch"
   echo -e "  -a | --apply            - Optional flag to call apply directly after patch is build."
   echo -e "                            This will install the artifact in current environment."
+  echo -e "  -f | --forceddl         - Optional flag to switch off checking for new table-file through git itself."
+  echo -e "                            This will run table_ddl scripts when matching table is present in patch mode"
   echo ""
   echo -e "${BWHITE}Examples:${NC}"
   echo -e "  ${0} --init --version 1.0.0"
@@ -122,8 +124,9 @@ function check_params() {
   list_option="NO"
   cached_option="NO"
   apply_option="NO"
+  forceddl_option="NO"
 
-  while getopts_long 'hipv:s:e:cktla help init patch version: start: end: cached keepfolder transferall listfiles apply' OPTKEY "${@}"; do
+  while getopts_long 'hipv:s:e:cktlaf help init patch version: start: end: cached keepfolder transferall listfiles apply forceddl' OPTKEY "${@}"; do
       case ${OPTKEY} in
           'h'|'help')
               help_option="YES"
@@ -160,6 +163,9 @@ function check_params() {
               ;;
           'a'|'apply')
               apply_option="YES"
+              ;;
+          'f'|'forceddl')
+              forceddl_option="YES"
               ;;
           '?')
               echo_error "INVALID OPTION -- ${OPTARG}" >&2
@@ -263,11 +269,18 @@ function check_params() {
     SHIP_ALL="FALSE"
   fi
 
-  # now check ship all files
+  # should build.sh run apply.sh
   if [[ ${apply_option} == "YES" ]]; then
     APPLY_DIRECTLY="TRUE"
   else
     APPLY_DIRECTLY="FALSE"
+  fi
+
+  # if true, we won't strip table_ddls from patch when a new table file is present
+  if [[ ${forceddl_option} == "YES" ]]; then
+    FORCE_TABLE_DDL="TRUE"
+  else
+    FORCE_TABLE_DDL="FALSE"
   fi
 
   if [[ ${list_option} == "YES" ]] && [[ $mode == "patch" ]]; then
@@ -349,6 +362,7 @@ function setup_env() {
   timelog "from:          ${BWHITE}${from_commit} (${display_from})${NC}"
   timelog "until:         ${BWHITE}${until_commit} (${display_until})${NC}"
   timelog "transfer all:  ${BWHITE}${SHIP_ALL}${NC}"
+  timelog "forceddl       ${BWHITE}FORCE_TABLE_DDL${NC}"
     fi
   fi
   timelog "Bash-Version:  ${BWHITE}${BASH_VERSION}${NC}"
@@ -553,22 +567,24 @@ function copy_files {
 
     # if there are table scripts that are new in this delta and there are also table_ddl scripts
     # for these new table scripts, we leave out the table_ddl scripts
-    timelog " "
-    for schema in "${SCHEMAS[@]}"
-    do
-      local table_folder="${sourcepath}/db/${schema}/tables"
-      local table_files=`git diff -r --name-only --no-commit-id ${diff_args} --diff-filter=A -- "${table_folder}" ":!${table_folder}/tables_ddl"`
+    if [[ ${FORCE_TABLE_DDL} == "FALSE" ]]; then
+      timelog " "
+      for schema in "${SCHEMAS[@]}"
+      do
+        local table_folder="${sourcepath}/db/${schema}/tables"
+        local table_files=`git diff -r --name-only --no-commit-id ${diff_args} --diff-filter=A -- "${table_folder}" ":!${table_folder}/tables_ddl"`
 
-      # for each new (A) table file
-      for file in $table_files; do
-        local file_base=$(basename "${file}")
-        for f in "${targetpath}/db/${schema}/tables/tables_ddl"/${file_base%%.*}.*; do
-          timelog "New table detected: db/${schema}/tables/${file_base}"
-          timelog "└─> removing table_ddl db/${schema}/tables/tables_ddl/$(basename ${f})" warning
-          rm "$f"
+        # for each new (A) table file
+        for file in $table_files; do
+          local file_base=$(basename "${file}")
+          for f in "${targetpath}/db/${schema}/tables/tables_ddl"/${file_base%%.*}.*; do
+            timelog "New table detected: db/${schema}/tables/${file_base}"
+            timelog "└─> removing table_ddl db/${schema}/tables/tables_ddl/$(basename ${f})" warning
+            rm "$f"
+          done
         done
       done
-    done
+    fi
   fi
 
   timelog " "
