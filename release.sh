@@ -187,12 +187,10 @@ build_release() {
   log "Head is $(git rev-parse --short HEAD)"
 
   local flags=()
-  echo "RLS_FORCE_DDL: $RLS_FORCE_DDL"
   if [[ ${RLS_FORCE_DDL} != "-" ]]; then
     flags+=("${RLS_FORCE_DDL}")
   fi
 
-  echo "keep: $keep"
   if [[ ${keep} != "-" ]]; then
     flags+=("${keep}")
   fi
