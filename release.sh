@@ -69,6 +69,8 @@ usage() {
   echo -e "  -b | --build            - Optional buildflag to create 3 artifact for using as nighlybuilds"
   echo -e "  -a | --apply <folder>   - Optional path to apply the build(s) when buildflag is set"
   echo -e "  -k | --keep             - Optional flag to keep folders in depot path (will be passed to build.sh)"
+  echo -e "  -f | --forceddl         - Optional flag to switch off checking for new table-file through git itself."
+  echo -e "                            This will run table_ddl scripts when matching table is present in patch mode"
   echo ""
   echo -e "${BWHITE}Examples:${NC}"
   echo -e "  $0 --target release --version 1.2.3"
@@ -133,6 +135,7 @@ build_release() {
   log "${BWHITE}Targetbranch:   ${NC}${RLS_TARGET_BRANCH}"
   log "${BWHITE}Version:        ${NC}${RLS_VERSION}${RLS_INC_TYPE}"
   log "${BWHITE}Buildtest:      ${NC}${RLS_BUILD}"
+  log "${BWHITE}Force TableDDL: ${NC}${RLS_FORCE_DDL}"
 
   if [[ ${RLS_BUILD} == 'Y' ]]; then
     log "${BWHITE}Buildbranch:    ${NC}${RLS_BUILDBRANCH}"
@@ -183,6 +186,17 @@ build_release() {
   }
   log "Head is $(git rev-parse --short HEAD)"
 
+  local flags=()
+  echo "RLS_FORCE_DDL: $RLS_FORCE_DDL"
+  if [[ ${RLS_FORCE_DDL} != "-" ]]; then
+    flags+=("${RLS_FORCE_DDL}")
+  fi
+
+  echo "keep: $keep"
+  if [[ ${keep} != "-" ]]; then
+    flags+=("${keep}")
+  fi
+
   if [[ ${RLS_BUILD} == 'Y' ]]; then
     # remove build branch
     if git show-ref --quiet refs/heads/"${RLS_BUILDBRANCH}"; then
@@ -196,7 +210,7 @@ build_release() {
 
     # build initial patch
     log "building initial install ${version_previous} (previous version)"
-    .dbFlow/build.sh -i -v "${version_previous}" "${keep}"
+    .dbFlow/build.sh -i -v "${version_previous}" "${flags[@]}"
     apply_tasks+=( ".dbFlow/apply.sh -i -v ${version_previous}" )
   fi
 
@@ -207,8 +221,8 @@ build_release() {
     git merge "${RLS_GATE_BRANCH}"
 
     # build diff patch
-    log "build patch upgrade ${version_next} (current version)"
-    .dbFlow/build.sh -p -v "${version_next}" "${keep}"
+    log "build patch upgrade ${version_next} (current version) ${flags[@]}"
+    .dbFlow/build.sh -p -v "${version_next}" "${flags[@]}"
     build_patch_worked=$?
     apply_tasks+=( ".dbFlow/apply.sh --patch --version ${version_next}" )
 
@@ -216,7 +230,7 @@ build_release() {
     if [[ ${RLS_BUILD} == 'Y' ]]; then
       # und den initial Build des aktuellen Stand
       log "building initial install $version_next (current version)"
-      .dbFlow/build.sh -i -v "${version_next}" "${keep}"
+      .dbFlow/build.sh -i -v "${version_next}" "${flags[@]}"
       apply_tasks+=( ".dbFlow/apply.sh --init --version ${version_next}" )
     else
       git push
@@ -281,10 +295,10 @@ trap 'rc=$?; notify $rc; exit $rc' EXIT
 
 
 function check_params() {
-  debug="n" help="n" version="-" source_branch="-" target_branch="-" build="n" apply_folder="-" gate_branch="-"
+  debug="n" help="n" version="-" source_branch="-" target_branch="-" build="n" apply_folder="-" gate_branch="-" forceddl="-" keep="-"
   d=$debug h=$help v=$version s=$source_branch t=$target_branch b=$build a=$apply_folder g=$gate_branch
 
-  while getopts_long 'dhv:s:t:g:ba:k debug help version: source: target: gate: build apply: keep' OPTKEY "${@}"; do
+  while getopts_long 'dhv:s:t:g:ba:kf debug help version: source: target: gate: build apply: keep forceddl' OPTKEY "${@}"; do
       case ${OPTKEY} in
           'd'|'debug')
               d=y
@@ -312,6 +326,9 @@ function check_params() {
               ;;
           'k'|'keep')
               keep="-k"
+              ;;
+          'f'|'forceddl')
+              forceddl="--forceddl"
               ;;
           '?')
               echo_error "INVALID OPTION -- ${OPTARG}" >&2
@@ -389,6 +406,10 @@ function check_params() {
     RLS_GATE_BRANCH=${RLS_SOURCE_BRANCH}
   else
     RLS_GATE_BRANCH=${gate_branch}
+  fi
+
+  if [[ ${forceddl} != '-' ]]; then
+    RLS_FORCE_DDL=${forceddl}
   fi
 }
 

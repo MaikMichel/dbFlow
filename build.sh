@@ -126,6 +126,7 @@ function check_params() {
   apply_option="NO"
   forceddl_option="NO"
 
+  # echo "check_params: ${@}"
   while getopts_long 'hipv:s:e:cktlaf help init patch version: start: end: cached keepfolder transferall listfiles apply forceddl' OPTKEY "${@}"; do
       case ${OPTKEY} in
           'h'|'help')
@@ -362,7 +363,7 @@ function setup_env() {
   timelog "from:          ${BWHITE}${from_commit} (${display_from})${NC}"
   timelog "until:         ${BWHITE}${until_commit} (${display_until})${NC}"
   timelog "transfer all:  ${BWHITE}${SHIP_ALL}${NC}"
-  timelog "forceddl       ${BWHITE}FORCE_TABLE_DDL${NC}"
+  timelog "forceddl       ${BWHITE}${FORCE_TABLE_DDL}${NC}"
     fi
   fi
   timelog "Bash-Version:  ${BWHITE}${BASH_VERSION}${NC}"
