@@ -1169,8 +1169,9 @@ function manage_result() {
       if [[ ${STAGE} != "develop" && ${STAGE} != "build" ]]; then
         if [[ ${this_branch} == "main" || ${this_branch} == "master" ]]; then
           echo_success "Adding all changes to this repo"
-          git add .
+          git add --all --quiet
           git commit -m "${version}" --quiet
+          git tag "${version}" --quiet
           git push --quiet
         fi
       fi

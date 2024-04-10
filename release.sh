@@ -59,7 +59,7 @@ function retry() {
     fi
   done
 
-  echo_error ".git/index.lock exists and is locked!"
+  echo  ".git/index.lock exists and is locked!"
   exit 1;
 }
 
@@ -161,7 +161,7 @@ build_release() {
 
   # switch to source branch
   log "change to Branch: ${RLS_SOURCE_BRANCH}"
-  git checkout "${RLS_SOURCE_BRANCH}"
+  retry git checkout "${RLS_SOURCE_BRANCH}"
   { #try
     pulled=$(git pull)
   } || { # catch
@@ -175,7 +175,7 @@ build_release() {
 
     if git show-ref --quiet refs/heads/"${RLS_GATE_BRANCH}"; then
       # exists
-      git checkout "${RLS_GATE_BRANCH}"
+      retry git checkout "${RLS_GATE_BRANCH}"
 
       { #try
         pulled=$(git pull)
@@ -184,18 +184,18 @@ build_release() {
       }
 
       log "merging changes from $RLS_SOURCE_BRANCH"
-      git merge "${RLS_SOURCE_BRANCH}"
-      git push
+      retry git merge "${RLS_SOURCE_BRANCH}"
+      retry git push
     else
-      git checkout -b "${RLS_GATE_BRANCH}"
-      git push --set-upstream origin ${RLS_GATE_BRANCH}
+      retry git checkout -b "${RLS_GATE_BRANCH}"
+      retry git push --set-upstream origin ${RLS_GATE_BRANCH}
     fi
 
   fi
 
   # switch to target branch
   log "change to Branch: ${RLS_TARGET_BRANCH}"
-  git checkout "${RLS_TARGET_BRANCH}"
+  retry git checkout "${RLS_TARGET_BRANCH}"
   { #try
     pulled=$(git pull)
   } || { # catch
@@ -216,12 +216,12 @@ build_release() {
     # remove build branch
     if git show-ref --quiet refs/heads/"${RLS_BUILDBRANCH}"; then
       log "Removing branch ${RLS_BUILDBRANCH}"
-      git branch -D "${RLS_BUILDBRANCH}"
+      retry git branch -D "${RLS_BUILDBRANCH}"
     fi
 
     # create a new build branch out of target branch
     log "Checkout new Branch ${RLS_BUILDBRANCH}"
-    git checkout -b "${RLS_BUILDBRANCH}"
+    retry git checkout -b "${RLS_BUILDBRANCH}"
 
     # build initial patch
     log "building initial install ${version_previous} (previous version)"
@@ -233,7 +233,7 @@ build_release() {
   if [[ $RLS_GATE_BRANCH != "${RLS_TARGET_BRANCH}" ]]; then
     # merging target with source
     log "merging changes from $RLS_GATE_BRANCH"
-    git merge "${RLS_GATE_BRANCH}"
+    retry git merge "${RLS_GATE_BRANCH}"
 
     # build diff patch
     log "build patch upgrade ${version_next} (current version) ${flags[@]}"
@@ -248,18 +248,18 @@ build_release() {
       .dbFlow/build.sh -i -v "${version_next}" "${flags[@]}"
       apply_tasks+=( ".dbFlow/apply.sh --init --version ${version_next}" )
     else
-      git push
+      retry git push
 
       # create tag on source or gate branch
-      git checkout "${RLS_GATE_BRANCH}"
+      retry git checkout "${RLS_GATE_BRANCH}"
       retry git tag "${version_next}"
-      git push origin "${version_next}"
+      retry git push origin "${version_next}"
     fi
   fi
 
   local check_branch=$(git rev-parse --symbolic-full-name --abbrev-ref HEAD)
   if [[ $check_branch != "${starting_branch}" ]]; then
-    git checkout "${starting_branch}"
+    retry git checkout "${starting_branch}"
   fi
 
   # some summarizings
@@ -284,13 +284,6 @@ build_release() {
     echo -e "${GREEN}${task}${NC}"
     if [[ ${RLS_TOFOLDER} != '-' ]]; then
       ${task}
-
-      # if is git and we are not on build then commit
-      if [[ ${RLS_BUILD} != 'Y' ]] && [[ -d ".git" ]]; then
-        git add --all
-        git commit -m "${version_next}"
-        git push
-      fi
     fi
   done
 
