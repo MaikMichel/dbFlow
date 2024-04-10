@@ -60,6 +60,13 @@ SQLCLI=${SQLCLI:-sqlplus}
 
 basepath=$(pwd)
 
+# get branch name
+{ #try
+  this_branch=$(git branch --show-current)
+} || { # catch
+  this_branch="develop"
+}
+
 #
 AT_LEAST_ON_INSTALLFILE_STARTED="NO"
 
@@ -1156,6 +1163,18 @@ function manage_result() {
   if [[ $target_move == "success" ]]; then
     post_message_to_teams "Release ${version}" "4CCC3B" "Release ${version} has been successfully applied to stage: <b>${STAGE}</b>."
     process_logs ${target_move} "${target_relative_path}/${finallog}";
+
+    # commit if stage != develop or build and current branch is main or master
+    if [[ -d ".git" ]]; then
+      if [[ ${STAGE} != "develop" && ${STAGE} != "build" && ]];
+        if [[ ${this_branch} == "main" || ${this_branch} == "master" ]]; then
+          echo_success "Adding all changes to this repo"
+          git add .
+          git commit -m "${version}"
+          git push
+        fi
+      fi
+    fi
     exit 0
   else
     redolog=$(basename "${full_log_file}")
