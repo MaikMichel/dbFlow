@@ -46,6 +46,23 @@ function check_vars() {
   fi
 }
 
+function retry() {
+  local cnt=0;
+  while [[ $cnt -lt 10 ]]; do
+    if test -f ".git/index.lock"; then
+      echo -n ".";
+      sleep 0.5;
+      ((cnt++));
+    else
+      "$@"; # do the command params
+      return; # quit the function
+    fi
+  done
+
+  echo_error ".git/index.lock exists and is locked!"
+  exit 1;
+}
+
 usage() {
   echo -e "${BWHITE}.dbFlow/release.sh${NC} - creates a release artifact for targetbranch and place it into depot"
   echo ""
@@ -235,7 +252,7 @@ build_release() {
 
       # create tag on source or gate branch
       git checkout "${RLS_GATE_BRANCH}"
-      git tag "${version_next}"
+      retry git tag "${version_next}"
       git push origin "${version_next}"
     fi
   fi
