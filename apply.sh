@@ -1166,12 +1166,12 @@ function manage_result() {
 
     # commit if stage != develop or build and current branch is main or master
     if [[ -d ".git" ]]; then
-      if [[ ${STAGE} != "develop" && ${STAGE} != "build" && ]];
+      if [[ ${STAGE} != "develop" && ${STAGE} != "build" ]]; then
         if [[ ${this_branch} == "main" || ${this_branch} == "master" ]]; then
           echo_success "Adding all changes to this repo"
           git add .
-          git commit -m "${version}"
-          git push
+          git commit -m "${version}" --quiet
+          git push --quiet
         fi
       fi
     fi
