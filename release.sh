@@ -49,7 +49,7 @@ function check_vars() {
 function retry() {
   local cnt=0;
   while [[ $cnt -lt 10 ]]; do
-    if test -f ".git/index.lock"; then
+    if [[ -f ".git/index.lock" ]]; then
       echo -n ".";
       sleep 0.5;
       ((cnt++));
