@@ -468,3 +468,15 @@ function validate_passes() {
     fi
   fi
 }
+
+function check_remind_me() {
+  if [[ -n "${REMIND_ME}" ]]; then
+    read -r -p "$(echo -e "${BORANGE}Remind me detected${NC} - ${REMIND_ME} -> Proceed? (y/n)" ) " -n 1
+
+    echo    # (optional) move to a new line
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+      [[ "$0" = "$BASH_SOURCE" ]] && exit 1 || return 1 # handle exits from shell or function but don't exit interactive shell
+    fi
+
+  fi
+}

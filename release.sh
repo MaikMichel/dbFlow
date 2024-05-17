@@ -9,6 +9,9 @@ if [[ -e ./build.env ]]; then
   source ./build.env
 fi
 
+# something to remind you, ask to proceed
+check_remind_me
+
 CUR_DIRECTORY=$(pwd)
 
 # Log Location on Server.

@@ -668,6 +668,9 @@ function generate() {
       echo "# TICKET_URL=\"https://url-to-your-issue-tracker-like-jira/browse\""
     fi
     echo ""
+    echo "# Set a personal reminder, which will ask you to proceed"
+    echo "REMIND_ME=\"\""
+    echo ""
   } > build.env
 
   write_apply
