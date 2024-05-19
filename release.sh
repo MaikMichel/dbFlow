@@ -240,7 +240,9 @@ build_release() {
 
     # build diff patch
     log "build patch upgrade ${version_next} (current version) ${flags[@]}"
+    export DBFLOW_RELEASE_IS_RUNNUNG="YES"
     .dbFlow/build.sh -p -v "${version_next}" "${flags[@]}"
+    unset export DBFLOW_RELEASE_IS_RUNNUNG
     build_patch_worked=$?
     apply_tasks+=( ".dbFlow/apply.sh --patch --version ${version_next}" )
 
@@ -284,7 +286,7 @@ build_release() {
 
   for task in "${apply_tasks[@]}"
   do
-    echo -e "${GREEN}${task}${NC}"
+    log "${CYAN}call ${BWHITE}${task}${NC} ${CYAN}from your instance folder${NC}"
     if [[ ${RLS_TOFOLDER} != '-' ]]; then
       ${task}
     fi

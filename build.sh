@@ -1240,7 +1240,7 @@ function check_push_to_depot() {
 
 
 function check_make_new_version() {
-  if [[ -z ${DBFLOW_JENKINS:-} ]]; then
+  if [[ -z ${DBFLOW_JENKINS:-} ]] && [[ -z ${DBFLOW_RELEASE_IS_RUNNUNG:-} ]]; then
     # on branch master ask if we should tag current version and conmmit
     prod_branches=( "master" "main" )
     if [[ " ${prod_branches[@]} " =~ " ${branch} " ]]; then
@@ -1268,12 +1268,14 @@ function check_make_new_version() {
 
 
 function call_apply_when_flag_is_set() {
-  if [[ ${APPLY_DIRECTLY} == "TRUE" ]]; then
-    echo "calling apply"
+  if [[ -z ${DBFLOW_RELEASE_IS_RUNNUNG:-} ]]; then
+    if [[ ${APPLY_DIRECTLY} == "TRUE" ]]; then
+      echo "calling apply"
 
-    .dbFlow/apply.sh --"${mode}" --version "${version}"
-  else
-    echo -e "${LWHITE}just call ${NC}${BWHITE}.dbFlow/apply.sh --${mode} --version ${version} ${NC}${LWHITE}inside your instance folder${NC}"
+      .dbFlow/apply.sh --"${mode}" --version "${version}"
+    else
+      echo -e "${LWHITE}just call ${NC}${BWHITE}.dbFlow/apply.sh --${mode} --version ${version} ${NC}${LWHITE}inside your instance folder${NC}"
+    fi
   fi
 }
 
