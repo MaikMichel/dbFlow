@@ -255,10 +255,19 @@ build_release() {
     else
       retry git push
 
-      # create tag on source or gate branch
-      retry git checkout "${RLS_GATE_BRANCH}"
-      retry git tag "${version_next}"
-      retry git push origin "${version_next}"
+      if [[ ${RLS_REMOVE_TAG} == "true" ]]; then
+        log "Removing tag ${version_next}"
+        retry git tag -d "${version_next}"
+        retry git push origin --delete "${version_next}"
+        RLS_TAG_EXISTS="false"
+      fi
+
+      if [[ ${RLS_TAG_EXISTS} == "false" ]]; then
+        log "creating tag ${version_next}"
+        # create tag on target branch
+        retry git tag "${version_next}"
+        retry git push origin "${version_next}"
+      fi
     fi
   fi
 
@@ -378,8 +387,26 @@ function check_params() {
     RLS_TARGET_BRANCH=$target_branch
   fi
 
+  # Rule 2.1: target branch must exist
+  if ! git rev-parse --verify "$RLS_TARGET_BRANCH" >/dev/null 2>&1; then
+    echo_error "Target branch: ${RLS_TARGET_BRANCH} doesn't exist"
+    exit 1
+  fi
 
-    # Rule 3: When no build test, we need a version
+  # Rule 2.2: target branch must have an upstream
+  if ! git rev-parse --abbrev-ref "$RLS_TARGET_BRANCH"@{upstream} >/dev/null 2>&1; then
+    echo_error "Branch $RLS_TARGET_BRANCH has no upstream"
+    echo_error "You might call: git push --set-upstream origin ${RLS_TARGET_BRANCH}"
+    exit 1
+  fi
+
+  # Rule 2.3: target and source branch must be different
+  if [[ "${RLS_TARGET_BRANCH}" == "${RLS_SOURCE_BRANCH}" ]]; then
+    echo_error "Source and Target Branch must be different!";
+    exit 1
+  fi;
+
+  # Rule 3: When no build test, we need a version
   if [[ $build == "n" ]] && [[ $version == "-" ]]; then
     echo_error "Missing version, use --verion 1.2.3 or --build $build"
     usage
@@ -398,11 +425,38 @@ function check_params() {
     fi
   fi
 
+
+  RLS_TAG_EXISTS="false"
+  RLS_REMOVE_TAG="false"
+
   if [[ $(git tag -l "$version") ]]; then
     # if this tag points to the same tag as the source commit, then everything should be ok
+    TAG_COMMIT=$(git rev-parse "$version" 2>/dev/null)
+    TARGET_COMMIT=$(git rev-parse "$RLS_TARGET_BRANCH" 2>/dev/null)
 
-    echo_error "The version tag: $version is allready used. Please use another one!"
-    exit 1
+    if [[ "${TAG_COMMIT}" != "${TARGET_COMMIT}" ]]; then
+
+      # Lokale Branches ermitteln, die diesen Commit enthalten
+      TAG_BRANCHES=$(git branch --contains "$TAG_COMMIT")
+
+      read -r -p "$(echo -e "${BORANGE}Target Version: ${version} exists allready on branch ${TAG_BRANCHES}.${NC}\nPress y to recreate tag on target branch ${RLS_TARGET_BRANCH}, otherwise abort release! (y/n)" ) " -n 1
+      echo    # (optional) move to a new line
+      if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        if [[ "$0" = "$BASH_SOURCE" ]]; then
+          echo_error "Aborted... \nThe version tag: $version is allready used. And commit of $version and $RLS_TARGET_BRANCH are not equal. So, please use another one!"
+          exit 1
+        else
+          echo_error "Aborted... \nThe version tag: $version is allready used. And commit of $version and $RLS_TARGET_BRANCH are not equal. So, please use another one!"
+          return 1 # handle exits from shell or function but don't exit interactive shell
+        fi
+      fi
+
+      RLS_TAG_EXISTS="true"
+      RLS_REMOVE_TAG="true"
+    else
+      # Target Tag exists, so we do not need to create it
+      RLS_TAG_EXISTS="true"
+    fi
   fi
 
   RLS_VERSION=$version
