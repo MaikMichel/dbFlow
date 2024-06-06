@@ -743,8 +743,8 @@ function set_apps_available() {
       local app_id=${app_name/f}
 
       # Enable only Applications which were not part of the current deployment process
-      if grep -q "${app_name}" "${app_install_file}"; then
-        timelog "no enabling APEX-App ${app_id} in workspace ${workspace}because it was part of the deployment"
+      if grep -q "\b${app_name}\b" "${app_install_file}"; then
+        timelog "no enabling APEX-App ${app_id} in workspace ${workspace} because it was part of the deployment"
         timelog "...any existent translated apps have to be published on your own, using hooks"
       else
 
