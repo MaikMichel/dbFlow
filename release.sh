@@ -9,9 +9,6 @@ if [[ -e ./build.env ]]; then
   source ./build.env
 fi
 
-# something to remind you, ask to proceed
-check_remind_me
-
 CUR_DIRECTORY=$(pwd)
 
 # Log Location on Server.
@@ -481,7 +478,11 @@ function check_params() {
 }
 
 
-
+# valildate arguments
 check_params "$@"
 
+# something to remind you, ask to proceed
+check_remind_me
+
+# do the work
 build_release
