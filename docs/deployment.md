@@ -40,19 +40,16 @@ The release itself is created from the current branch. If you want to create a r
 
     | Num    | Folder                 | Num | Folder              | Num | Folder         |
     |--------|------------------------|-----|---------------------|-----|----------------|
-    |   1    | .hooks/pre             |  11 | contexts            | 21  | tests/packages |
-    |   2    | sequences              |  12 | policies            | 22  | ddl/init       |
-    |   3    | tables                 |  13 | sources/types       | 23  | dml/init       |
-    |   4    | indexes/primaries      |  14 | sources/packages    | 24  | dml/base       |
+    |   1    | .hooks/pre             |  11 | contexts            | 21  | ddl/init       |
+    |   2    | sequences              |  12 | policies            | 22  | dml/init       |
+    |   3    | tables                 |  13 | sources/types       | 23  | dml/base       |
+    |   4    | indexes/primaries      |  14 | sources/packages    | 24  | jobs           |
     |   5    | indexes/uniques        |  15 | sources/functions   | 25  | .hooks/post    |
     |   6    | indexes/defaults       |  16 | sources/procedures  |     |                |
     |   7    | constraints/primaries  |  17 | views               |     |                |
     |   8    | constraints/foreigns   |  18 | mviews              |     |                |
     |   9    | constraints/checks     |  19 | sources/triggers    |     |                |
-    |  10    | constraints/uniques    |  20 | jobs                |     |                |
-
-
-
+    |  10    | constraints/uniques    |  20 | tests/packages      |     |                |
 
 
 > If you use the flag -a/--apply then the release will be directly applied to the current environment.
@@ -85,13 +82,13 @@ The files from the directories ``\*/[ddl|dml]/init/\*`` are ignored. Additionall
     |------|---------------------------|------|---------------------------|------|---------------------------|
     |  01  |  .hooks/pre               |  12  |  constraints/primaries    |  23  |  mviews                   |
     |  02  |  ddl/patch/pre_${branch}  |  13  |  constraints/foreigns     |  24  |  sources/triggers         |
-    |  03  |  dml/patch/pre_${branch}  |  14  |  constraints/checks       |  25  |  jobs                     |
-    |  04  |  ddl/patch/pre            |  15  |  constraints/uniques      |  26  |  tests/packages           |
-    |  05  |  dml/patch/pre            |  16  |  contexts                 |  27  |  ddl/patch/post_${branch} |
-    |  06  |  sequences                |  17  |  policies                 |  28  |  dml/patch/post_${branch} |
-    |  07  |  tables                   |  18  |  sources/types            |  29  |  ddl/patch/post           |
-    |  08  |  tables/tables_ddl        |  19  |  sources/packages         |  30  |  dml/base                 |
-    |  09  |  indexes/primaries        |  20  |  sources/functions        |  31  |  dml/patch/post           |
+    |  03  |  dml/patch/pre_${branch}  |  14  |  constraints/checks       |  25  |  tests/packages           |
+    |  04  |  ddl/patch/pre            |  15  |  constraints/uniques      |  26  |  ddl/patch/post_${branch} |
+    |  05  |  dml/patch/pre            |  16  |  contexts                 |  27  |  dml/patch/post_${branch} |
+    |  06  |  sequences                |  17  |  policies                 |  28  |  ddl/patch/post           |
+    |  07  |  tables                   |  18  |  sources/types            |  29  |  dml/base                 |
+    |  08  |  tables/tables_ddl        |  19  |  sources/packages         |  30  |  dml/patch/post           |
+    |  09  |  indexes/primaries        |  20  |  sources/functions        |  31  |  jobs                     |
     |  00  |  indexes/uniques          |  21  |  sources/procedures       |  32  |  .hooks/post              |
     |  11  |  indexes/defaults         |  22  |  views                    |      |                           |
 
@@ -131,11 +128,15 @@ If you want to put something only in a certain stage, for example because someth
 
 - ***keepFolder***
 
-With the flag ``-k / --keepfolder`` the working directory, which is created in the depot to create the actual artifact, is not deleted. Especially in the beginning, when you don't have so much experience with dbFlow, this option is helpful. So after creating the artifact you can navigate to the corresponding directory and have a look at the created scripts and copied files.
+With the flag ``-k / --keepfolder`` the working directory, which is created in the depot to create the actual artifact, is not deleted. Especially in the beginning, when you don't have so much experience with **dbFlow**, this option is helpful. So after creating the artifact you can navigate to the corresponding directory and have a look at the created scripts and copied files.
 
 - ***transferAll***
 
 In order to always transsper/copy all files, you can specify the ``-t / --transferall`` flag. In this case not only the changed files but all files will be included in the patch. During the deployment only the changed files will be applied within the DB directory.
+
+- ***forceddl***
+
+The -f / --forceddl flag can be used to force the execution of table_ddl files wheater the specific table file is new in the target branch or not.
 
 - ***listFiles***
 
@@ -144,6 +145,12 @@ The -l / --listfiles flag can be used to check which files would be included in 
 - ***apply***
 
 The -a / --apply flag can be used to apply the created artifact immediatly in to the current environment after building the patch.
+
+### Option forceDDL
+
+Since version 3, **dbFlow** uses Git to check whether a table script is new in a branch. If this is the case, the table script is executed from the tables folder and any existing table_ddl files for the table of the same name are ignored. This is good because you may have to customise a new table much more often until it is finally imported to Prod. On Prod the table is of course new and it is sufficient to import the create-table script. On Test, this table may already be several partial release cycles old. Only the alter-table scripts need to be imported here.
+To switch off this behaviour, there is the --forceDDL option. This ensures that if the table_ddl files are present, they are always executed. (As before version 3).
+
 
 
 ## apply
@@ -239,23 +246,80 @@ Most of the time we do a patch release. So in these cases you have to:
 You don't have to do these steps manually if you use the ``.dbFlow/release.sh`` script. Here you can simply specify your target branch and the script does the appropriate steps to merge the respective branches itself.
 By omitting the parameters you can also see what is needed.
 
-> release.sh does the handling / merging of the branches for you and calls build.sh afterwards.
-
 ```shell
-  .dbFlow/release.sh --target master --version 1.2.3
+Usage:
+  ./release.sh --source <branch> --target <branch> --version <label> [--build]
+
+Options:
+  -h | --help             - Show this screen
+  -d | --debug            - Show additionaly output messages
+  -s | --source <branch>  - Optional Source branch (default current)to merge target branch into and determine the files to include in patch
+  -t | --target <branch>  - Required Target branch to reflect the predecessor of the source branch
+  -g | --gate             - Optional Gate branch to free source branch. If this is set, then the source branch will be merged into that
+  -v | --version <label>  - Required label of version this artifact represents (optional when buildflag is submitted)
+                          - Set <label> to major, minor or patch and the next semantic version is calculated automatically
+
+  -b | --build            - Optional buildflag to create 3 artifact for using as nighlybuilds
+  -a | --apply <folder>   - Optional path to apply the build(s) when buildflag is set
+  -k | --keep             - Optional flag to keep folders in depot path (will be passed to build.sh)
+  -f | --forceddl         - Optional flag to switch off checking for new table-file through git itself.
+                            This will run table_ddl scripts when matching table is present in patch mode
+
+Examples:
+  ./release.sh --target release --version 1.2.3
+  ./release.sh --source release --target test --version 1.2.3
+  ./release.sh --source develop --target master -b
+  ./release.sh --source develop --gate release --target test --version 2.0.3 --apply ../instances/test
 ```
 
-To do a release test, the release script can build three artifacts for you (flag ``-b/--build``). This functionality is for the so-called nightly builds. Here an initial release of the predecessor, a patch of the successor, and an initial release of the successor are built. Using a CI/CD server, such as Jenkins, you can then create these 3 artifacts and install them one after the other on the corresponding instance and of course test them.
+!!! success "Recommendation"
+
+    **release.sh** does the handling / merging of the branches for you and calls build.sh afterwards. If you have the specific instance directory at hand "../instances/test" you can apply the patch directly by ommiting the corresponding args.
+
 
 ```shell
-.dbFlow/release.sh --source develop --target master -b
+  .dbFlow/release.sh --source test --target master --version 1.2.3
+```
+
+### Source branch
+
+Use the option `-s/--source <branch>` to specifiy which branch will be merged into the target branch. This option is optional and when not present the current branch will be taken.
+
+### Target branch
+
+Use the option `-t/--target <branch>` to specifiy to which branch the changes will be merged into. This option is **required**.
+
+### Version identifier
+
+This option is required, when not running as nightly build tests (`-b/--build` ). You have to use semantinc naming conventions, which can be found here: [https://semver.org/](https://semver.org/).
+Since version 3 are allowed to place as argument on of the following constants: major|minor|patch . In this case dbFlow will calculate the next version number based on the last version tag. When this is not possible maybe due to a not present semver tag, dbFlow will cancel with an error.
+
+```shell
+  .dbFlow/release.sh --source test --target master --version minor
 ```
 
 #### Additional arguments for release:
 
+- ***gate***
+
+You can use a gate branch when releasing to a specific target branch. This will merge the changes throuth a gate branch in order to have the ability to work on future features.
+
+```shell
+$ .dbFlow/release.sh --source develop --gate release --target test --version 1.2.3
+```
+When looking at the git flow picture it becomes clear.
+
+![](images/gitflow_01.png)
+
+
 - ***build***
 
-As described above, the ``-b/--build`` flag creates 3 artifacts. These represent the current initial release, the previous initial release and the current patch release. All 3 artifacts can then be imported into the target environment in the appropriate order.
+The release script can build three artifacts for you (flag ``-b/--build``). This functionality is for the so-called nightly builds. Here an initial release of the predecessor, a patch of the successor, and an initial release of the successor are built. Using a CI/CD server, such as Jenkins, you can then create these 3 artifacts and install them one after the other on the corresponding instance and of course test them. This creates 3 artifacts. These represent the current initial release, the previous initial release and the current patch release. All 3 artifacts can then be imported into the target environment in the appropriate order.
+
+
+```shell
+.dbFlow/release.sh --source develop --target master --build
+```
 
 - ***apply***
 
