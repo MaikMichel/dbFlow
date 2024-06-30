@@ -53,9 +53,17 @@ if [[ -e ./apply.env ]]; then
   validate_passes
 fi
 
+
 # name of setup directory
 targetpath="db/_setup"
 basepath=$(pwd)
+this_os=$(uname)
+
+if [[ ${this_os} == "Darwin" ]]; then
+  sed_cmd='sed -i"y"'
+else
+  sed_cmd='sed -i'
+fi
 
 # array of subdirectories inside $targetpath to scan for executables (sh/sql)
 array=( tablespaces directories users features workspaces acls )
@@ -143,7 +151,7 @@ function show_generate_summary() {
   echo "\`\`\`"
   if [[ ${env_only} == "NO" ]]; then
   printf "|-- %-22b %b\n" "${DEPOT_PATH}" ">> Path to store your build artifacts"
-  printf "|-- %-22b %b\n" "${LOG_PATH}"   ">> Path to store installation logs to"
+  printf "|-- %-22b %b\n" "${LOG_PATH}"   ">> Path to store installation logs and artifacts to"
   fi
   printf "|-- ${CYAN}%-22b${NC} %b\n" ".dbFlow" ">> ${CYAN}dbFlow itself${NC}"
   if [[ ${env_only} == "NO" ]]; then
@@ -448,7 +456,7 @@ function wizard() {
   wiz_sqlcli=${wiz_sqlcli:-"${local_sqlcli}"}
 
   local local_logpath=${LOG_PATH-"_logs"}
-  read -r -p "$(echo -e "Enter path to place logfiles into after installation? [${BGRAY}${local_logpath}${NC}]: ")" wiz_logpath
+  read -r -p "$(echo -e "Enter path to place logfiles and artifacts into after installation? [${BGRAY}${local_logpath}${NC}]: ")" wiz_logpath
   wiz_logpath=${wiz_logpath:-"${local_logpath}"}
 
   if [[ ${apply_only} == "NO" ]]; then
@@ -523,7 +531,7 @@ function write_apply() {
     echo "# TEAMS Channel to Post to on success"
     echo "TEAMS_WEBHOOK_URL="
     echo ""
-    echo "# Path to copy logs to after installation"
+    echo "# Path to pace logs and artifacts into after installation"
     echo "LOG_PATH=${wiz_logpath}"
 
   } > apply.env
@@ -660,6 +668,9 @@ function generate() {
       echo "# TICKET_URL=\"https://url-to-your-issue-tracker-like-jira/browse\""
     fi
     echo ""
+    echo "# Set a personal reminder, which will ask you to proceed"
+    echo "REMIND_ME=\"\""
+    echo ""
   } > build.env
 
   write_apply
@@ -687,12 +698,6 @@ function generate() {
     write_line_if_not_exists "${wiz_depot_path}" .gitignore
   fi
 
-  if [[ ${wiz_log_path} != ".."* ]] || [[ ${wiz_log_path} != "/"* ]]; then
-    echo "" >> .gitignore
-    write_line_if_not_exists "# logpath inside working dir" .gitignore
-    write_line_if_not_exists "${wiz_log_path}" .gitignore
-  fi
-
   if [[ ${env_only} == "NO" ]]; then
     # create targetpath directory
     mkdir -p "${targetpath}"/{tablespaces,directories,users,features,workspaces/"${wiz_project_name}",acls}
@@ -718,9 +723,9 @@ function generate() {
       sed "s/\^schema_name/${wiz_project_name}_logic/g" .dbFlow/scripts/setup/users/01_schema.sql > "${targetpath}/users/02_create_${wiz_project_name}_logic.sql"
       sed "s/\^schema_name/${wiz_project_name}_app/g" .dbFlow/scripts/setup/users/01_schema.sql > "${targetpath}/users/03_create_${wiz_project_name}_app.sql"
 
-      sed -i "s/\^wiz_db_app_user/${wiz_project_name}_depl/g" "${targetpath}/users/01_create_${wiz_project_name}_data.sql"
-      sed -i "s/\^wiz_db_app_user/${wiz_project_name}_depl/g" "${targetpath}/users/02_create_${wiz_project_name}_logic.sql"
-      sed -i "s/\^wiz_db_app_user/${wiz_project_name}_depl/g" "${targetpath}/users/03_create_${wiz_project_name}_app.sql"
+      ${sed_cmd} "s/\^wiz_db_app_user/${wiz_project_name}_depl/g" "${targetpath}/users/01_create_${wiz_project_name}_data.sql"
+      ${sed_cmd} "s/\^wiz_db_app_user/${wiz_project_name}_depl/g" "${targetpath}/users/02_create_${wiz_project_name}_logic.sql"
+      ${sed_cmd} "s/\^wiz_db_app_user/${wiz_project_name}_depl/g" "${targetpath}/users/03_create_${wiz_project_name}_app.sql"
 
     elif [[ $(toLowerCase "${wiz_project_mode}") == "s" ]]; then
       sed "s/\^wiz_db_app_user/${wiz_project_name}/g" .dbFlow/scripts/setup/users/00_depl.sql > "${targetpath}/users/00_create_${wiz_project_name}.sql"
@@ -728,7 +733,7 @@ function generate() {
     elif [[ $(toLowerCase "${wiz_project_mode}") == "f" ]]; then
       sed "s/\^wiz_db_app_user/${wiz_project_name}_depl/g" .dbFlow/scripts/setup/users/00_depl.sql > "${targetpath}/users/00_create_${wiz_project_name}_depl.sql"
       sed "s/\^schema_name/${wiz_project_name}_app/g" .dbFlow/scripts/setup/users/01_schema.sql > "${targetpath}/users/01_create_${wiz_project_name}_app.sql"
-      sed -i "s/\^wiz_db_app_user/${wiz_project_name}_depl/g" "${targetpath}/users/01_create_${wiz_project_name}_app.sql"
+      ${sed_cmd} "s/\^wiz_db_app_user/${wiz_project_name}_depl/g" "${targetpath}/users/01_create_${wiz_project_name}_app.sql"
     fi
 
     # static files
@@ -769,14 +774,14 @@ function generate() {
     done
 
     # workspace files
-    sed -i "s/\^workspace/${wiz_project_name}/g" "${targetpath}/workspaces/${wiz_project_name}/create_00_workspace.sql"
-    sed -i "s/\^workspace/${wiz_project_name}/g" "${targetpath}/workspaces/${wiz_project_name}/create_01_user_wsadmin.sql"
+    ${sed_cmd} "s/\^workspace/${wiz_project_name}/g" "${targetpath}/workspaces/${wiz_project_name}/create_00_workspace.sql"
+    ${sed_cmd} "s/\^workspace/${wiz_project_name}/g" "${targetpath}/workspaces/${wiz_project_name}/create_01_user_wsadmin.sql"
     if [[ $(toLowerCase "${wiz_project_mode}") == "s" ]]; then
-      sed -i "s/\^app_schema/${wiz_project_name}/g" "${targetpath}/workspaces/${wiz_project_name}/create_00_workspace.sql"
-      sed -i "s/\^app_schema/${wiz_project_name}/g" "${targetpath}/workspaces/${wiz_project_name}/create_01_user_wsadmin.sql"
+      ${sed_cmd} "s/\^app_schema/${wiz_project_name}/g" "${targetpath}/workspaces/${wiz_project_name}/create_00_workspace.sql"
+      ${sed_cmd} "s/\^app_schema/${wiz_project_name}/g" "${targetpath}/workspaces/${wiz_project_name}/create_01_user_wsadmin.sql"
     else
-      sed -i "s/\^app_schema/${wiz_project_name}_app/g" "${targetpath}/workspaces/${wiz_project_name}/create_00_workspace.sql"
-      sed -i "s/\^app_schema/${wiz_project_name}_app/g" "${targetpath}/workspaces/${wiz_project_name}/create_01_user_wsadmin.sql"
+      ${sed_cmd} "s/\^app_schema/${wiz_project_name}_app/g" "${targetpath}/workspaces/${wiz_project_name}/create_00_workspace.sql"
+      ${sed_cmd} "s/\^app_schema/${wiz_project_name}_app/g" "${targetpath}/workspaces/${wiz_project_name}/create_01_user_wsadmin.sql"
     fi
   fi
 

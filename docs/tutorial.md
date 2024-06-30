@@ -87,6 +87,7 @@ sources[develop]$: .dbFlow/setup.sh --generate todo
     Enter stage of this configuration mapped to branch (develop, test, master) [develop]:
     Do you wish to generate and install default tooling? (Logger, utPLSQL, teplsql, tapi) [Y]: N
     Install with sql(cl) or sqlplus? [sqlplus]:
+    Enter path to place logfiles and artifacts into after installation? [_log_path]
     Enter application IDs (comma separated) you wish to use initialy (100,101,...):
     Enter restful Moduls (comma separated) you wish to use initialy (api,test,...):
 

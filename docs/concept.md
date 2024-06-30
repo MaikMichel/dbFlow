@@ -1,6 +1,6 @@
 # The Concept
 
-**dbFlow** is based on 4 core topics. These topics are encountered again and again during the work with **dbFLow**. One is the adaptation of the git flow related to the work with database changes, the 2 phase deployment, smartFS, which reflects the directory structure and last but not least the depot, a kind of artifactory.
+**dbFlow** is based on 4 core topics. These topics are encountered again and again during the work with **dbFlow**. One is the adaptation of the git flow related to the work with database changes, the 2 phase deployment, smartFS, which reflects the directory structure and last but not least the depot, a kind of artifactory.
 
 ## Git Flow to DB
 
@@ -19,7 +19,7 @@ Development mainly takes place on the develop branch. Features that are not incl
 
 ![](images/gitflow_02.png)
 
-For each target branch a separate database or database container is expected. The artifacts that **dbFLow** generates can then be installed into the databases/containers.
+For each target branch a separate database or database container is expected. The artifacts that **dbFlow** generates can then be installed into the databases/containers.
 
 
 ## 2 Phase deployment
@@ -49,7 +49,7 @@ With this approach it is easy to map the concept of NighlyBuilds with Jenkins or
 
 > SmartFolderStructure
 
-To support this concept, a **dbFlow** project must have a certain directory structure. **dbFLow** expects the following directories at the root level of the project itself.
+To support this concept, a **dbFlow** project must have a certain directory structure. **dbFlow** expects the following directories at the root level of the project itself.
 
 | Folder          | Description
 | --------------- | ---------------------------------------------------
@@ -57,7 +57,8 @@ To support this concept, a **dbFlow** project must have a certain directory stru
 | **db**          | This folder contains the required database schemas and their objects.
 | **rest**        | Here the REST services / modules are stored
 | **reports**     | binary files for templating purpose
-| **static**      | In this folder the files are stored, which you upload later <br/>with the upload command to the static files of the respective application. (managed by *`dbFlux`*)
+| [**static**]    | opt. (managed by **dbFlux**) => In this folder the files are stored, which you upload later <br/>with the upload command to the static files of the respective application.
+| [**plugin**]    | opt. (managed by **dbFlux**) => In this folder the files are stored, which you upload later <br/>with the upload command to the static files of the respective plugin.
 
 
 ### Project Types
@@ -117,7 +118,7 @@ Each schemafolder inside **db** folder except `_setup` is build with the same st
 | ...... packages   | Packages containing utPLSQL Unittests
 
 
-All files must be stored as executable SQL scripts. dbFlow uses SQLPlus or SQLcl to import these scripts.
+All files must be stored as executable SQL scripts. dbFlow uses SQLPlus or SQLcl to execute these scripts.
 
 !!! Warning
 
@@ -157,12 +158,12 @@ alter table employees add (
 | - employees.sql       | create table (..);     |
 
 
-!!! tip
+!!! Important
 
-    - Changes to tables are always made 2 times. Once for a new installation (**==init==**) and once for an update (**==patch==**).
-    - Table scripts may only contain the pure tables and comments. Constraints and indexes must be stored in the appropriate directories.
-    - Files from the table directory are executed if it is a new installation (**==init==**) or if the table is to be newly created in this update (**==patch==**).
-    - Within the directories the files to be imported are sorted alphabetically, inside pacages or types all files are sorted alphabetically too but grouped in chunke specs, bodies, sql-files directory.
+    - **Changes** to tables are always made **2 times**. Once for a new installation (**==init==**) and once for an update (**==patch==**).
+    - Table scripts **==have to==** only contain the pure tables and comments. Constraints and indexes must be stored in the appropriate directories.
+    - Files from the table directory are executed if it is a new installation (**==init==**) or if the table is to be newly created in this update (**==patch==**) or the table file is marked new in the target branch by git (*New in Version 3*).
+    - Within the directories the files to be imported are sorted alphabetically, inside packages or types all files are sorted alphabetically too but grouped in chunk specs, bodies, sql-files directory.
 
 
 #### init
@@ -187,13 +188,13 @@ alter table employees add (
 - views
 - mviews
 - sources/triggers
-- jobs
 - tests/packages
 - ddl
 - ddl/init
 - dml
 - dml/init
 - dml/base
+- jobs
 - .hooks/post
 
 #### patch
@@ -223,7 +224,6 @@ alter table employees add (
 - views
 - mviews
 - sources/triggers
-- jobs
 - tests/packages
 - ddl
 - ddl/patch/post_${*branch-name*}
@@ -232,6 +232,7 @@ alter table employees add (
 - dml
 - dml/base
 - dml/patch/post
+- jobs
 - .hooks/post
 
 ### Hooks
@@ -240,7 +241,7 @@ On each level of the main directories there are so called `.hooks` folders. You 
 
 !!! Note
 
-    Hookscripts outside the respective schema folders **must** contain the corresponding target schema in the name.
+    Hookscripts outside the respective db schema folders **must** contain the corresponding target schema in the name.
 
 ```
 ├─ .hooks
@@ -426,11 +427,19 @@ Within the folders the order is alphabetical. If dbFLow finds a module file with
 
 ## Depot
 
-When you create a deployment, whether **==INIT==** or **==PATCH==**, the deployment artifact is stored in a so-called depot. From this depot, a CI/CD tool, for example, can later fetch the artifact and install it on the target instance. Within the depot directory, the individual deployments are stored in subdirectories that correspond to the Git branch from which they were created. After a successful installation, the patch, including all logs and temporary files, is placed in the success folder. Errors during the deployment lead to an abort and are stored in the failures subfolder.
+When you create a deployment, whether **==INIT==** or **==PATCH==**, the deployment artifact is stored in a so-called depot. From this depot, a CI/CD tool, for example, can later fetch the artifact and install it on the target instance. Within the depot directory, the individual deployments are stored in subdirectories that correspond to the Git branch from which they were created.
+
 
 ![](images/depot_and_flow.png)
 
 I recommend to use a separate repository or directory for each stage DB. This has the advantage that the corresponding directories serve their purpose even without Git and possibly access to the development repository. Theoretically, the repository can also be "doubled" to have a target directory at home and a source directory at the customer.
+
+
+## Logging
+
+After a successful installation, all logs and temporary created artifacs, are placed in a log folder. Errors during the deployment lead to an abort and are stored in the failures subfolder. The location of the log folder itself is configured in apply.env using the var `LOG_PATH` .
+
+> We recommend using the actual instance folder to log to, to ensure greater transparency.
 
 ## Big Picture
 

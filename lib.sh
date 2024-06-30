@@ -118,19 +118,20 @@ SCAN_PATHES=()
 
 function define_folders() {
   local l_mode="${1}";
-  local l_branch="${2}";
+  local undef_branch="_undefined_branch";
+  local l_branch="${2:-${undef_branch}}";
 
   # at INIT there is no pretreatment or an evaluation of the table_ddl
   # !: Don't forgett to change documentation when changing these arrays
   if [[ "${l_mode}" == "init" ]]; then
-    SCAN_PATHES=( .hooks/pre ddl/init/pre sequences tables indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies sources/types sources/packages sources/functions sources/procedures views mviews sources/triggers jobs tests/packages ddl ddl/init dml dml/init dml/base .hooks/post)
+    SCAN_PATHES=( .hooks/pre ddl/init/pre sequences tables indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies sources/types sources/packages sources/functions sources/procedures views mviews sources/triggers tests/packages ddl ddl/init dml dml/init dml/base jobs .hooks/post)
   else
     # building pre based on branches
     pres=( ".hooks/pre ddl/patch/pre_${l_branch}" "dml/patch/pre_${l_branch}" ddl/patch/pre dml/patch/pre )
-    post=( "ddl" ddl/patch/post dml dml/base dml/patch/post .hooks/post )
+    post=( "ddl" ddl/patch/post dml dml/base dml/patch/post jobs .hooks/post )
 
     SCAN_PATHES=( ${pres[@]} )
-    SCAN_PATHES+=( sequences tables "tables/tables_ddl/${l_branch}" tables/tables_ddl indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies sources/types sources/packages sources/functions sources/procedures views mviews sources/triggers jobs tests/packages )
+    SCAN_PATHES+=( sequences tables "tables/tables_ddl/${l_branch}" tables/tables_ddl indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies sources/types sources/packages sources/functions sources/procedures views mviews sources/triggers tests/packages )
     SCAN_PATHES+=( ${post[@]} )
   fi
 }
@@ -465,5 +466,17 @@ function validate_passes() {
         sed -i "/^DB_ADMIN_PWD=/s/=.*/=\"\!$pwd_enc\"/" ./apply.env
       fi
     fi
+  fi
+}
+
+function check_remind_me() {
+  if [[ -n "${REMIND_ME}" ]]; then
+    read -r -p "$(echo -e "${BORANGE}Remind me detected${NC} - ${REMIND_ME} -> Proceed? (y/n)" ) " -n 1
+
+    echo    # (optional) move to a new line
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+      [[ "$0" = "$BASH_SOURCE" ]] && exit 1 || return 1 # handle exits from shell or function but don't exit interactive shell
+    fi
+
   fi
 }

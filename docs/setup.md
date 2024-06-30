@@ -18,9 +18,9 @@ To use **dbFlow**, all you need is:
 
 ## Installation
 
-Basically, installing **dbFLow** consists of nothing more than initializing a directory with git and then cloning the repository as a submodule from GitHub. If you are using an existing git directory / project, cloning the submodule is all you need to do.
+Basically, installing **dbFlow** consists of nothing more than initializing a directory with git and then cloning the repository as a submodule from GitHub. If you are using an existing git directory / project, cloning the submodule is all you need to do.
 
-> The cloning of **dbFlow** as a submodule has the advantage that you can source new features and bugfixes directly from Github. In addition, you always have the possibility to fall back on an older **dbFLow** version through branching.
+> The cloning of **dbFlow** as a submodule has the advantage that you can source new features and bugfixes directly from Github. In addition, you always have the possibility to fall back on an older **dbFlow** version through branching.
 
 !!! warning "Important!"
 
@@ -108,7 +108,7 @@ You will be asked the following questions when creating the project:
 
 | Question | Notes |
 |----------|-------|
-| Which **dbFLow** project type do you want to create? **==S==**ingle, **==M==**ulti or **==F==**lex [M] | This is the first question. Here you define the project mode. Default is **==M==**ulti . ( see: [project-types]) |
+| Which **dbFlow** project type do you want to create? **==S==**ingle, **==M==**ulti or **==F==**lex [M] | This is the first question. Here you define the project mode. Default is **==M==**ulti . ( see: [project-types]) |
 | When running release tests, what is your prefered branch name [build] | Later you have the possibility to run so called release tests (NightlyBuilds) . Here you determine the branch name for the tests. The default here is **build**. |
 | Would you like to process changelogs during deployment [Y] | **dbFlow** offers the possibility to generate changlogs based on the commit messages. Here you activate this function. ( see: [changelog]) |
 | What is the schema the changelog is processed with [schema_name] | If you want changelogs to be displayed within your application, you can specify the target schema here, with which the corresponding TemplateCode should be executed. ( see: [changelog]) |
@@ -119,7 +119,8 @@ You will be asked the following questions when creating the project:
 | Enter path to depot [_depot] | This is a relative path which points to the depot (artifactory) and is also mentioned in .gitignore (see: [depot])|
 | Enter stage of this configuration mapped to branch (develop, test, master) [develop] | When importing the deployment, this setting assigns the database connection to the source branch |
 | Do you wish to generate and install default tooling? (Logger, utPLSQL, teplsql, tapi) [Y] | Here you activate the initial installation of the different components/dependencies. These are placed in the `db/_setup/features` folder. There you can also place other features by yourself. If you don't need certain components, you can delete the corresponding file from the features folder (before running the actual installation)..
-| Install with sql(cl) or sqlplus? [sqlplus] | Here you define which CLI **dbFLow** should use to execute the SQL scripts. |
+| Install with sql(cl) or sqlplus? [sqlplus] | Here you define which CLI **dbFlow** should use to execute the SQL scripts. |
+| Enter path to place logfiles and artifacts into after installation? | After a successful and also after an unsuccessful installation, all log files are stored in the folder specified here. |
 | Enter path to place logfiles into after installation? | You can define a path where the log files will be stored as well. This is useful when you have instance repos and want to have a history of your deployments near by the instance itself. |
 | Enter application IDs (comma separated) you wish to use initialy (100,101,...) | Here you can already enter the application IDs that **dbFlow** should initially take care of |
 | Enter restful Moduls (comma separated) you wish to use initialy (api,test,...) | Here you can already specify the REST modules that **dbFlow** should initially take care of |

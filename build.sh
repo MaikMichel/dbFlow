@@ -27,6 +27,8 @@ function usage() {
   echo -e "  -l | --listfiles        - Optional flag to list files which will be a part of the patch"
   echo -e "  -a | --apply            - Optional flag to call apply directly after patch is build."
   echo -e "                            This will install the artifact in current environment."
+  echo -e "  -f | --forceddl         - Optional flag to switch off checking for new table-file through git itself."
+  echo -e "                            This will run table_ddl scripts when matching table is present in patch mode"
   echo ""
   echo -e "${BWHITE}Examples:${NC}"
   echo -e "  ${0} --init --version 1.0.0"
@@ -122,8 +124,10 @@ function check_params() {
   list_option="NO"
   cached_option="NO"
   apply_option="NO"
+  forceddl_option="NO"
 
-  while getopts_long 'hipv:s:e:cktla help init patch version: start: end: cached keepfolder transferall listfiles apply' OPTKEY "${@}"; do
+  # echo "check_params: ${@}"
+  while getopts_long 'hipv:s:e:cktlaf help init patch version: start: end: cached keepfolder transferall listfiles apply forceddl' OPTKEY "${@}"; do
       case ${OPTKEY} in
           'h'|'help')
               help_option="YES"
@@ -160,6 +164,9 @@ function check_params() {
               ;;
           'a'|'apply')
               apply_option="YES"
+              ;;
+          'f'|'forceddl')
+              forceddl_option="YES"
               ;;
           '?')
               echo_error "INVALID OPTION -- ${OPTARG}" >&2
@@ -263,11 +270,18 @@ function check_params() {
     SHIP_ALL="FALSE"
   fi
 
-  # now check ship all files
+  # should build.sh run apply.sh
   if [[ ${apply_option} == "YES" ]]; then
     APPLY_DIRECTLY="TRUE"
   else
     APPLY_DIRECTLY="FALSE"
+  fi
+
+  # if true, we won't strip table_ddls from patch when a new table file is present
+  if [[ ${forceddl_option} == "YES" ]]; then
+    FORCE_TABLE_DDL="TRUE"
+  else
+    FORCE_TABLE_DDL="FALSE"
   fi
 
   if [[ ${list_option} == "YES" ]] && [[ $mode == "patch" ]]; then
@@ -335,33 +349,35 @@ function setup_env() {
 
   timelog "Building ${BWHITE}${mode}${NC} deployment version: ${BWHITE}${version}${NC}"
   timelog "----------------------------------------------------------"
-  timelog "Mode:         ${BWHITE}${mode}${NC}"
-  timelog "Version       ${BWHITE}${version}${NC}"
-  timelog "Log File:     ${BWHITE}${log_file}${NC}"
-  timelog "Branch:       ${BWHITE}${branch}${NC}"
+  timelog "Mode:          ${BWHITE}${mode}${NC}"
+  timelog "Version        ${BWHITE}${version}${NC}"
+  timelog "Log File:      ${BWHITE}${log_file}${NC}"
+  timelog "Branch:        ${BWHITE}${branch}${NC}"
   if [[ $mode == "patch" ]];then
     if [[ ${diff_args} == "--cached" ]]; then
 
-  timelog "cached:       ${BWHITE}yes${NC}"
+  timelog "cached:        ${BWHITE}yes${NC}"
     else
     display_from=`git rev-parse --short "${from_commit}"`
     display_until=`git rev-parse --short "${until_commit}"`
-  timelog "from:         ${BWHITE}${from_commit} (${display_from})${NC}"
-  timelog "until:        ${BWHITE}${until_commit} (${display_until})${NC}"
-  timelog "transfer all: ${BWHITE}${SHIP_ALL}${NC}"
+  timelog "from:          ${BWHITE}${from_commit} (${display_from})${NC}"
+  timelog "until:         ${BWHITE}${until_commit} (${display_until})${NC}"
+  timelog "transfer all:  ${BWHITE}${SHIP_ALL}${NC}"
+  timelog "forceddl       ${BWHITE}${FORCE_TABLE_DDL}${NC}"
     fi
   fi
+  timelog "Bash-Version:  ${BWHITE}${BASH_VERSION}${NC}"
   timelog "----------------------------------------------------------"
-  timelog "Project              ${BWHITE}${PROJECT}${NC}"
+  timelog "Project        ${BWHITE}${PROJECT}${NC}"
   if [[ ${PROJECT_MODE} != "FLEX" ]]; then
-      timelog "Application Schema:  ${BWHITE}${APP_SCHEMA}${NC}"
+    timelog "App Schema:    ${BWHITE}${APP_SCHEMA}${NC}"
     if [[ ${PROJECT_MODE} != "SINGLE" ]]; then
-      timelog "Data Schema:         ${BWHITE}${DATA_SCHEMA}${NC}"
-      timelog "Logic Schema:        ${BWHITE}${LOGIC_SCHEMA}${NC}"
+    timelog "Data Schema:   ${BWHITE}${DATA_SCHEMA}${NC}"
+    timelog "Logic Schema:  ${BWHITE}${LOGIC_SCHEMA}${NC}"
     fi
-    timelog "Workspace:           ${BWHITE}${WORKSPACE}${NC}"
+    timelog "Workspace:     ${BWHITE}${WORKSPACE}${NC}"
   fi
-     timelog "Schemas:             (${BWHITE}${SCHEMAS[*]}${NC})"
+  timelog "Schemas:       (${BWHITE}${SCHEMAS[*]}${NC})"
   timelog "----------------------------------------------------------"
   timelog "Depotpath:     ${BWHITE}${rel_depotpath}${NC}"
   timelog "Targetpath:    ${BWHITE}${rel_targetpath}${NC}"
@@ -549,6 +565,27 @@ function copy_files {
         cp --parents -Rf "${sourcepath}/.hooks" "${targetpath}"
       fi
     fi
+
+    # if there are table scripts that are new in this delta and there are also table_ddl scripts
+    # for these new table scripts, we leave out the table_ddl scripts
+    if [[ ${FORCE_TABLE_DDL} == "FALSE" ]]; then
+      timelog " "
+      for schema in "${SCHEMAS[@]}"
+      do
+        local table_folder="${sourcepath}/db/${schema}/tables"
+        local table_files=`git diff -r --name-only --no-commit-id ${diff_args} --diff-filter=A -- "${table_folder}" ":!${table_folder}/tables_ddl"`
+
+        # for each new (A) table file
+        for file in $table_files; do
+          local file_base=$(basename "${file}")
+          for f in "${targetpath}/db/${schema}/tables/tables_ddl"/${file_base%%.*}.*; do
+            timelog "New table detected: db/${schema}/tables/${file_base}"
+            timelog "└─> removing table_ddl db/${schema}/tables/tables_ddl/$(basename ${f})" warning
+            rm "$f"
+          done
+        done
+      done
+    fi
   fi
 
   timelog " "
@@ -647,10 +684,9 @@ function write_install_schemas(){
         # check every path in given order
         for path in "${SCAN_PATHES[@]}"
         do
-          if [[ -d "${targetpath}"/db/${schema}/${path} ]]; then
+          ## if [[ -d "${targetpath}"/db/${schema}/${path} ]]; then
             timelog "Writing calls for ${path}"
             {
-              echo "Prompt Installing ${path} ..."
 
               # set scan to on, to make use of vars inside main schema-hooks
               if [[ "${path}" == ".hooks/pre" ]] || [[ "${path}" == ".hooks/post" ]]; then
@@ -659,34 +695,35 @@ function write_install_schemas(){
 
               # pre folder-hooks (something like db/schema/.hooks/pre/tables)
               entries=("${targetpath}/db/${schema}/.hooks/pre/${path}"/*.*)
-              for entry in "${entries[@]}"; do
-                file=$(basename "${entry}")
-                file_ext=${file#*.}
+              if [[ ${#entries[@]} -gt 0 ]]; then
+                for entry in "${entries[@]}"; do
+                  file=$(basename "${entry}")
+                  file_ext=${file#*.}
 
-                if [[ "${file_ext}" == "tables.sql" ]]; then
+                  echo "set scan on"
 
-                  if [ ${#table_set[@]} -gt 0 ]; then
-                    echo "Prompt running .hooks/pre/${path}/${file} with table set"
-                    for table_item in "${table_set[@]}"
-                    do
-                      echo "Prompt >>> db/${schema}/.hooks/pre/${path}/${file} ${version} ${mode} ${table_item}.sql"
-                      echo "@@.hooks/pre/${path}/${file} ${version} ${mode} ${table_item}.sql"
-                      echo "Prompt <<< db/${schema}/.hooks/pre/${path}/${file} ${version} ${mode} ${table_item}.sql"
-                    done
-                    echo "Prompt"
-                    echo ""
+                  if [[ "${file_ext}" == "tables.sql" ]]; then
+
+                    if [ ${#table_set[@]} -gt 0 ]; then
+                      echo "Prompt running .hooks/pre/${path}/${file} with table set"
+                      for table_item in "${table_set[@]}"
+                      do
+                        echo "Prompt >>> db/${schema}/.hooks/pre/${path}/${file} ${version} ${mode} ${table_item}.sql"
+                        echo "@@.hooks/pre/${path}/${file} ${version} ${mode} ${table_item}.sql"
+                        echo "Prompt <<< db/${schema}/.hooks/pre/${path}/${file} ${version} ${mode} ${table_item}.sql"
+                      done
+                      echo "Prompt"
+                      echo ""
+                    fi
+
+                  else
+                    echo "Prompt >>> db/${schema}/.hooks/pre/${path}/${file}"
+                    echo "@@.hooks/pre/${path}/${file}"
+                    echo "Prompt <<< db/${schema}/.hooks/pre/${path}/${file}"
                   fi
-
-                else
-                  echo "Prompt >>> db/${schema}/.hooks/pre/${path}/${file}"
-                  echo "@@.hooks/pre/${path}/${file}"
-                  echo "Prompt <<< db/${schema}/.hooks/pre/${path}/${file}"
-                fi
-              done
-
-              echo "Prompt"
-              if [[ "${path}" == "ddl/patch/pre" ]] || [[ "${path}" == "ddl/patch/pre_*" ]] || [[ "${path}" == "views" ]]; then
-                echo "WHENEVER SQLERROR CONTINUE"
+                done
+                echo "Prompt"
+                echo ""
               fi
 
               # read files from folder
@@ -699,77 +736,96 @@ function write_install_schemas(){
                 sorted=("${targetpath}/db/${schema}/${path}"/*.*)
               fi
 
-              echo "set define off"
-              for entry in "${sorted[@]}"; do
-                file=$(basename "${entry}")
-                file_ext=${file#*.}
+              # nur wenn es files gibt
+              if [[ ${#sorted[@]} -gt 0 ]]; then
+                if [[ "${path}" == "ddl/patch/pre" ]] || [[ "${path}" == "ddl/patch/pre_*" ]] || [[ "${path}" == "views" ]]; then
+                  echo ""
+                  echo "WHENEVER SQLERROR CONTINUE"
+                  echo ""
+                fi
+                echo "Prompt Installing ${path} ..."
+                echo "Prompt"
+                echo "set define off"
+                for entry in "${sorted[@]}"; do
+                  file=$(basename "${entry}")
+                  file_ext=${file#*.}
 
-                if [[ "${path}" == "tables" ]]; then
-                  skipfile="FALSE"
-                  table_changes="TRUE"
+                  if [[ "${path}" == "tables" ]]; then
+                    skipfile="FALSE"
+                    table_changes="TRUE"
 
-                  # store tablename in array
-                  table_name="${file%%.*}"
-                  table_array+=( ${table_name} )
+                    # store tablename in array
+                    table_name="${file%%.*}"
+                    table_array+=( ${table_name} )
 
-                  if [[ "${mode}" == "patch" ]]; then
-                    # is there any matching file in tables_ddl
-                    if [[ -d "${targetpath}/db/${schema}/tables/tables_ddl" ]]; then
-                      for f in "${targetpath}/db/${schema}/tables/tables_ddl"/${file%%.*}.*; do
-                        if [[ -e "$f" ]]; then
-                          skipfile="TRUE"
-                        fi
-                      done
+                    if [[ "${mode}" == "patch" ]]; then
+                      # is there any matching file in tables_ddl
+                      if [[ -d "${targetpath}/db/${schema}/tables/tables_ddl" ]]; then
+                        for f in "${targetpath}/db/${schema}/tables/tables_ddl"/${file%%.*}.*; do
+                          if [[ -e "$f" ]]; then
+                            skipfile="TRUE"
+                          fi
+                        done
+                      fi
+
+                      # is there any matching file in tables_ddl defined just for the target branch?
+                      if [[ -d "${targetpath}/db/${schema}/tables/tables_ddl/${branch}" ]]; then
+                        for f in "${targetpath}/db/${schema}/tables/tables_ddl/${branch}"/${file%%.*}.*; do
+                          if [[ -e "$f" ]]; then
+                            skipfile="TRUE"
+                          fi
+                        done
+                      fi
                     fi
 
-                    # is there any matching file in tables_ddl defined just for the target branch?
-                    if [[ -d "${targetpath}/db/${schema}/tables/tables_ddl/${branch}" ]]; then
-                      for f in "${targetpath}/db/${schema}/tables/tables_ddl/${branch}"/${file%%.*}.*; do
-                        if [[ -e "$f" ]]; then
-                          skipfile="TRUE"
-                        fi
-                      done
-                    fi
-                  fi
-
-                  if [[ "$skipfile" == "TRUE" ]]; then
-                    echo "Prompt ... skipped ${file}"
-                  else
-                    echo "Prompt >>> db/${schema}/${path}/${file}"
-                    echo "@@${path}/${file}"
-                    echo "Prompt <<< db/${schema}/${path}/${file}"
-                  fi
-                else
-
-                  if ([[ "${path}" == ".hooks/pre" ]] || [[ "${path}" == ".hooks/post" ]]) && [[ "${file_ext}" == "tables.sql" ]]; then
-
-                    if [ ${#table_set[@]} -gt 0 ]; then
-                      echo "Prompt running ${path}/${file} with table set"
-                      for table_item in "${table_set[@]}"
-                      do
-                        echo "Prompt >>> db/${schema}/${path}/${file} ${version} ${mode} ${table_item}.sql"
-                        echo "@@${path}/${file} ${version} ${mode} ${table_item}.sql"
-                        echo "Prompt <<< db/${schema}/${path}/${file} ${version} ${mode} ${table_item}.sql"
-                      done
-                      echo "Prompt"
-                      echo ""
-                    fi
-                  else
-
-                    echo "Prompt >>> db/${schema}/${path}/${file}"
-                    if [[ "${path}" == "ddl/pre_*" ]] && [[ "${mode}" == "patch" ]]; then
-                      target_stage="${path/'ddl/pre_'/}"
-                      echo "--${target_stage}@@${path}/${file}"
+                    if [[ "$skipfile" == "TRUE" ]]; then
+                      echo "Prompt ... skipped ${file}"
                     else
+                      echo "Prompt >>> db/${schema}/${path}/${file}"
                       echo "@@${path}/${file}"
                       echo "Prompt <<< db/${schema}/${path}/${file}"
                     fi
+                  else
 
+                    if ([[ "${path}" == ".hooks/pre" ]] || [[ "${path}" == ".hooks/post" ]]) && [[ "${file_ext}" == "tables.sql" ]]; then
+
+                      if [ ${#table_set[@]} -gt 0 ]; then
+                        echo "Prompt running ${path}/${file} with table set"
+                        for table_item in "${table_set[@]}"
+                        do
+                          echo "Prompt >>> db/${schema}/${path}/${file} ${version} ${mode} ${table_item}.sql"
+                          echo "@@${path}/${file} ${version} ${mode} ${table_item}.sql"
+                          echo "Prompt <<< db/${schema}/${path}/${file} ${version} ${mode} ${table_item}.sql"
+                        done
+                        echo "Prompt"
+                        echo ""
+                      fi
+                    else
+
+                      echo "Prompt >>> db/${schema}/${path}/${file}"
+                      if [[ "${path}" == "ddl/pre_*" ]] && [[ "${mode}" == "patch" ]]; then
+                        target_stage="${path/'ddl/pre_'/}"
+                        echo "--${target_stage}@@${path}/${file}"
+                      else
+                        echo "@@${path}/${file}"
+                        echo "Prompt <<< db/${schema}/${path}/${file}"
+                      fi
+
+                    fi
                   fi
-                fi
-              done #files in folder (sorted)
+                done #files in folder (sorted)
 
-              echo "set define '^'"
+                echo "set define '^'"
+                echo "Prompt"
+                echo "Prompt"
+                echo ""
+
+                if [[ "${path}" == "ddl/patch/pre" ]] || [[ "${path}" == "ddl/patch/pre_*" ]] || [[ "${path}" == "views" ]]
+                then
+                  echo "WHENEVER SQLERROR EXIT SQL.SQLCODE"
+                  echo ""
+                fi
+              fi
 
               # union table names
               if [[ "${path}" == "tables" ]]; then
@@ -777,50 +833,47 @@ function write_install_schemas(){
                 table_set=($(printf "%s\n" "${table_array[@]}" | sort -u))
               fi
 
-              if [[ "${path}" == "ddl/patch/pre" ]] || [[ "${path}" == "ddl/patch/pre_*" ]] || [[ "${path}" == "views" ]]
-              then
-                echo "WHENEVER SQLERROR EXIT SQL.SQLCODE"
-              fi
 
 
               # post folder hooks
-              echo "Prompt"
               entries=("${targetpath}/db/${schema}/.hooks/post/${path}"/*.*)
-              for entry in "${entries[@]}"; do
-                file=$(basename "${entry}")
-                file_ext=${file#*.}
+              if [[ ${#entries[@]} -gt 0 ]]; then
+                for entry in "${entries[@]}"; do
+                  file=$(basename "${entry}")
+                  file_ext=${file#*.}
 
-                if [[ "${file_ext}" == "tables.sql" ]]; then
+                  if [[ "${file_ext}" == "tables.sql" ]]; then
 
-                  if [ ${#table_set[@]} -gt 0 ]; then
-                    echo "Prompt running .hooks/post/${path}/${file} with table set"
-                    for table_item in "${table_set[@]}"
-                    do
-                      echo "Prompt >>> db/${schema}/.hooks/post/${path}/${file} ${version} ${mode} ${table_item}.sql"
-                      echo "@@.hooks/post/${path}/${file} ${version} ${mode} ${table_item}.sql"
-                      echo "Prompt <<< db/${schema}/.hooks/post/${path}/${file} ${version} ${mode} ${table_item}.sql"
-                    done
-                    echo "Prompt"
-                    echo ""
+                    if [ ${#table_set[@]} -gt 0 ]; then
+                      echo "Prompt running .hooks/post/${path}/${file} with table set"
+                      for table_item in "${table_set[@]}"
+                      do
+                        echo "Prompt >>> db/${schema}/.hooks/post/${path}/${file} ${version} ${mode} ${table_item}.sql"
+                        echo "@@.hooks/post/${path}/${file} ${version} ${mode} ${table_item}.sql"
+                        echo "Prompt <<< db/${schema}/.hooks/post/${path}/${file} ${version} ${mode} ${table_item}.sql"
+                      done
+                      echo "Prompt"
+                      echo ""
+                    fi
+
+                  else
+                    echo "Prompt >>> db/${schema}/.hooks/post/${path}/${file}"
+                    echo "@@.hooks/post/${path}/${file}"
+                    echo "Prompt <<< db/${schema}/.hooks/post/${path}/${file}"
                   fi
+                done
 
-                else
-                  echo "Prompt >>> db/${schema}/.hooks/post/${path}/${file}"
-                  echo "@@.hooks/post/${path}/${file}"
-                  echo "Prompt <<< db/${schema}/.hooks/post/${path}/${file}"
-                fi
-              done
+                echo "Prompt"
+                echo ""
+              fi
 
               # set scan to off, to make use of vars inside main schema-hooks
               if [[ "${path}" == ".hooks/pre" ]] || [[ "${path}" == ".hooks/post" ]]; then
                 echo "set scan off"
               fi
 
-              echo "Prompt"
-              echo "Prompt"
-              echo ""
             } >> "${target_install_file}"
-          fi #path exists
+          ## fi #path exists
         done #paths
 
         {
@@ -1141,100 +1194,88 @@ function manage_artifact () {
 }
 
 function make_a_new_version() {
-  # Merge pushen
-  git push
+  # is there a remote origin?
+  if git remote -v | grep -q "^origin"; then
+    git push
+  fi
 
   # Tag erstellen und pushen
-  git tag -a "V${version}" -m "neue Version V${version} angelegt"
-  git push origin "V${version}"
+  git tag -a "V${version}" -m "new release with tag V${version} created"
+
+  if [[ -n "$(git remote)" ]]; then
+    git push origin "V${version}"
+  fi
 
 }
 
 function check_push_to_depot() {
-  local force_push=${1:-"FALSE"}
   local current_path=$(pwd)
 
-  prod_branches=( "master" "main" )
   if [[ -z ${DBFLOW_JENKINS:-} ]]; then
-    if [[ " ${prod_branches[@]} " =~ " ${branch} " ]]; then
-      if [[ $version != "install" ]]; then
+    # go to depot
+    cd "$(pwd)/$DEPOT_PATH"
 
-        cd "$(pwd)/$DEPOT_PATH"
-        if [[ -d ".git" ]]; then
+    # is this a git repot?
+    if [[ -d ".git" ]]; then
 
-          if [[ "$force_push" == "FALSE" ]]; then
-            if [[ -n $(git status -s) ]]; then
+      # is there a remote?
+      if [[ -n "$(git remote)" ]]; then
 
-              echo
-              echo "Do you wish to push changes to depot remote?"
-              echo "  Y - ${targetpath}.tar.gz will be commited and pushed"
-              echo "  N - Nothing will happen..."
+        if [[ -n $(git status -s) ]]; then
+          git pull
+          git add "${targetpath}.tar.gz"
+          git commit -m "Adds ${targetpath}.tar.gz"
+          git push
+        fi # git status
 
-              read -r modus
+      fi # git remote
 
-              shopt -s nocasematch
-              case "$modus" in
-                "Y" )
-                  force_push="TRUE"
-                  ;;
-                *)
-                  echo "no push to depot"
-                  ;;
-              esac
-            fi
+    fi # git path
 
-            if [[ "$force_push" == "TRUE" ]]; then
-              git pull
-              git add "${targetpath}.tar.gz"
-              git commit -m "Adds ${targetpath}.tar.gz"
-              git push
-            fi
-          fi
-        fi # git path
+    # and back to start
+    cd "${current_path}"
 
-        cd "${current_path}"
-      fi
-    fi
   fi # DBFLOW_JENKINS
 }
 
 
 function check_make_new_version() {
-  if [[ -z ${DBFLOW_JENKINS:-} ]]; then
+  if [[ -z ${DBFLOW_JENKINS:-} ]] && [[ -z ${DBFLOW_RELEASE_IS_RUNNUNG:-} ]]; then
     # on branch master ask if we should tag current version and conmmit
     prod_branches=( "master" "main" )
     if [[ " ${prod_branches[@]} " =~ " ${branch} " ]]; then
-      if [[ $version != "install" ]]; then
-        echo
-        echo "Do you wish to commit, tag and push the new version to origin"
-        echo "  Y - current version will be commited, tagged and pushed"
-        echo "  N - Nothing will happen, all generated files won't be touched"
 
-        read -r modus
+      echo
+      echo "Do you wish to commit, tag and push the new version to origin"
+      echo "  Y - current version will be commited, tagged and pushed"
+      echo "  N - Nothing will happen, all generated files won't be touched"
 
-        shopt -s nocasematch
-        case "$modus" in
-          "Y" )
-            make_a_new_version
-            check_push_to_depot
-            ;;
-          *)
-            echo "Nothing has happened"
-            ;;
-        esac
-      fi
+      read -r modus
+
+      shopt -s nocasematch
+      case "$modus" in
+        "Y" )
+          make_a_new_version
+          ;;
+        *)
+          echo "Nothing has happened"
+          ;;
+      esac
+
     fi
   fi # DBFLOW_JENKINS
 }
 
 
 function call_apply_when_flag_is_set() {
-  if [[ ${APPLY_DIRECTLY} == "TRUE" ]]; then
-    echo "calling apply"
+  if [[ -z ${DBFLOW_RELEASE_IS_RUNNUNG:-} ]]; then
+    if [[ ${APPLY_DIRECTLY} == "TRUE" ]]; then
+      echo "calling apply"
 
-    .dbFlow/apply.sh --"${mode}" --version "${version}"
-  else
-    echo -e "${LWHITE}just call ${NC}${BWHITE}.dbFlow/apply.sh --${mode} --version ${version} ${NC}${LWHITE}inside your instance folder${NC}"
+      .dbFlow/apply.sh --"${mode}" --version "${version}"
+    else
+      echo -e "${LWHITE}just call ${NC}${BWHITE}.dbFlow/apply.sh --${mode} --version ${version} ${NC}${LWHITE}inside your instance folder${NC}"
+    fi
   fi
 }
 

@@ -60,6 +60,13 @@ SQLCLI=${SQLCLI:-sqlplus}
 
 basepath=$(pwd)
 
+# get branch name
+{ #try
+  this_branch=$(git branch --show-current)
+} || { # catch
+  this_branch="develop"
+}
+
 #
 AT_LEAST_ON_INSTALLFILE_STARTED="NO"
 
@@ -102,6 +109,23 @@ function check_vars() {
     echo_error "Targetstage ${STAGE} inside ${DEPOT_PATH} is unknown"
     echo_warning "Check your STAGE environment var in apply.env"
     do_exit="YES"
+  fi
+
+  if [[ -z ${LOG_PATH:-} ]]; then
+    if [[ -f "apply.env" && -z "$(grep 'LOG_PATH=' "apply.env")" ]]; then
+      {
+        echo ""
+        echo "# auto added @${MDATE}"
+        echo "# Path to copy logs to after installation"
+        echo "LOG_PATH=_logs"
+      } >> apply.env
+
+      echo -e "${LWHITE}set LOG_PATH to ${NC}${BWHITE}_logs${NC} ${LWHITE} in your apply.env - please configure as you like with a relative path${NC}"
+      LOG_PATH="_logs"
+    else
+      echo_error "Logpath not defined"
+      do_exit="YES"
+    fi
   fi
 
   if [[ ${PROJECT_MODE} == "FLEX" ]]; then
@@ -242,42 +266,45 @@ function check_params() {
 function print_info() {
   timelog "Installing    ${BWHITE}${mode} ${version}${NC}"
   timelog "----------------------------------------------------------"
-  timelog "Mode:         ${BWHITE}$mode${NC}"
-  timelog "Version:      ${BWHITE}${version}${NC}"
-  timelog "Log File:     ${BWHITE}${log_file}${NC}"
-  timelog "Extract:      ${BWHITE}$must_extract${NC}"
-  timelog "Stepwise:     ${BWHITE}${stepwise_option}${NC}"
+  timelog "Mode:                ${BWHITE}$mode${NC}"
+  timelog "Version:             ${BWHITE}${version}${NC}"
+  timelog "Log File:            ${BWHITE}${log_file}${NC}"
+  timelog "Extract:             ${BWHITE}$must_extract${NC}"
+  timelog "Stepwise:            ${BWHITE}${stepwise_option}${NC}"
   if [[ $oldlogfile != "" ]]; then
-    timelog "Redolog:      ${BWHITE}$oldlogfile${NC}"
+    timelog "Redolog:             ${BWHITE}$oldlogfile${NC}"
   fi
+  timelog "Bash-Version:        ${BWHITE}${BASH_VERSION}${NC}"
   timelog "----------------------------------------------------------"
   timelog "Project:             ${BWHITE}${PROJECT}${NC}"
   if [[ ${PROJECT_MODE} != "FLEX" ]]; then
-    timelog "Application Schema:  ${BWHITE}${APP_SCHEMA}${NC}"
+    timelog "App Schema           ${BWHITE}${APP_SCHEMA}${NC}"
     if [[ ${PROJECT_MODE} != "SINGLE" ]]; then
       timelog "Data Schema:         ${BWHITE}${DATA_SCHEMA}${NC}"
       timelog "Logic Schema:        ${BWHITE}${LOGIC_SCHEMA}${NC}"
     fi
     timelog "Workspace:           ${BWHITE}${WORKSPACE}${NC}"
   fi
+
   timelog "Schemas:             ${BWHITE}${SCHEMAS[*]}${NC}"
   if [[ -n ${CHANGELOG_SCHEMA} ]]; then
     timelog "----------------------------------------------------------"
-    timelog "Changelog Schema: ${BWHITE}${CHANGELOG_SCHEMA}${NC}"
-    timelog "Intent Prefixes:  ${BWHITE}${INTENT_PREFIXES[@]}${NC}"
-    timelog "Intent Names:     ${BWHITE}${INTENT_NAMES[@]}${NC}"
-    timelog "Intent Else:      ${BWHITE}${INTENT_ELSE}${NC}"
-    timelog "Ticket Match:     ${BWHITE}${TICKET_MATCH}${NC}"
-    timelog "Ticket URL:       ${BWHITE}${TICKET_URL}${NC}"
+    timelog "Changelog Schema:    ${BWHITE}${CHANGELOG_SCHEMA}${NC}"
+    timelog "Intent Prefixes:     ${BWHITE}${INTENT_PREFIXES[@]}${NC}"
+    timelog "Intent Names:        ${BWHITE}${INTENT_NAMES[@]}${NC}"
+    timelog "Intent Else:         ${BWHITE}${INTENT_ELSE}${NC}"
+    timelog "Ticket Match:        ${BWHITE}${TICKET_MATCH}${NC}"
+    timelog "Ticket URL:          ${BWHITE}${TICKET_URL}${NC}"
   fi
 
   if [[ -n ${TEAMS_WEBHOOK_URL} ]]; then
-    timelog "Teams WebHook:    ${BWHITE}TRUE${NC}"
+    timelog "Teams WebHook:       ${BWHITE}TRUE${NC}"
   fi
 
   timelog "----------------------------------------------------------"
   timelog "Stage:               ${BWHITE}${STAGE}${NC}"
   timelog "Depot:               ${BWHITE}${DEPOT_PATH}${NC}"
+  timelog "Logs :               ${BWHITE}${LOG_PATH}${NC}"
   timelog "Application Offset:  ${BWHITE}${APP_OFFSET}${NC}"
   timelog "Deployment User:     ${BWHITE}${DB_APP_USER}${NC}"
   timelog "DB Connection:       ${BWHITE}${DB_TNS}${NC}"
@@ -292,7 +319,7 @@ function extract_patchfile() {
       timelog "${install_source_file} exists"
 
       # copy patch to _installed
-      mv "${install_source_file}" "${install_target_path}"/
+      cp "${install_source_file}" "${install_target_path}"/
     else
       if [[ -e "${install_target_file}" ]]; then
         timelog "${install_target_file} allready copied"
@@ -653,21 +680,41 @@ function set_apps_unavailable() {
         apex_application_install.set_workspace_id(v_workspace_id);
         apex_util.set_security_group_id(p_security_group_id => apex_application_install.get_workspace_id);
 
-        begin
-          apex_util.set_application_status(p_application_id     => v_application_id,
-                                            p_application_status => 'UNAVAILABLE',
-                                            p_unavailable_value  => '${maintence}' );
-        exception
-          when others then
-            if sqlerrm like '%Application not found%' then
-              dbms_output.put_line((chr(27) || '[31m') || 'Application: '||upper(v_application_id)||' not found!' || (chr(27) || '[0m'));
-            else
-              raise;
-            end if;
-        end;
+        apex_util.set_application_status(p_application_id     => v_application_id,
+                                          p_application_status => 'UNAVAILABLE',
+                                          p_unavailable_value  => '${maintence}' );
+
+        dbms_output.put_line('.. APP: '|| v_application_id || ' has been disabled');
+
+        -- check translated Applications additionally
+        for cur in ( select translated_application_id, translated_app_language
+                       from apex_application_trans_map
+                      where primary_application_id = v_application_id
+                      order by translated_application_id)
+        loop
+          begin
+            apex_util.set_application_status(p_application_id     => cur.translated_application_id,
+                                             p_application_status => 'UNAVAILABLE',
+                                             p_unavailable_value  => '${maintence}' );
+            dbms_output.put_line('.... Translated APP: '|| cur.translated_application_id || ' (' || cur.translated_app_language || ') has been disabled');
+          exception
+            when others then
+              if sqlerrm like '%Application not found%' then
+                dbms_output.put_line((chr(27) || '[33m') || 'Application: '||upper(cur.translated_application_id)||' probably not published!' || (chr(27) || '[0m'));
+              else
+                raise;
+              end if;
+          end;
+        end loop;
       Exception
         when no_data_found then
           dbms_output.put_line((chr(27) || '[31m') || 'Workspace: '||upper('${workspace}')||' not found!' || (chr(27) || '[0m'));
+        when others then
+          if sqlerrm like '%Application not found%' then
+            dbms_output.put_line((chr(27) || '[31m') || 'Application: '||upper(v_application_id)||' not found!' || (chr(27) || '[0m'));
+          else
+            raise;
+          end if;
 End;
 /
 
@@ -695,60 +742,91 @@ function set_apps_available() {
       local app_name=$(basename "${d}")
       local app_id=${app_name/f}
 
-      local workspace=${WORKSPACE}
-      local appschema=${APP_SCHEMA}
+      # Enable only Applications which were not part of the current deployment process
+      if grep -q "\b${app_name}\b" "${app_install_file}"; then
+        timelog "no enabling APEX-App ${app_id} in workspace ${workspace} because it was part of the deployment"
+        timelog "...any existent translated apps have to be published on your own, using hooks"
+      else
 
-      if [[ ${PROJECT_MODE} == "FLEX" ]]; then
-        workspace=$(basename $(dirname ${d}))
-        appschema=$(basename $(dirname $(dirname ${d})))
-      fi
+        local workspace=${WORKSPACE}
+        local appschema=${APP_SCHEMA}
+
+        if [[ ${PROJECT_MODE} == "FLEX" ]]; then
+          workspace=$(basename $(dirname ${d}))
+          appschema=$(basename $(dirname $(dirname ${d})))
+        fi
 
 
-      timelog "enabling APEX-App ${app_id} in workspace ${workspace} for schema ${appschema}..."
-      $SQLCLI -S -L "$(get_connect_string "${appschema}")" <<!
-      set serveroutput on;
-      set define off;
-      Declare
-        v_application_id  apex_application_build_options.application_id%type := ${app_id} + ${APP_OFFSET};
-        v_workspace_id    apex_workspaces.workspace_id%type;
-        l_text            varchar2(100);
-      Begin
-        select workspace_id
-          into v_workspace_id
-          from apex_workspaces
-          where workspace = upper('${workspace}');
+        timelog "enabling APEX-App ${app_id} in workspace ${workspace} for schema ${appschema}..."
+        $SQLCLI -S -L "$(get_connect_string "${appschema}")" <<!
+        set serveroutput on;
+        set define off;
 
-        apex_application_install.set_workspace_id(v_workspace_id);
-        apex_util.set_security_group_id(p_security_group_id => apex_application_install.get_workspace_id);
+        Declare
+          v_application_id  apex_application_build_options.application_id%type := ${app_id} + ${APP_OFFSET};
+          v_workspace_id    apex_workspaces.workspace_id%type;
+          l_text            varchar2(100);
+        Begin
 
-        begin
-          select substr(unavailable_text, 1, 50)
-            into l_text
-            from apex_applications
+          select workspace_id
+            into v_workspace_id
+            from apex_workspaces
+            where workspace = upper('${workspace}');
+
+          apex_application_install.set_workspace_id(v_workspace_id);
+          apex_util.set_security_group_id(p_security_group_id => apex_application_install.get_workspace_id);
+
+          begin
+            select substr(unavailable_text, 1, 50)
+              into l_text
+              from apex_applications
             where application_id = v_application_id;
 
-          if (apex_util.get_application_status(p_application_id => v_application_id) = 'UNAVAILABLE' and l_text like '<span />%') then
-            apex_util.set_application_status(p_application_id     => v_application_id,
-                                              p_application_status => 'AVAILABLE_W_EDIT_LINK');
-          end if;
-        exception
-          when no_data_found then
-            dbms_output.put_line((chr(27) || '[31m') || 'Application: '||upper(v_application_id)||' not found!' || (chr(27) || '[0m'));
-          when others then
-            if sqlerrm like '%Application not found%' then
-              dbms_output.put_line((chr(27) || '[31m') || 'Application: '||upper(v_application_id)||' not found!' || (chr(27) || '[0m'));
-            else
-              raise;
+            -- only enable, what has been disabled by dbFlow with the marker "<span />"
+            if (apex_util.get_application_status(p_application_id => v_application_id) = 'UNAVAILABLE' and l_text like '<span />%') then
+
+              apex_util.set_application_status(p_application_id     => v_application_id,
+                                              p_application_status => 'AVAILABLE_W_EDIT_LINK',
+                                              p_unavailable_value  => null );
+
+              dbms_output.put_line('.. APP: '|| v_application_id || ' has been enabled');
+
+
+              -- check translated Applications additionally
+              for cur in ( select translated_application_id, translated_app_language
+                              from apex_application_trans_map
+                            where primary_application_id = v_application_id )
+              loop
+                begin
+                  apex_util.set_application_status(p_application_id     => cur.translated_application_id,
+                                                  p_application_status => 'AVAILABLE_W_EDIT_LINK',
+                                                  p_unavailable_value  => null );
+
+                  dbms_output.put_line('.... Translated APP: '|| cur.translated_application_id || ' (' || cur.translated_app_language || ') has been enabled');
+                exception
+                  when others then
+                    if sqlerrm like '%Application not found%' then
+                      dbms_output.put_line((chr(27) || '[31m') || 'Application: '||upper(v_application_id)||' probably not published!' || (chr(27) || '[0m'));
+                    else
+                      raise;
+                    end if;
+                end;
+              end loop;
             end if;
-        end;
-      Exception
-        when no_data_found then
-          dbms_output.put_line((chr(27) || '[31m') || 'Workspace: '||upper('${workspace}')||' not found!' || (chr(27) || '[0m'));
-      End;
+          exception
+            when no_data_found then
+              dbms_output.put_line((chr(27) || '[31m') || 'Application: '||upper(v_application_id)||' not found!' || (chr(27) || '[0m'));
+          end;
+        Exception
+          when no_data_found then
+            dbms_output.put_line((chr(27) || '[31m') || 'Workspace: '||upper('${workspace}')||' not found!' || (chr(27) || '[0m'));
+        End;
 /
 !
-
+      fi # grep
     done
+
+
   else
     timelog "Directory apex does not exist" "${warning}"
   fi
@@ -994,27 +1072,34 @@ function process_logs() {
   mv "${full_log_file}.colorless" "${full_log_file}"
 
   local lfile=$(basename "${full_log_file}")
-  # copy logs or define var
-  if [[ -n ${LOG_PATH} ]] && [[ ${LOG_PATH-"undefined"} != "undefined" ]]; then
-    [[ -d "${LOG_PATH}" ]] || mkdir "${LOG_PATH}"
-    [[ -d "${LOG_PATH}/${target_move}" ]] || mkdir "${LOG_PATH}/${target_move}"
-    cp ./*"${mode}"*"${version}"*.log "${LOG_PATH}/${target_move}"
 
-    view_output="${LOG_PATH}/${target_move}/$(basename "${full_log_file}")"
-  else
-    if [[ -f "apply.env" && -z "$(grep 'LOG_PATH=' "apply.env")" ]]; then
-      {
-      echo ""
-      echo "# auto added @${MDATE}"
-      echo "# Path to copy logs to after installation"
-      echo "LOG_PATH="
-      } >> apply.env
-    fi
+  # write definition to current apply.env
+  if [[ -f "apply.env" && -z "$(grep 'LOG_PATH=' "apply.env")" ]]; then
+    {
+    echo ""
+    echo "# auto added @${MDATE}"
+    echo "# Path to copy logs to after installation"
+    echo "LOG_PATH=_logs"
+    } >> apply.env
+    echo -e "${LWHITE}set LOG_PATH to ${NC}${BWHITE}_logs${NC} ${LWHITE} in your apply.env - please configure as you like with a relative path${NC}"
+    LOG_PATH="_logs"
   fi
 
-  # move all logs
-  mv ./*"${mode}"*"${version}"* "${target_finalize_path}"
 
+  # create path if needed
+  [[ -d "${LOG_PATH}" ]] || mkdir "${LOG_PATH}"
+
+  # create succcess or failure subfolder
+  [[ -d "${LOG_PATH}/${target_move}" ]] || mkdir "${LOG_PATH}/${target_move}"
+
+
+  # rm tarball
+  rm ${install_target_file}
+
+  # move all artifacts
+  mv ./*"${mode}"*"${version}"* "${target_relative_path}"
+
+  view_output="${target_relative_path}/$(basename "${full_log_file}")"
   echo_debug "view output: \"${view_output}\""
 }
 
@@ -1022,8 +1107,8 @@ function manage_result() {
   cd "${basepath}" || exit
 
   local target_move=$1
-  target_relative_path=${DEPOT_PATH}/${STAGE}/${target_move}/${version}
-  target_finalize_path=${install_source_path}/${target_move}/${version}
+  target_relative_path=${LOG_PATH}/${target_move}/${version}
+  target_finalize_path=${basepath}/${target_relative_path}
 
   # create path if not exists
   [ -d "${target_finalize_path}" ] || mkdir -p "${target_finalize_path}"
@@ -1077,8 +1162,20 @@ function manage_result() {
 
   if [[ $target_move == "success" ]]; then
     post_message_to_teams "Release ${version}" "4CCC3B" "Release ${version} has been successfully applied to stage: <b>${STAGE}</b>."
+    process_logs ${target_move} "${target_relative_path}/${finallog}";
 
-    process_logs ${target_move} "$DEPOT_PATH/$STAGE/$target_move/$version/${finallog}";
+    # commit if stage != develop or build and current branch is main or master
+    if [[ -d ".git" ]]; then
+      if [[ ${STAGE} != "develop" && ${STAGE} != "build" ]]; then
+        if [[ ${this_branch} == "main" || ${this_branch} == "master" ]]; then
+          echo_success "Adding all changes to this repo"
+          git add --all
+          git commit -m "${version}" --quiet
+          git tag "${version}"
+          git push --quiet
+        fi
+      fi
+    fi
     exit 0
   else
     redolog=$(basename "${full_log_file}")
@@ -1097,7 +1194,7 @@ function manage_result() {
       echo_debug "as redolog parameter. This will not repeat the steps that have already been successfully executed."
     fi
 
-    process_logs ${target_move} "$DEPOT_PATH/$STAGE/$target_move/$version/${finallog}";
+    process_logs ${target_move} "${target_relative_path}/${finallog}";
     exit 1
   fi
 }
