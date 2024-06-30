@@ -447,14 +447,21 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#6-run-setup-to-install-the-project" class="md-nav__link">
+    6. Run setup to install the Project
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#6-run-setup-to-install-the-project" class="md-nav__link">
-    6. Run setup to install the Project
+  <a href="#done" class="md-nav__link">
+    Done
   </a>
   
 </li>
@@ -588,12 +595,12 @@
 
 
 <h1 id="get-started-with-dbflow">Get Started with dbFLow</h1>
-<p><strong>dbFlow</strong> is a deployment tool / framework for database driven applications in the oracle environment, mainly in the area of Oracle APEX. With <strong>dbFlow</strong> you can create and deploy multi-layered applications. <strong>dbFLow</strong> is powered by Git and can build a deployment / patch from different commit states, which can then be rolled out to different target instances.</p>
+<p><strong>dbFlow</strong> is a deployment tool / framework for database driven applications in the oracle environment, mainly in the area of Oracle APEX. With <strong>dbFlow</strong> you can create and deploy multi-layered applications. <strong>dbFlow</strong> is powered by Git and can build a deployment / patch from different commit states, which can then be rolled out to different target instances.</p>
 <h2 id="prerequisite">Prerequisite</h2>
 <ul>
-<li><strong>dbFLow</strong> is written completely in <em><mark>bash</mark></em> and requires an appropriate environment for this.</li>
+<li><strong>dbFlow</strong> is written completely in <em><mark>bash</mark></em> and requires an appropriate environment for this.</li>
 <li><strong>dbFlow</strong> uses <em><mark>Git</mark></em> to build the different releases and therefore requires a corresponding installation.</li>
-<li><strong>dbFLow</strong> uses either <em><mark>SQLplus</mark></em> or <em><mark>SQLcl</mark></em> to build the releases into the target database. Therefore one of the two tools must be available.</li>
+<li><strong>dbFlow</strong> uses either <em><mark>SQLplus</mark></em> or <em><mark>SQLcl</mark></em> to deploy the releases into the target database. Therefore one of the two tools must be available.</li>
 </ul>
 <h2 id="get-dbflow">Get dbFLow</h2>
 <p><strong>dbFlow</strong> expects itself as a <strong><code>.dbFlow</code></strong> subdirectory in an existing main directory or Git repository. The best way to do this is to add <strong>dbFlow</strong> as a submodule in the repository.</p>
@@ -613,20 +620,22 @@
 <p class="admonition-title">Info</p>
 <p>If you call <code>.dbFlow/setup.sh</code> without arguments you will see the possible options as a help page.</p>
 </div>
-<!-- TODO: Link to Setup -->
-
+<blockquote>
+<p>More infos on using setup.sh <a href="../setup">Setup</a></p>
+</blockquote>
 <h2 id="install-the-project-basement-and-dependencies">Install the Project basement and dependencies</h2>
 <h3 id="5-review-files-generated-for-you-and-make-some-adjustments">5. Review files, generated for you and make some adjustments</h3>
-<p><strong>dbFlow</strong> has created a very specific directory structure and a few scripts when you created the project. The scripts used for the installation can be found in the <code>db/_setup</code> folder. You can modify them according to your needs or add new ones.</p>
+<p>After you run the setup process, <strong>dbFlow</strong> has created a very specific directory structure called <a href="../concept/#smartfs">SmartFS</a> and a few scripts. The scripts used for the installation can be found in the <code>db/_setup</code> folder. You can modify them according to your needs or add new ones.</p>
 <div class="admonition info">
 <p class="admonition-title">Info</p>
-<p><strong>dbFlow</strong> comes with 4 features by default. These are OOS Logger, utPLSQL, tePLSQL and OM Tapigen. If you don't need these features, you can delete the scripts from the folder <code>db/_setup/features</code>.</p>
+<p><strong>dbFlow</strong> comes with 4 features enabled by default. These are OOS Logger, utPLSQL, tePLSQL and OM Tapigen. If you don't need these features, you can delete the scripts from the folder <code>db/_setup/features</code>.</p>
 </div>
-<!-- TODO: Link auf smartFS -->
-
-<h2 id="6-run-setup-to-install-the-project">6. Run <code>setup</code> to install the Project</h2>
+<h3 id="6-run-setup-to-install-the-project">6. Run <code>setup</code> to install the Project</h3>
 <div class="highlight"><pre><span></span><code><span class="w">  </span>$:<span class="w"> </span>.dbFlow/setup.sh<span class="w"> </span>--install
 </code></pre></div>
+<h2 id="done">Done</h2>
+<p>That's it. You now have prepared your database and your filesystem. Now you can start developing your applications. I recommened to use VSCode and the Extension <a href="https://marketplace.visualstudio.com/items?itemName=MaikMichel.dbflow">dbFlux</a>. <a href="https://marketplace.visualstudio.com/items?itemName=MaikMichel.dbflow">dbFlux</a> was created exactly for CI/CD in mind. Write files, execute files towards your development database connection, commit and push files to feed your pipelines, which were running dbFlow.</p>
+<p>(dbFLux)</p>
 
 
 

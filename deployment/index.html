@@ -440,6 +440,13 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#option-forceddl" class="md-nav__link">
+    Option forceDDL
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -483,6 +490,33 @@
   <a href="#release" class="md-nav__link">
     release
   </a>
+  
+    <nav class="md-nav" aria-label="release">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#source-branch" class="md-nav__link">
+    Source branch
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#target-branch" class="md-nav__link">
+    Target branch
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#version-identifier" class="md-nav__link">
+    Version identifier
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -611,7 +645,7 @@ The release itself is created from the current branch. If you want to create a r
 <td>11</td>
 <td>contexts</td>
 <td>21</td>
-<td>tests/packages</td>
+<td>ddl/init</td>
 </tr>
 <tr>
 <td>2</td>
@@ -619,7 +653,7 @@ The release itself is created from the current branch. If you want to create a r
 <td>12</td>
 <td>policies</td>
 <td>22</td>
-<td>ddl/init</td>
+<td>dml/init</td>
 </tr>
 <tr>
 <td>3</td>
@@ -627,7 +661,7 @@ The release itself is created from the current branch. If you want to create a r
 <td>13</td>
 <td>sources/types</td>
 <td>23</td>
-<td>dml/init</td>
+<td>dml/base</td>
 </tr>
 <tr>
 <td>4</td>
@@ -635,7 +669,7 @@ The release itself is created from the current branch. If you want to create a r
 <td>14</td>
 <td>sources/packages</td>
 <td>24</td>
-<td>dml/base</td>
+<td>jobs</td>
 </tr>
 <tr>
 <td>5</td>
@@ -681,7 +715,7 @@ The release itself is created from the current branch. If you want to create a r
 <td>10</td>
 <td>constraints/uniques</td>
 <td>20</td>
-<td>jobs</td>
+<td>tests/packages</td>
 <td></td>
 <td></td>
 </tr>
@@ -740,7 +774,7 @@ The release itself is created from the current branch. If you want to create a r
 <td>14</td>
 <td>constraints/checks</td>
 <td>25</td>
-<td>jobs</td>
+<td>tests/packages</td>
 </tr>
 <tr>
 <td>04</td>
@@ -748,7 +782,7 @@ The release itself is created from the current branch. If you want to create a r
 <td>15</td>
 <td>constraints/uniques</td>
 <td>26</td>
-<td>tests/packages</td>
+<td>ddl/patch/post_${branch}</td>
 </tr>
 <tr>
 <td>05</td>
@@ -756,7 +790,7 @@ The release itself is created from the current branch. If you want to create a r
 <td>16</td>
 <td>contexts</td>
 <td>27</td>
-<td>ddl/patch/post_${branch}</td>
+<td>dml/patch/post_${branch}</td>
 </tr>
 <tr>
 <td>06</td>
@@ -764,7 +798,7 @@ The release itself is created from the current branch. If you want to create a r
 <td>17</td>
 <td>policies</td>
 <td>28</td>
-<td>dml/patch/post_${branch}</td>
+<td>ddl/patch/post</td>
 </tr>
 <tr>
 <td>07</td>
@@ -772,7 +806,7 @@ The release itself is created from the current branch. If you want to create a r
 <td>18</td>
 <td>sources/types</td>
 <td>29</td>
-<td>ddl/patch/post</td>
+<td>dml/base</td>
 </tr>
 <tr>
 <td>08</td>
@@ -780,7 +814,7 @@ The release itself is created from the current branch. If you want to create a r
 <td>19</td>
 <td>sources/packages</td>
 <td>30</td>
-<td>dml/base</td>
+<td>dml/patch/post</td>
 </tr>
 <tr>
 <td>09</td>
@@ -788,7 +822,7 @@ The release itself is created from the current branch. If you want to create a r
 <td>20</td>
 <td>sources/functions</td>
 <td>31</td>
-<td>dml/patch/post</td>
+<td>jobs</td>
 </tr>
 <tr>
 <td>00</td>
@@ -836,11 +870,15 @@ $<span class="w"> </span>.dbFlow/build.sh<span class="w"> </span>--patch<span cl
 <ul>
 <li><strong><em>keepFolder</em></strong></li>
 </ul>
-<p>With the flag <code>-k / --keepfolder</code> the working directory, which is created in the depot to create the actual artifact, is not deleted. Especially in the beginning, when you don't have so much experience with dbFlow, this option is helpful. So after creating the artifact you can navigate to the corresponding directory and have a look at the created scripts and copied files.</p>
+<p>With the flag <code>-k / --keepfolder</code> the working directory, which is created in the depot to create the actual artifact, is not deleted. Especially in the beginning, when you don't have so much experience with <strong>dbFlow</strong>, this option is helpful. So after creating the artifact you can navigate to the corresponding directory and have a look at the created scripts and copied files.</p>
 <ul>
 <li><strong><em>transferAll</em></strong></li>
 </ul>
 <p>In order to always transsper/copy all files, you can specify the <code>-t / --transferall</code> flag. In this case not only the changed files but all files will be included in the patch. During the deployment only the changed files will be applied within the DB directory.</p>
+<ul>
+<li><strong><em>forceddl</em></strong></li>
+</ul>
+<p>The -f / --forceddl flag can be used to force the execution of table_ddl files wheater the specific table file is new in the target branch or not.</p>
 <ul>
 <li><strong><em>listFiles</em></strong></li>
 </ul>
@@ -849,6 +887,9 @@ $<span class="w"> </span>.dbFlow/build.sh<span class="w"> </span>--patch<span cl
 <li><strong><em>apply</em></strong></li>
 </ul>
 <p>The -a / --apply flag can be used to apply the created artifact immediatly in to the current environment after building the patch.</p>
+<h3 id="option-forceddl">Option forceDDL</h3>
+<p>Since version 3, <strong>dbFlow</strong> uses Git to check whether a table script is new in a branch. If this is the case, the table script is executed from the tables folder and any existing table_ddl files for the table of the same name are ignored. This is good because you may have to customise a new table much more often until it is finally imported to Prod. On Prod the table is of course new and it is sufficient to import the create-table script. On Test, this table may already be several partial release cycles old. Only the alter-table scripts need to be imported here.
+To switch off this behaviour, there is the --forceDDL option. This ensures that if the table_ddl files are present, they are always executed. (As before version 3).</p>
 <h2 id="apply">apply</h2>
 <p>The apply.sh command applies a release to the respective configured database. The artifact is fetched from the depot and unpacked into the appropriate directory. Afterwards the installation scripts are executed. The environment variable STAGE, from the file apply.env, is used to determine the source directory of a release. The build script stores the artifacts in a directory in a depot that contains the current branch name. The naming of the variable STAGE is now used to get the artifact matching the stage / database connection.</p>
 <p><img alt="" src="../images/depot_and_flow.png" /></p>
@@ -914,19 +955,60 @@ $<span class="w"> </span>.dbFlow/apply.sh<span class="w"> </span>--patch<span cl
 </ol>
 <p>You don't have to do these steps manually if you use the <code>.dbFlow/release.sh</code> script. Here you can simply specify your target branch and the script does the appropriate steps to merge the respective branches itself.
 By omitting the parameters you can also see what is needed.</p>
-<blockquote>
-<p>release.sh does the handling / merging of the branches for you and calls build.sh afterwards.</p>
-</blockquote>
-<div class="highlight"><pre><span></span><code><span class="w">  </span>.dbFlow/release.sh<span class="w"> </span>--target<span class="w"> </span>master<span class="w"> </span>--version<span class="w"> </span><span class="m">1</span>.2.3
+<div class="highlight"><pre><span></span><code>Usage:
+<span class="w">  </span>./release.sh<span class="w"> </span>--source<span class="w"> </span>&lt;branch&gt;<span class="w"> </span>--target<span class="w"> </span>&lt;branch&gt;<span class="w"> </span>--version<span class="w"> </span>&lt;label&gt;<span class="w"> </span><span class="o">[</span>--build<span class="o">]</span>
+
+Options:
+<span class="w">  </span>-h<span class="w"> </span><span class="p">|</span><span class="w"> </span>--help<span class="w">             </span>-<span class="w"> </span>Show<span class="w"> </span>this<span class="w"> </span>screen
+<span class="w">  </span>-d<span class="w"> </span><span class="p">|</span><span class="w"> </span>--debug<span class="w">            </span>-<span class="w"> </span>Show<span class="w"> </span>additionaly<span class="w"> </span>output<span class="w"> </span>messages
+<span class="w">  </span>-s<span class="w"> </span><span class="p">|</span><span class="w"> </span>--source<span class="w"> </span>&lt;branch&gt;<span class="w">  </span>-<span class="w"> </span>Optional<span class="w"> </span>Source<span class="w"> </span>branch<span class="w"> </span><span class="o">(</span>default<span class="w"> </span>current<span class="o">)</span>to<span class="w"> </span>merge<span class="w"> </span>target<span class="w"> </span>branch<span class="w"> </span>into<span class="w"> </span>and<span class="w"> </span>determine<span class="w"> </span>the<span class="w"> </span>files<span class="w"> </span>to<span class="w"> </span>include<span class="w"> </span><span class="k">in</span><span class="w"> </span>patch
+<span class="w">  </span>-t<span class="w"> </span><span class="p">|</span><span class="w"> </span>--target<span class="w"> </span>&lt;branch&gt;<span class="w">  </span>-<span class="w"> </span>Required<span class="w"> </span>Target<span class="w"> </span>branch<span class="w"> </span>to<span class="w"> </span>reflect<span class="w"> </span>the<span class="w"> </span>predecessor<span class="w"> </span>of<span class="w"> </span>the<span class="w"> </span><span class="nb">source</span><span class="w"> </span>branch
+<span class="w">  </span>-g<span class="w"> </span><span class="p">|</span><span class="w"> </span>--gate<span class="w">             </span>-<span class="w"> </span>Optional<span class="w"> </span>Gate<span class="w"> </span>branch<span class="w"> </span>to<span class="w"> </span>free<span class="w"> </span><span class="nb">source</span><span class="w"> </span>branch.<span class="w"> </span>If<span class="w"> </span>this<span class="w"> </span>is<span class="w"> </span>set,<span class="w"> </span><span class="k">then</span><span class="w"> </span>the<span class="w"> </span><span class="nb">source</span><span class="w"> </span>branch<span class="w"> </span>will<span class="w"> </span>be<span class="w"> </span>merged<span class="w"> </span>into<span class="w"> </span>that
+<span class="w">  </span>-v<span class="w"> </span><span class="p">|</span><span class="w"> </span>--version<span class="w"> </span>&lt;label&gt;<span class="w">  </span>-<span class="w"> </span>Required<span class="w"> </span>label<span class="w"> </span>of<span class="w"> </span>version<span class="w"> </span>this<span class="w"> </span>artifact<span class="w"> </span>represents<span class="w"> </span><span class="o">(</span>optional<span class="w"> </span>when<span class="w"> </span>buildflag<span class="w"> </span>is<span class="w"> </span>submitted<span class="o">)</span>
+<span class="w">                          </span>-<span class="w"> </span>Set<span class="w"> </span>&lt;label&gt;<span class="w"> </span>to<span class="w"> </span>major,<span class="w"> </span>minor<span class="w"> </span>or<span class="w"> </span>patch<span class="w"> </span>and<span class="w"> </span>the<span class="w"> </span>next<span class="w"> </span>semantic<span class="w"> </span>version<span class="w"> </span>is<span class="w"> </span>calculated<span class="w"> </span>automatically
+
+<span class="w">  </span>-b<span class="w"> </span><span class="p">|</span><span class="w"> </span>--build<span class="w">            </span>-<span class="w"> </span>Optional<span class="w"> </span>buildflag<span class="w"> </span>to<span class="w"> </span>create<span class="w"> </span><span class="m">3</span><span class="w"> </span>artifact<span class="w"> </span><span class="k">for</span><span class="w"> </span>using<span class="w"> </span>as<span class="w"> </span>nighlybuilds
+<span class="w">  </span>-a<span class="w"> </span><span class="p">|</span><span class="w"> </span>--apply<span class="w"> </span>&lt;folder&gt;<span class="w">   </span>-<span class="w"> </span>Optional<span class="w"> </span>path<span class="w"> </span>to<span class="w"> </span>apply<span class="w"> </span>the<span class="w"> </span>build<span class="o">(</span>s<span class="o">)</span><span class="w"> </span>when<span class="w"> </span>buildflag<span class="w"> </span>is<span class="w"> </span><span class="nb">set</span>
+<span class="w">  </span>-k<span class="w"> </span><span class="p">|</span><span class="w"> </span>--keep<span class="w">             </span>-<span class="w"> </span>Optional<span class="w"> </span>flag<span class="w"> </span>to<span class="w"> </span>keep<span class="w"> </span>folders<span class="w"> </span><span class="k">in</span><span class="w"> </span>depot<span class="w"> </span>path<span class="w"> </span><span class="o">(</span>will<span class="w"> </span>be<span class="w"> </span>passed<span class="w"> </span>to<span class="w"> </span>build.sh<span class="o">)</span>
+<span class="w">  </span>-f<span class="w"> </span><span class="p">|</span><span class="w"> </span>--forceddl<span class="w">         </span>-<span class="w"> </span>Optional<span class="w"> </span>flag<span class="w"> </span>to<span class="w"> </span>switch<span class="w"> </span>off<span class="w"> </span>checking<span class="w"> </span><span class="k">for</span><span class="w"> </span>new<span class="w"> </span>table-file<span class="w"> </span>through<span class="w"> </span>git<span class="w"> </span>itself.
+<span class="w">                            </span>This<span class="w"> </span>will<span class="w"> </span>run<span class="w"> </span>table_ddl<span class="w"> </span>scripts<span class="w"> </span>when<span class="w"> </span>matching<span class="w"> </span>table<span class="w"> </span>is<span class="w"> </span>present<span class="w"> </span><span class="k">in</span><span class="w"> </span>patch<span class="w"> </span>mode
+
+Examples:
+<span class="w">  </span>./release.sh<span class="w"> </span>--target<span class="w"> </span>release<span class="w"> </span>--version<span class="w"> </span><span class="m">1</span>.2.3
+<span class="w">  </span>./release.sh<span class="w"> </span>--source<span class="w"> </span>release<span class="w"> </span>--target<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--version<span class="w"> </span><span class="m">1</span>.2.3
+<span class="w">  </span>./release.sh<span class="w"> </span>--source<span class="w"> </span>develop<span class="w"> </span>--target<span class="w"> </span>master<span class="w"> </span>-b
+<span class="w">  </span>./release.sh<span class="w"> </span>--source<span class="w"> </span>develop<span class="w"> </span>--gate<span class="w"> </span>release<span class="w"> </span>--target<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--version<span class="w"> </span><span class="m">2</span>.0.3<span class="w"> </span>--apply<span class="w"> </span>../instances/test
 </code></pre></div>
-<p>To do a release test, the release script can build three artifacts for you (flag <code>-b/--build</code>). This functionality is for the so-called nightly builds. Here an initial release of the predecessor, a patch of the successor, and an initial release of the successor are built. Using a CI/CD server, such as Jenkins, you can then create these 3 artifacts and install them one after the other on the corresponding instance and of course test them.</p>
-<div class="highlight"><pre><span></span><code>.dbFlow/release.sh<span class="w"> </span>--source<span class="w"> </span>develop<span class="w"> </span>--target<span class="w"> </span>master<span class="w"> </span>-b
+<div class="admonition success">
+<p class="admonition-title">Recommendation</p>
+<p><strong>release.sh</strong> does the handling / merging of the branches for you and calls build.sh afterwards. If you have the specific instance directory at hand "../instances/test" you can apply the patch directly by ommiting the corresponding args.</p>
+</div>
+<div class="highlight"><pre><span></span><code><span class="w">  </span>.dbFlow/release.sh<span class="w"> </span>--source<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--target<span class="w"> </span>master<span class="w"> </span>--version<span class="w"> </span><span class="m">1</span>.2.3
+</code></pre></div>
+<h3 id="source-branch">Source branch</h3>
+<p>Use the option <code>-s/--source &lt;branch&gt;</code> to specifiy which branch will be merged into the target branch. This option is optional and when not present the current branch will be taken.</p>
+<h3 id="target-branch">Target branch</h3>
+<p>Use the option <code>-t/--target &lt;branch&gt;</code> to specifiy to which branch the changes will be merged into. This option is <strong>required</strong>.</p>
+<h3 id="version-identifier">Version identifier</h3>
+<p>This option is required, when not running as nightly build tests (<code>-b/--build</code> ). You have to use semantinc naming conventions, which can be found here: <a href="https://semver.org/">https://semver.org/</a>.
+Since version 3 are allowed to place as argument on of the following constants: major|minor|patch . In this case dbFlow will calculate the next version number based on the last version tag. When this is not possible maybe due to a not present semver tag, dbFlow will cancel with an error.</p>
+<div class="highlight"><pre><span></span><code><span class="w">  </span>.dbFlow/release.sh<span class="w"> </span>--source<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--target<span class="w"> </span>master<span class="w"> </span>--version<span class="w"> </span>minor
 </code></pre></div>
 <h4 id="additional-arguments-for-release">Additional arguments for release:</h4>
 <ul>
+<li><strong><em>gate</em></strong></li>
+</ul>
+<p>You can use a gate branch when releasing to a specific target branch. This will merge the changes throuth a gate branch in order to have the ability to work on future features.</p>
+<p><div class="highlight"><pre><span></span><code>$<span class="w"> </span>.dbFlow/release.sh<span class="w"> </span>--source<span class="w"> </span>develop<span class="w"> </span>--gate<span class="w"> </span>release<span class="w"> </span>--target<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--version<span class="w"> </span><span class="m">1</span>.2.3
+</code></pre></div>
+When looking at the git flow picture it becomes clear.</p>
+<p><img alt="" src="../images/gitflow_01.png" /></p>
+<ul>
 <li><strong><em>build</em></strong></li>
 </ul>
-<p>As described above, the <code>-b/--build</code> flag creates 3 artifacts. These represent the current initial release, the previous initial release and the current patch release. All 3 artifacts can then be imported into the target environment in the appropriate order.</p>
+<p>The release script can build three artifacts for you (flag <code>-b/--build</code>). This functionality is for the so-called nightly builds. Here an initial release of the predecessor, a patch of the successor, and an initial release of the successor are built. Using a CI/CD server, such as Jenkins, you can then create these 3 artifacts and install them one after the other on the corresponding instance and of course test them. This creates 3 artifacts. These represent the current initial release, the previous initial release and the current patch release. All 3 artifacts can then be imported into the target environment in the appropriate order.</p>
+<div class="highlight"><pre><span></span><code>.dbFlow/release.sh<span class="w"> </span>--source<span class="w"> </span>develop<span class="w"> </span>--target<span class="w"> </span>master<span class="w"> </span>--build
+</code></pre></div>
 <ul>
 <li><strong><em>apply</em></strong></li>
 </ul>

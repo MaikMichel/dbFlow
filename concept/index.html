@@ -612,7 +612,7 @@
 
 
 <h1 id="the-concept">The Concept</h1>
-<p><strong>dbFlow</strong> is based on 4 core topics. These topics are encountered again and again during the work with <strong>dbFLow</strong>. One is the adaptation of the git flow related to the work with database changes, the 2 phase deployment, smartFS, which reflects the directory structure and last but not least the depot, a kind of artifactory.</p>
+<p><strong>dbFlow</strong> is based on 4 core topics. These topics are encountered again and again during the work with <strong>dbFlow</strong>. One is the adaptation of the git flow related to the work with database changes, the 2 phase deployment, smartFS, which reflects the directory structure and last but not least the depot, a kind of artifactory.</p>
 <h2 id="git-flow-to-db">Git Flow to DB</h2>
 <p><strong>dbFlow</strong> is a deployment framework to deploy Oracle based projects / applications. <strong>dbFlow</strong> is roughly based on the so called Git Flow. This flow describes how releases of an application are delivered from the main development branch to the master branch, production. The following figure outlines this flow.</p>
 <h3 id="git-flow-in-short">Git Flow in short</h3>
@@ -621,7 +621,7 @@
 <h3 id="reflect-db-changes">Reflect DB changes</h3>
 <p><strong>dbFlow</strong> supports the developers and release managers by building an artifact corresponding to the delta of 2 commits. Meaning the changed files, which can be applied to the respective database instance. So whenever you build a patch, you can refer to two commits as start and endpoint of a patch. Those commits can consist of state before and after merging ( HEAD, ORIG_HEAD), commit hashes or tags.</p>
 <p><img alt="" src="../images/gitflow_02.png" /></p>
-<p>For each target branch a separate database or database container is expected. The artifacts that <strong>dbFLow</strong> generates can then be installed into the databases/containers.</p>
+<p>For each target branch a separate database or database container is expected. The artifacts that <strong>dbFlow</strong> generates can then be installed into the databases/containers.</p>
 <h2 id="2-phase-deployment">2 Phase deployment</h2>
 <p><strong>dbFlow</strong> can generate two types of artifacts, which can be applied to the databases. On the one hand this is a so-called <strong><mark>INIT</mark></strong>ial deployment, which clears the target schemas first, or expects empty schemas, and on the other hand a <strong><mark>PATCH</mark></strong> deployment, which requires the corresponding previous version of a deployment on the database.</p>
 <div class="admonition info">
@@ -645,7 +645,7 @@
 <blockquote>
 <p>SmartFolderStructure</p>
 </blockquote>
-<p>To support this concept, a <strong>dbFlow</strong> project must have a certain directory structure. <strong>dbFLow</strong> expects the following directories at the root level of the project itself.</p>
+<p>To support this concept, a <strong>dbFlow</strong> project must have a certain directory structure. <strong>dbFlow</strong> expects the following directories at the root level of the project itself.</p>
 <table>
 <thead>
 <tr>
@@ -671,8 +671,12 @@
 <td>binary files for templating purpose</td>
 </tr>
 <tr>
-<td><strong>static</strong></td>
-<td>In this folder the files are stored, which you upload later <br/>with the upload command to the static files of the respective application. (managed by <em><code>dbFlux</code></em>)</td>
+<td>[<strong>static</strong>]</td>
+<td>opt. (managed by <strong>dbFlux</strong>) =&gt; In this folder the files are stored, which you upload later <br/>with the upload command to the static files of the respective application.</td>
+</tr>
+<tr>
+<td>[<strong>plugin</strong>]</td>
+<td>opt. (managed by <strong>dbFlux</strong>) =&gt; In this folder the files are stored, which you upload later <br/>with the upload command to the static files of the respective plugin.</td>
 </tr>
 </tbody>
 </table>
@@ -845,7 +849,7 @@ If the project is configured in <em><code>FlexMode</code></em>, you can freely c
 </tr>
 </tbody>
 </table>
-<p>All files must be stored as executable SQL scripts. dbFlow uses SQLPlus or SQLcl to import these scripts.</p>
+<p>All files must be stored as executable SQL scripts. dbFlow uses SQLPlus or SQLcl to execute these scripts.</p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
 <p>Don't forget the trailing slashes in PLSQL files</p>
@@ -892,13 +896,13 @@ If the project is configured in <em><code>FlexMode</code></em>, you can freely c
 </tr>
 </tbody>
 </table>
-<div class="admonition tip">
-<p class="admonition-title">Tip</p>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
 <ul>
-<li>Changes to tables are always made 2 times. Once for a new installation (<strong><mark>init</mark></strong>) and once for an update (<strong><mark>patch</mark></strong>).</li>
-<li>Table scripts may only contain the pure tables and comments. Constraints and indexes must be stored in the appropriate directories.</li>
-<li>Files from the table directory are executed if it is a new installation (<strong><mark>init</mark></strong>) or if the table is to be newly created in this update (<strong><mark>patch</mark></strong>).</li>
-<li>Within the directories the files to be imported are sorted alphabetically, inside pacages or types all files are sorted alphabetically too but grouped in chunke specs, bodies, sql-files directory.</li>
+<li><strong>Changes</strong> to tables are always made <strong>2 times</strong>. Once for a new installation (<strong><mark>init</mark></strong>) and once for an update (<strong><mark>patch</mark></strong>).</li>
+<li>Table scripts <strong><mark>have to</mark></strong> only contain the pure tables and comments. Constraints and indexes must be stored in the appropriate directories.</li>
+<li>Files from the table directory are executed if it is a new installation (<strong><mark>init</mark></strong>) or if the table is to be newly created in this update (<strong><mark>patch</mark></strong>) or the table file is marked new in the target branch by git (<em>New in Version 3</em>).</li>
+<li>Within the directories the files to be imported are sorted alphabetically, inside packages or types all files are sorted alphabetically too but grouped in chunk specs, bodies, sql-files directory.</li>
 </ul>
 </div>
 <h4 id="init">init</h4>
@@ -925,13 +929,13 @@ If the project is configured in <em><code>FlexMode</code></em>, you can freely c
 <li>views</li>
 <li>mviews</li>
 <li>sources/triggers</li>
-<li>jobs</li>
 <li>tests/packages</li>
 <li>ddl</li>
 <li>ddl/init</li>
 <li>dml</li>
 <li>dml/init</li>
 <li>dml/base</li>
+<li>jobs</li>
 <li>.hooks/post</li>
 </ul>
 <h4 id="patch">patch</h4>
@@ -963,7 +967,6 @@ If the project is configured in <em><code>FlexMode</code></em>, you can freely c
 <li>views</li>
 <li>mviews</li>
 <li>sources/triggers</li>
-<li>jobs</li>
 <li>tests/packages</li>
 <li>ddl</li>
 <li>ddl/patch/post_${<em>branch-name</em>}</li>
@@ -972,13 +975,14 @@ If the project is configured in <em><code>FlexMode</code></em>, you can freely c
 <li>dml</li>
 <li>dml/base</li>
 <li>dml/patch/post</li>
+<li>jobs</li>
 <li>.hooks/post</li>
 </ul>
 <h3 id="hooks">Hooks</h3>
 <p>On each level of the main directories there are so called <code>.hooks</code> folders. You can find them in the root directory, in the db folder and in the schema folders. The <code>.hooks</code> folders are always divided into the subfolders <code>pre</code> and <code>post</code>. During the deployment process the scripts there will be executed in alphabetically order. These type of folders are meant to hold scripts which won't change too much during lifecycle of your product. For example you could place some kind of generator script inside here (Gen TableAPI, ...).</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Hookscripts outside the respective schema folders <strong>must</strong> contain the corresponding target schema in the name.</p>
+<p>Hookscripts outside the respective db schema folders <strong>must</strong> contain the corresponding target schema in the name.</p>
 </div>
 <div class="highlight"><pre><span></span><code>├─ .hooks
 │  ├─ pre
@@ -1139,9 +1143,9 @@ If the project is configured in <em><code>FlexMode</code></em>, you can freely c
 <p><img alt="" src="../images/depot_and_flow.png" /></p>
 <p>I recommend to use a separate repository or directory for each stage DB. This has the advantage that the corresponding directories serve their purpose even without Git and possibly access to the development repository. Theoretically, the repository can also be "doubled" to have a target directory at home and a source directory at the customer.</p>
 <h2 id="logging">Logging</h2>
-<p>After a successful installation, all logs and temporary created artifacs, are placed in a log folder. Errors during the deployment lead to an abort and are stored in the failures subfolder. The location of the log folder itself is configured in apply.env.</p>
+<p>After a successful installation, all logs and temporary created artifacs, are placed in a log folder. Errors during the deployment lead to an abort and are stored in the failures subfolder. The location of the log folder itself is configured in apply.env using the var <code>LOG_PATH</code> .</p>
 <blockquote>
-<p>We recommend using the actual instance folder to ensure greater transparency.</p>
+<p>We recommend using the actual instance folder to log to, to ensure greater transparency.</p>
 </blockquote>
 <h2 id="big-picture">Big Picture</h2>
 <p><img alt="" src="../images/comlete_process.png" /></p>
