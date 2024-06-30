@@ -1,5 +1,20 @@
 # Changelog
 
+## [3.0.0 - 2024-06-30]
+- New: When using release.sh you can set version to: major, minor or patch. dbFlow will calcualte the right version number for you
+- New: During deployment, translated Applications are se offline too.
+- New: Logs will be written to a new Environment var: LOG_PATH. From now on, the depot is not responsible for storing log data. So, when using LOG_PATH inside instance directories, logs should be written to ./${LOG_PATH}. And here (instance directory) it is ok to commit the files as well. This will keep a nice install log history.
+- Fix: Setting Applications online occurs only to untouched Applications.
+- New: When creating deployments and depot path is a git directory as well, the actual artefact is pushed to the remote too. So you can have a Jenkins or something like that listening to pushed on your depot repository.
+- New: The version will be a tag in the target branch and will the tag will be moved to the master/main branch as well.
+- New: The jobs folder will be executed after the dml folder and it's childs. So, you can consume data in the job files you have used in dml scripts before.
+- New: The version of bash is written to the output.
+- New: When a table file is marked as new in the target branch by git, it is executed allthough there could be table_ddl files, which alters the same table. This is new and in important change. So when releasing often to a test or uat branch and later just to a master/main branch, then new tables will be created by running just the create-table-script. Not the 10 changes which were created and deployed during the last sprints. See documentation for more infos.
+- New: You have an option to use the old behavior (--forceddl)
+- New: Now object-hooks will always be executed. Weather there were objects in the specific file or not.
+- New: Environment Var: `REMIND_ME` When this var is set, it will be prompted, when building a deployment, just for you to remind you on something specific.
+- Fix: Many small improvements
+
 
 ## [2.6.0 - 2024-02-15]
 New: Input new  version for tagging when on main or master and no pipeline is running
