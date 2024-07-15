@@ -183,8 +183,8 @@ build_release() {
         pulled="no"
       }
 
-      log "merging changes from $RLS_SOURCE_BRANCH"
-      retry git merge "${RLS_SOURCE_BRANCH}"
+      log "merging changes from $RLS_SOURCE_BRANCH with : --strategy-option theirs"
+      retry git merge "${RLS_SOURCE_BRANCH}" --strategy-option theirs
       retry git push
     else
       retry git checkout -b "${RLS_GATE_BRANCH}"
@@ -225,15 +225,15 @@ build_release() {
 
     # build initial patch
     log "building initial install ${version_previous} (previous version)"
-    .dbFlow/build.sh -i -v "${version_previous}" "${flags[@]}"
-    apply_tasks+=( ".dbFlow/apply.sh -i -v ${version_previous}" )
+    .dbFlow/build.sh --init --version "${version_previous}" "${flags[@]}"
+    apply_tasks+=( ".dbFlow/apply.sh --init --version ${version_previous}" )
   fi
 
   # following makes only sense when source not the same as target
   if [[ $RLS_GATE_BRANCH != "${RLS_TARGET_BRANCH}" ]]; then
     # merging target with source
-    log "merging changes from $RLS_GATE_BRANCH"
-    retry git merge "${RLS_GATE_BRANCH}"
+    log "merging changes from $RLS_GATE_BRANCH with : --strategy-option theirs"
+    retry git merge "${RLS_GATE_BRANCH}" --strategy-option theirs
 
     # build diff patch
     log "build patch upgrade ${version_next} (current version) ${flags[@]}"
@@ -247,7 +247,7 @@ build_release() {
     if [[ ${RLS_BUILD} == 'Y' ]]; then
       # und den initial Build des aktuellen Stand
       log "building initial install $version_next (current version)"
-      .dbFlow/build.sh -i -v "${version_next}" "${flags[@]}"
+      .dbFlow/build.sh --init --version "${version_next}" "${flags[@]}"
       apply_tasks+=( ".dbFlow/apply.sh --init --version ${version_next}" )
     else
       retry git push
