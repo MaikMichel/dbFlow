@@ -1214,8 +1214,15 @@ function manage_result() {
           echo_success "Adding all changes to this repo"
           git add --all
           git commit -m "${version}" --quiet
-          git tag "${version}"
           git push --quiet
+
+          if [[ $(git tag -l "$version") ]]; then
+            echo_success "Tag $version already exists, nothing to do"
+          else
+            echo_success "Writing tag $version to repo"
+            git tag "${version}"
+            git push --quiet
+          fi
         fi
       fi
     fi
