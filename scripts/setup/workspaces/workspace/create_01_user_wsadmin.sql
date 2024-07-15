@@ -34,7 +34,7 @@ Begin
                           p_change_password_on_first_use  => 'Y');
     commit;
   else
-    dbms_output.put_line('User wsadmin allready exists in workspace');
+    dbms_output.put_line('User wsadmin already exists in workspace');
   end if;
 
 End;

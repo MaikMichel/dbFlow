@@ -19,8 +19,8 @@ function usage() {
   echo -e "                            of the difference defined during build"
   echo -e "  -v | --version <label>  - Required label of version this artifact represents"
   echo -e "  -n | --noextract        - Optional do not move and extract artifact from depot "
-  echo -e "                            Can be used to extract files manually or use a allready extracted build"
-  echo -e "  -r | --redolog          - Optional to redo an installation and skip installation-step allready run"
+  echo -e "                            Can be used to extract files manually or use a already extracted build"
+  echo -e "  -r | --redolog          - Optional to redo an installation and skip installation-step already run"
   echo -e "  -s | --stepwise         - Runs the installation interactively step by step"
   echo ""
  	echo -e "${BWHITE}Examples:${NC}"
@@ -322,7 +322,7 @@ function extract_patchfile() {
       cp "${install_source_file}" "${install_target_path}"/
     else
       if [[ -e "${install_target_file}" ]]; then
-        timelog "${install_target_file} allready copied"
+        timelog "${install_target_file} already copied"
       else
         timelog "${install_target_file} not found, nothing to install" "${failure}"
         manage_result "failure"

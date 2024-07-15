@@ -436,14 +436,14 @@ function check_params() {
       # Lokale Branches ermitteln, die diesen Commit enthalten
       TAG_BRANCHES=$(git branch --contains "$TAG_COMMIT")
 
-      read -r -p "$(echo -e "${BORANGE}Target Version: ${version} exists allready on branch ${TAG_BRANCHES}.${NC}\nPress y to recreate tag on target branch ${RLS_TARGET_BRANCH}, otherwise abort release! (y/n)" ) " -n 1
+      read -r -p "$(echo -e "${BORANGE}Target Version: ${version} exists already on branch ${TAG_BRANCHES}.${NC}\nPress y to recreate tag on target branch ${RLS_TARGET_BRANCH}, otherwise abort release! (y/n)" ) " -n 1
       echo    # (optional) move to a new line
       if [[ ! $REPLY =~ ^[Yy]$ ]]; then
         if [[ "$0" = "$BASH_SOURCE" ]]; then
-          echo_error "Aborted... \nThe version tag: $version is allready used. And commit of $version and $RLS_TARGET_BRANCH are not equal. So, please use another one!"
+          echo_error "Aborted... \nThe version tag: $version is already used. And commit of $version and $RLS_TARGET_BRANCH are not equal. So, please use another one!"
           exit 1
         else
-          echo_error "Aborted... \nThe version tag: $version is allready used. And commit of $version and $RLS_TARGET_BRANCH are not equal. So, please use another one!"
+          echo_error "Aborted... \nThe version tag: $version is already used. And commit of $version and $RLS_TARGET_BRANCH are not equal. So, please use another one!"
           return 1 # handle exits from shell or function but don't exit interactive shell
         fi
       fi

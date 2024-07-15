@@ -71,7 +71,7 @@ curl -sS https://raw.githubusercontent.com/MaikMichel/dbFlow/master/install.sh |
 mkdir your_project && cd your_project
 
 # clone the repo itself
-git clone https://path-to-your-db-flow-project-where-dbFlow-is-allready-installed.git .
+git clone https://path-to-your-db-flow-project-where-dbFlow-is-already-installed.git .
 
 # pull submodule(s) => .dbFlow
 git submodule update --init --recursive
@@ -82,7 +82,7 @@ git submodule update --init --recursive
 ```bash
 
 # clone the repo recursive and change into it
-git clone --recursive https://path-to-your-db-flow-project-where-dbFlow-is-allready-installed.git your_project && cd your_project
+git clone --recursive https://path-to-your-db-flow-project-where-dbFlow-is-already-installed.git your_project && cd your_project
 
 ```
 
@@ -172,7 +172,7 @@ This will walk you through the wizard steps and outputs the file apply.env. So t
 
 ```bash
 # clone the repo recursive and change into it
-$ git clone --recursive https://path-to-your-db-flow-project-where-dbFlow-is-allready-installed.git your_project && cd your_project && .dbFLow/setup.sh --apply
+$ git clone --recursive https://path-to-your-db-flow-project-where-dbFlow-is-already-installed.git your_project && cd your_project && .dbFLow/setup.sh --apply
 ```
 
 ### Install Project
@@ -185,7 +185,7 @@ $ .dbFlow/setup.sh --install
 > This will run all SQL and bash files inside the db/_setup directory.
 
 For deployment or release purposes. This is the time to make all branches equal. So if you are on master and this your only branch, create a branch for each
-deployment stage (develop, test, ...) or if you allready did that, just merge these changes into your branches.
+deployment stage (develop, test, ...) or if you already did that, just merge these changes into your branches.
 
 !!! warning "Important!"
 

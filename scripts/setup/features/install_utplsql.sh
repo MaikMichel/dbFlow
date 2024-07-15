@@ -62,7 +62,7 @@ then
   if [[ $yes == "YES" ]]; then
     reinstall="Y"
   else
-    read -r -p "$(echo -e ${BWHITE}"UTPLSQL is allready installed. Would you like to reinstall? (Y/N) [Y]: "${NC})" reinstall
+    read -r -p "$(echo -e ${BWHITE}"UTPLSQL is already installed. Would you like to reinstall? (Y/N) [Y]: "${NC})" reinstall
     reinstall=${reinstall:-"Y"}
   fi
 

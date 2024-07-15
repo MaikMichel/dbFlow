@@ -192,7 +192,7 @@ $ .dbFlow/apply.sh --init --version 1.0.0
 
 - ***noExtract***
 
-When using ``-n/--noextract`` flag, dbFlow will not not move and extract then artifact from depot. This option can be used to extract files manually or use a allready extracted artifact.
+When using ``-n/--noextract`` flag, dbFlow will not not move and extract then artifact from depot. This option can be used to extract files manually or use a already extracted artifact.
 
 
 ### patch
@@ -209,7 +209,7 @@ After the installation of a release, all resulting log and installation files ar
 
 - ***noExtract***
 
-When using ``-n/--noextract`` flag, dbFlow will not not move and extract then artifact from depot. This option can be used to extract files manually or use a allready extracted artifact.
+When using ``-n/--noextract`` flag, dbFlow will not not move and extract then artifact from depot. This option can be used to extract files manually or use a already extracted artifact.
 
 - ***redoLog***
 
