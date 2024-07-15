@@ -1148,8 +1148,11 @@ function write_changelog() {
 function write_release_notes() {
   # check if there is a release_notes folder in reports
   if [[ -d "${targetpath}/reports/release_notes" ]]; then
+    timelog "Retrieving release notes"
     # copy all files (init = all, patch = changed) to a new file
     for f in "${targetpath}"/reports/release_notes/release_note_*.md; do (cat "${f}"; echo) >> ${targetpath}/release_notes_${mode}_${version}.md; done
+  else
+    timelog "no release notes found"
   fi
 }
 
