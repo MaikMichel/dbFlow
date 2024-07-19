@@ -238,7 +238,7 @@ build_release() {
     # build diff patch
     log "build patch upgrade ${version_next} (current version) ${flags[@]}"
     export DBFLOW_RELEASE_IS_RUNNUNG="YES"
-    .dbFlow/build.sh -p -v "${version_next}" "${flags[@]}"
+    .dbFlow/build.sh --patch --version "${version_next}" "${flags[@]}"
     unset export DBFLOW_RELEASE_IS_RUNNUNG
     build_patch_worked=$?
     apply_tasks+=( ".dbFlow/apply.sh --patch --version ${version_next}" )
