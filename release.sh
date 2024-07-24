@@ -82,6 +82,7 @@ usage() {
   echo -e "  -g | --gate             - Optional Gate branch to free source branch. If this is set, then the source branch will be merged into that"
   echo -e "  -v | --version <label>  - Required label of version this artifact represents (optional when buildflag is submitted)"
   echo -e "                          - Set <label> to major, minor or patch and the next semantic version is calculated automatically"
+  echo -e "                          - Set <label> to current to keep the latest semantic version"
   echo ""
   echo -e "  -b | --build            - Optional buildflag to create 3 artifact for using as nighlybuilds"
   echo -e "  -a | --apply <folder>   - Optional path to apply the build(s) when buildflag is set"
@@ -128,6 +129,9 @@ get_next_version() {
       ;;
     "patch")
       ((PATCH += 1))
+      ;;
+    "current")
+      ((PATCH += 0))
       ;;
   esac
 
@@ -411,7 +415,7 @@ function check_params() {
 
   RLS_INC_TYPE="-"
   local lowercase_version=$(toLowerCase "${version}")
-  if [[ "$lowercase_version" == "patch" ]] || [[ "$lowercase_version" == "minor" ]] || [[ "$lowercase_version" == "major" ]]; then
+  if [[ "$lowercase_version" == "current" ]] || [[ "$lowercase_version" == "patch" ]] || [[ "$lowercase_version" == "minor" ]] || [[ "$lowercase_version" == "major" ]]; then
     version=$(get_next_version "$lowercase_version")
 
     if [[ $version =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
