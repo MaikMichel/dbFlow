@@ -648,14 +648,14 @@ curl<span class="w"> </span>-sS<span class="w"> </span>https://raw.githubusercon
 mkdir<span class="w"> </span>your_project<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>your_project
 
 <span class="c1"># clone the repo itself</span>
-git<span class="w"> </span>clone<span class="w"> </span>https://path-to-your-db-flow-project-where-dbFlow-is-allready-installed.git<span class="w"> </span>.
+git<span class="w"> </span>clone<span class="w"> </span>https://path-to-your-db-flow-project-where-dbFlow-is-already-installed.git<span class="w"> </span>.
 
 <span class="c1"># pull submodule(s) =&gt; .dbFlow</span>
 git<span class="w"> </span>submodule<span class="w"> </span>update<span class="w"> </span>--init<span class="w"> </span>--recursive
 </code></pre></div>
 <h3 id="clone-an-existing-dbflow-project-one-step">Clone an existing dbFlow project (one step)</h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># clone the repo recursive and change into it</span>
-git<span class="w"> </span>clone<span class="w"> </span>--recursive<span class="w"> </span>https://path-to-your-db-flow-project-where-dbFlow-is-allready-installed.git<span class="w"> </span>your_project<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>your_project
+git<span class="w"> </span>clone<span class="w"> </span>--recursive<span class="w"> </span>https://path-to-your-db-flow-project-where-dbFlow-is-already-installed.git<span class="w"> </span>your_project<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>your_project
 </code></pre></div>
 <blockquote>
 <p>Sometimes it can happen that the bash files cannot be executed. If this is the case, explicit permissions must be granted here. (<code>chmod +x .dbFlow/*.sh</code>)</p>
@@ -695,7 +695,7 @@ git<span class="w"> </span>clone<span class="w"> </span>--recursive<span class="
 <td>If you want changelogs to be displayed within your application, you can specify the target schema here, with which the corresponding TemplateCode should be executed. ( see: <a href="../changelog/#configuration">changelog</a>)</td>
 </tr>
 <tr>
-<td>Enter database connections [localhost:1521/xepdb1]</td>
+<td>Enter database connections [localhost:1521/freepdb1]</td>
 <td>Place your connection string like: host:port/service</td>
 </tr>
 <tr>
@@ -765,7 +765,7 @@ git<span class="w"> </span>clone<span class="w"> </span>--recursive<span class="
 </code></pre></div>
 <p>This will walk you through the wizard steps and outputs the file apply.env. So the fastest way to get into a dbFlow project would be the folloing snippet</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># clone the repo recursive and change into it</span>
-$<span class="w"> </span>git<span class="w"> </span>clone<span class="w"> </span>--recursive<span class="w"> </span>https://path-to-your-db-flow-project-where-dbFlow-is-allready-installed.git<span class="w"> </span>your_project<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>your_project<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>.dbFLow/setup.sh<span class="w"> </span>--apply
+$<span class="w"> </span>git<span class="w"> </span>clone<span class="w"> </span>--recursive<span class="w"> </span>https://path-to-your-db-flow-project-where-dbFlow-is-already-installed.git<span class="w"> </span>your_project<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>your_project<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>.dbFLow/setup.sh<span class="w"> </span>--apply
 </code></pre></div>
 <h3 id="install-project">Install Project</h3>
 <blockquote>
@@ -777,7 +777,7 @@ $<span class="w"> </span>git<span class="w"> </span>clone<span class="w"> </span
 <p>This will run all SQL and bash files inside the db/_setup directory.</p>
 </blockquote>
 <p>For deployment or release purposes. This is the time to make all branches equal. So if you are on master and this your only branch, create a branch for each
-deployment stage (develop, test, ...) or if you allready did that, just merge these changes into your branches.</p>
+deployment stage (develop, test, ...) or if you already did that, just merge these changes into your branches.</p>
 <div class="admonition warning">
 <p class="admonition-title">Important!</p>
 <p>The installation will abort if the users already exist in the DB as a schema. Furthermore, during the installation of the standard features, it will ask in each case, if they already exist, whether they should be overwritten.
