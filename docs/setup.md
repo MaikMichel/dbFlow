@@ -112,7 +112,7 @@ You will be asked the following questions when creating the project:
 | When running release tests, what is your prefered branch name [build] | Later you have the possibility to run so called release tests (NightlyBuilds) . Here you determine the branch name for the tests. The default here is **build**. |
 | Would you like to process changelogs during deployment [Y] | **dbFlow** offers the possibility to generate changlogs based on the commit messages. Here you activate this function. ( see: [changelog]) |
 | What is the schema the changelog is processed with [schema_name] | If you want changelogs to be displayed within your application, you can specify the target schema here, with which the corresponding TemplateCode should be executed. ( see: [changelog]) |
-| Enter database connections [localhost:1521/xepdb1] | Place your connection string like: host:port/service |
+| Enter database connections [localhost:1521/freepdb1] | Place your connection string like: host:port/service |
 | Enter username of admin user (admin, sys, ...) [sys] | This user is responsible for all scripts inside `db/_setup` folder |
 | Enter password for sys [leave blank and you will be asked for] | Nothing more to clarify. Password is written to apply.env which is mentioned in .gitignore. (Keep in mind that passwords are saved obfuscated) |
 | Enter password for deployment_user (proxyuser: ?_depl) [leave blank and you will be asked for] | Nothing more to clarify. Password is written to apply.env which is mentioned in .gitignore. (Keep in mind that passwords are saved obfuscated) |

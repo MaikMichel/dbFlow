@@ -283,9 +283,9 @@ instances/prod[master]$: code apply.env
 
 Since the copy of the configuration of course still points to the same database environment, it **must** now be adapted. For this we change the corresponding entry in the file `../instances/prod/apply.env`.
 
-![Change TNS from xepdb1 to xepdb2](images/tutorial/target-instance-tns.png)
+![Change TNS from freepdb1 to freepdb2](images/tutorial/target-instance-tns.png)
 
-> In our case, this is now the xepdb2 instead of xepdb1.
+> In our case, this is now the freepdb2 instead of freepdb1.
 
 
 ### Edit Stage
