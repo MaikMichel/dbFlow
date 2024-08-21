@@ -1217,15 +1217,19 @@ function manage_result() {
 
           if [[ -n "$(git remote)" ]]; then
             git push --quiet
+          fi
 
-            if [[ $(git tag -l "$version") ]]; then
-              echo_success "Tag $version already exists, nothing to do"
-            else
-              echo_success "Writing tag $version to repo"
-              git tag "${version}"
+          if [[ $(git tag -l "$version") ]]; then
+            echo_success "Tag $version already exists, nothing to do"
+          else
+            echo_success "Writing tag $version to repo"
+            git tag "${version}"
+
+            if [[ -n "$(git remote)" ]]; then
               git push --quiet
             fi
           fi
+
         fi
       fi
     fi
