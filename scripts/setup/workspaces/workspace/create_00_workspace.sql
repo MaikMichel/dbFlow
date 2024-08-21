@@ -20,7 +20,7 @@ begin
     from apex_workspaces
    where workspace = upper('^workspace');
 
-  dbms_output.put_line('Workspace ^workspace allready installed!');
+  dbms_output.put_line('Workspace ^workspace already installed!');
 
   apex_instance_admin.remove_workspace(p_workspace         => upper('^workspace'));
 

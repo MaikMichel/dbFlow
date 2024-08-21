@@ -18,7 +18,7 @@ utplsql_schema="ut3"
 utplsql_pass=$(base64 < /dev/urandom | tr -d 'O0Il1+/' | head -c 20; printf '\n')
 utplsql_tspace="users"
 
-tag_name=$(basename $(curl -fs -o/dev/null -w %{redirect_url} https://github.com/utPLSQL/utPLSQL/releases/latest))
+tag_name=$(curl -s https://api.github.com/repos/utPLSQL/utPLSQL/releases/latest | grep -oP '"tag_name": "\K(.*)(?=")')
 echo "Downloading ... https://github.com/utPLSQL/utPLSQL/releases/download/${tag_name}/utPLSQL.zip"
 curl -OL "https://github.com/utPLSQL/utPLSQL/releases/download/${tag_name}/utPLSQL.zip"
 
@@ -29,7 +29,7 @@ rm utPLSQL.zip
 cd utplsql/utPLSQL/source
 
 if [[ -z "$DB_ADMIN_USER" ]]; then
-  read -r -p "Enter username of admin user (admin, sys, ...) [sys]: " DB_ADMIN_USER
+  read -p "Enter username of admin user (admin, sys, ...) [sys]: " DB_ADMIN_USER
   DB_ADMIN_USER=${DB_ADMIN_USER:-"sys"}
 fi
 
@@ -62,7 +62,7 @@ then
   if [[ $yes == "YES" ]]; then
     reinstall="Y"
   else
-    read -r -p "$(echo -e ${BWHITE}"UTPLSQL is allready installed. Would you like to reinstall? (Y/N) [Y]: "${NC})" reinstall
+    read -p "$(echo -e ${BWHITE}"UTPLSQL is allready installed. Would you like to reinstall? (Y/N) [Y]: "${NC})" reinstall
     reinstall=${reinstall:-"Y"}
   fi
 

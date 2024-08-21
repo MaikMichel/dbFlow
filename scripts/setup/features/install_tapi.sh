@@ -18,7 +18,7 @@ tapi_schema="tapi"
 tapi_pass=$(base64 < /dev/urandom | tr -d 'O0Il1+/' | head -c 20; printf '\n')
 tapi_tspace="users"
 
-tag_name=$(basename $(curl -fs -o/dev/null -w %{redirect_url} https://github.com/MaikMichel/table-api-generator/releases/latest))
+tag_name=$(curl -s https://api.github.com/repos/MaikMichel/table-api-generator/releases/latest | grep -oP '"tag_name": "\K(.*)(?=")')
 echo "Downloading ... https://github.com/MaikMichel/table-api-generator/archive/${tag_name}.zip"
 curl -OL "https://github.com/MaikMichel/table-api-generator/archive/${tag_name}.zip"
 
@@ -28,7 +28,7 @@ rm ${tag_name}.zip
 cd tapi-${tag_name}/table-api-generator-${tag_name/v/} # remove v from tag-name
 
 if [[ -z "$DB_ADMIN_USER" ]]; then
-  read -r -p "Enter username of admin user (admin, sys, ...) [sys]: " DB_ADMIN_USER
+  read -p "Enter username of admin user (admin, sys, ...) [sys]: " DB_ADMIN_USER
   DB_ADMIN_USER=${DB_ADMIN_USER:-"sys"}
 fi
 
@@ -63,7 +63,7 @@ then
   if [[ $yes == "YES" ]]; then
     reinstall="Y"
   else
-    read -r -p "$(echo -e ${BWHITE}"TableAPI is allready installed. Would you like to reinstall? (Y/N) [Y]: "${NC})" reinstall
+    read -p "$(echo -e ${BWHITE}"TableAPI is allready installed. Would you like to reinstall? (Y/N) [Y]: "${NC})" reinstall
     reinstall=${reinstall:-"Y"}
   fi
 
@@ -102,11 +102,11 @@ Prompt grant public synonyms
 grant execute on om_tapigen to public;
 grant execute on om_tapigen_oddgen_wrapper to public;
 
-Prompt lock user: ${tapi_schema}
+Promp lock user: ${tapi_schema}
 conn ${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION}
 alter user ${tapi_schema} account lock;
 
-Prompt table-api installed
+Promp table-api installen
 
 !
 

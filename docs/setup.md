@@ -71,7 +71,7 @@ curl -sS https://raw.githubusercontent.com/MaikMichel/dbFlow/master/install.sh |
 mkdir your_project && cd your_project
 
 # clone the repo itself
-git clone https://path-to-your-db-flow-project-where-dbFlow-is-allready-installed.git .
+git clone https://path-to-your-db-flow-project-where-dbFlow-is-already-installed.git .
 
 # pull submodule(s) => .dbFlow
 git submodule update --init --recursive
@@ -82,7 +82,7 @@ git submodule update --init --recursive
 ```bash
 
 # clone the repo recursive and change into it
-git clone --recursive https://path-to-your-db-flow-project-where-dbFlow-is-allready-installed.git your_project && cd your_project
+git clone --recursive https://path-to-your-db-flow-project-where-dbFlow-is-already-installed.git your_project && cd your_project
 
 ```
 
@@ -112,7 +112,7 @@ You will be asked the following questions when creating the project:
 | When running release tests, what is your prefered branch name [build] | Later you have the possibility to run so called release tests (NightlyBuilds) . Here you determine the branch name for the tests. The default here is **build**. |
 | Would you like to process changelogs during deployment [Y] | **dbFlow** offers the possibility to generate changlogs based on the commit messages. Here you activate this function. ( see: [changelog]) |
 | What is the schema the changelog is processed with [schema_name] | If you want changelogs to be displayed within your application, you can specify the target schema here, with which the corresponding TemplateCode should be executed. ( see: [changelog]) |
-| Enter database connections [localhost:1521/xepdb1] | Place your connection string like: host:port/service |
+| Enter database connections [localhost:1521/freepdb1] | Place your connection string like: host:port/service |
 | Enter username of admin user (admin, sys, ...) [sys] | This user is responsible for all scripts inside `db/_setup` folder |
 | Enter password for sys [leave blank and you will be asked for] | Nothing more to clarify. Password is written to apply.env which is mentioned in .gitignore. (Keep in mind that passwords are saved obfuscated) |
 | Enter password for deployment_user (proxyuser: ?_depl) [leave blank and you will be asked for] | Nothing more to clarify. Password is written to apply.env which is mentioned in .gitignore. (Keep in mind that passwords are saved obfuscated) |
@@ -172,7 +172,7 @@ This will walk you through the wizard steps and outputs the file apply.env. So t
 
 ```bash
 # clone the repo recursive and change into it
-$ git clone --recursive https://path-to-your-db-flow-project-where-dbFlow-is-allready-installed.git your_project && cd your_project && .dbFLow/setup.sh --apply
+$ git clone --recursive https://path-to-your-db-flow-project-where-dbFlow-is-already-installed.git your_project && cd your_project && .dbFLow/setup.sh --apply
 ```
 
 ### Install Project
@@ -185,7 +185,7 @@ $ .dbFlow/setup.sh --install
 > This will run all SQL and bash files inside the db/_setup directory.
 
 For deployment or release purposes. This is the time to make all branches equal. So if you are on master and this your only branch, create a branch for each
-deployment stage (develop, test, ...) or if you allready did that, just merge these changes into your branches.
+deployment stage (develop, test, ...) or if you already did that, just merge these changes into your branches.
 
 !!! warning "Important!"
 

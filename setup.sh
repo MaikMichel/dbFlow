@@ -419,7 +419,7 @@ function wizard() {
     fi
   fi
 
-  local local_db_tns=${DB_TNS-"localhost:1521/xepdb1"}
+  local local_db_tns=${DB_TNS-"localhost:1521/freepdb1"}
   read -r -p "$(echo -e "Enter database connections [${BGRAY}${local_db_tns}${NC}]: ")" wiz_db_tns
   wiz_db_tns=${wiz_db_tns:-"${local_db_tns}"}
 

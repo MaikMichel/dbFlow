@@ -18,7 +18,7 @@ teplsql_schema="teplsql"
 teplsql_pass=$(base64 < /dev/urandom | tr -d 'O0Il1+/' | head -c 20; printf '\n')
 teplsql_tspace="users"
 
-tag_name=$(basename $(curl -fs -o/dev/null -w %{redirect_url} https://github.com/MaikMichel/tePLSQL/releases/latest))
+tag_name=$(curl -s https://api.github.com/repos/MaikMichel/tePLSQL/releases/latest | grep -oP '"tag_name": "\K(.*)(?=")')
 echo "Downloading ... https://github.com/MaikMichel/tePLSQL/archive/${tag_name}.zip"
 curl -OL "https://github.com/MaikMichel/tePLSQL/archive/${tag_name}.zip"
 
@@ -28,7 +28,7 @@ rm ${tag_name}.zip
 cd "tePLSQL-"${tag_name}/tePLSQL-${tag_name/v/} # remove v from tag-name
 
 if [[ -z "$DB_ADMIN_USER" ]]; then
-  read -r -p "Enter username of admin user (admin, sys, ...) [sys]: " DB_ADMIN_USER
+  read -p "Enter username of admin user (admin, sys, ...) [sys]: " DB_ADMIN_USER
   DB_ADMIN_USER=${DB_ADMIN_USER:-"sys"}
 fi
 
@@ -62,7 +62,7 @@ then
   if [[ $yes == "YES" ]]; then
     reinstall="Y"
   else
-    read -r -p "$(echo -e ${BWHITE}"TEPLSQL is allready installed. Would you like to reinstall? (Y/N) [Y]: "${NC})" reinstall
+    read -p "$(echo -e ${BWHITE}"TEPLSQL is allready installed. Would you like to reinstall? (Y/N) [Y]: "${NC})" reinstall
     reinstall=${reinstall:-"Y"}
   fi
 
@@ -103,11 +103,11 @@ grant select, insert, delete, update on TE_TEMPLATES to public;
 grant execute on teplsql to public;
 grant execute on te_templates_api to public;
 
-Prompt lock user: ${teplsql_schema}
+Promp lock user: ${teplsql_schema}
 conn ${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION}
 alter user ${teplsql_schema} account lock;
 
-Prompt tePLSQL installed
+Promp tePLSQL installed
 
 !
 

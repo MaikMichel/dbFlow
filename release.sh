@@ -82,6 +82,7 @@ usage() {
   echo -e "  -g | --gate             - Optional Gate branch to free source branch. If this is set, then the source branch will be merged into that"
   echo -e "  -v | --version <label>  - Required label of version this artifact represents (optional when buildflag is submitted)"
   echo -e "                          - Set <label> to major, minor or patch and the next semantic version is calculated automatically"
+  echo -e "                          - Set <label> to current to keep the latest semantic version"
   echo ""
   echo -e "  -b | --build            - Optional buildflag to create 3 artifact for using as nighlybuilds"
   echo -e "  -a | --apply <folder>   - Optional path to apply the build(s) when buildflag is set"
@@ -128,6 +129,9 @@ get_next_version() {
       ;;
     "patch")
       ((PATCH += 1))
+      ;;
+    "current")
+      ((PATCH += 0))
       ;;
   esac
 
@@ -183,8 +187,8 @@ build_release() {
         pulled="no"
       }
 
-      log "merging changes from $RLS_SOURCE_BRANCH"
-      retry git merge "${RLS_SOURCE_BRANCH}"
+      log "merging changes from $RLS_SOURCE_BRANCH with : --strategy-option theirs"
+      retry git merge "${RLS_SOURCE_BRANCH}" --strategy-option theirs
       retry git push
     else
       retry git checkout -b "${RLS_GATE_BRANCH}"
@@ -225,20 +229,20 @@ build_release() {
 
     # build initial patch
     log "building initial install ${version_previous} (previous version)"
-    .dbFlow/build.sh -i -v "${version_previous}" "${flags[@]}"
-    apply_tasks+=( ".dbFlow/apply.sh -i -v ${version_previous}" )
+    .dbFlow/build.sh --init --version "${version_previous}" "${flags[@]}"
+    apply_tasks+=( ".dbFlow/apply.sh --init --version ${version_previous}" )
   fi
 
   # following makes only sense when source not the same as target
   if [[ $RLS_GATE_BRANCH != "${RLS_TARGET_BRANCH}" ]]; then
     # merging target with source
-    log "merging changes from $RLS_GATE_BRANCH"
-    retry git merge "${RLS_GATE_BRANCH}"
+    log "merging changes from $RLS_GATE_BRANCH with : --strategy-option theirs"
+    retry git merge "${RLS_GATE_BRANCH}" --strategy-option theirs
 
     # build diff patch
     log "build patch upgrade ${version_next} (current version) ${flags[@]}"
     export DBFLOW_RELEASE_IS_RUNNUNG="YES"
-    .dbFlow/build.sh -p -v "${version_next}" "${flags[@]}"
+    .dbFlow/build.sh --patch --version "${version_next}" "${flags[@]}"
     unset export DBFLOW_RELEASE_IS_RUNNUNG
     build_patch_worked=$?
     apply_tasks+=( ".dbFlow/apply.sh --patch --version ${version_next}" )
@@ -247,7 +251,7 @@ build_release() {
     if [[ ${RLS_BUILD} == 'Y' ]]; then
       # und den initial Build des aktuellen Stand
       log "building initial install $version_next (current version)"
-      .dbFlow/build.sh -i -v "${version_next}" "${flags[@]}"
+      .dbFlow/build.sh --init --version "${version_next}" "${flags[@]}"
       apply_tasks+=( ".dbFlow/apply.sh --init --version ${version_next}" )
     else
       retry git push
@@ -411,7 +415,7 @@ function check_params() {
 
   RLS_INC_TYPE="-"
   local lowercase_version=$(toLowerCase "${version}")
-  if [[ "$lowercase_version" == "patch" ]] || [[ "$lowercase_version" == "minor" ]] || [[ "$lowercase_version" == "major" ]]; then
+  if [[ "$lowercase_version" == "current" ]] || [[ "$lowercase_version" == "patch" ]] || [[ "$lowercase_version" == "minor" ]] || [[ "$lowercase_version" == "major" ]]; then
     version=$(get_next_version "$lowercase_version")
 
     if [[ $version =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
@@ -436,14 +440,14 @@ function check_params() {
       # Lokale Branches ermitteln, die diesen Commit enthalten
       TAG_BRANCHES=$(git branch --contains "$TAG_COMMIT")
 
-      read -r -p "$(echo -e "${BORANGE}Target Version: ${version} exists allready on branch ${TAG_BRANCHES}.${NC}\nPress y to recreate tag on target branch ${RLS_TARGET_BRANCH}, otherwise abort release! (y/n)" ) " -n 1
+      read -r -p "$(echo -e "${BORANGE}Target Version: ${version} exists already on branch ${TAG_BRANCHES}.${NC}\nPress y to recreate tag on target branch ${RLS_TARGET_BRANCH}, otherwise abort release! (y/n)" ) " -n 1
       echo    # (optional) move to a new line
       if [[ ! $REPLY =~ ^[Yy]$ ]]; then
         if [[ "$0" = "$BASH_SOURCE" ]]; then
-          echo_error "Aborted... \nThe version tag: $version is allready used. And commit of $version and $RLS_TARGET_BRANCH are not equal. So, please use another one!"
+          echo_error "Aborted... \nThe version tag: $version is already used. And commit of $version and $RLS_TARGET_BRANCH are not equal. So, please use another one!"
           exit 1
         else
-          echo_error "Aborted... \nThe version tag: $version is allready used. And commit of $version and $RLS_TARGET_BRANCH are not equal. So, please use another one!"
+          echo_error "Aborted... \nThe version tag: $version is already used. And commit of $version and $RLS_TARGET_BRANCH are not equal. So, please use another one!"
           return 1 # handle exits from shell or function but don't exit interactive shell
         fi
       fi

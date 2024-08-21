@@ -151,11 +151,19 @@ function get_connect_string() {
     dbschema=${dbfolder/$firstpart"_"/""}
   fi
 
-  # when connection user != target schema then use proxy
-  if [[ ${DB_APP_USER} != "${dbschema}" ]]; then
-    echo "${DB_APP_USER}[${dbschema}]/${DB_APP_PWD}@${DB_TNS}"
+  # if a var with naming DBFLOW_dbschema_PWD exists, then use this
+  local dyn_schema_pwd="DBFLOW_${dbschema}_PWD"
+
+  # Überprüfen, ob die Variable existiert
+  if eval '[ ! -z "${'"$dyn_schema_pwd"'}" ]'; then
+    echo "${dbschema}/${!dyn_schema_pwd}@${DB_TNS}"
   else
-    echo "${DB_APP_USER}/${DB_APP_PWD}@${DB_TNS}"
+    # when connection user != target schema then use proxy
+    if [[ ${DB_APP_USER} != "${dbschema}" ]]; then
+      echo "${DB_APP_USER}[${dbschema}]/${DB_APP_PWD}@${DB_TNS}"
+    else
+      echo "${DB_APP_USER}/${DB_APP_PWD}@${DB_TNS}"
+    fi
   fi
 }
 
@@ -467,6 +475,32 @@ function validate_passes() {
       fi
     fi
   fi
+
+  # get all vars with pattern "DBFLOW_..._PWD"
+  for var in $(compgen -A variable | grep '^DBFLOW_.*_PWD$'); do
+
+      # get content of that var
+      local var_content="${!var}"
+
+      # starting with ! means it is envoded, so decode
+      if [[ $var_content == !* ]]; then
+        var_content=`echo "${var_content:1}" | base64 --decode`
+        eval $var="$var_content"
+
+      else
+        # write back encoded
+        if [[ -n $var_content ]]; then
+          pwd_enc=`echo "${var_content}" | base64`
+
+          # sed syntax is different in macos
+          if [[ $(uname) == "Darwin" ]]; then
+            sed -i"y" "/^$var=/s/=.*/=\"\!$pwd_enc\"/" ./apply.env
+          else
+            sed -i "/^$var=/s/=.*/=\"\!$pwd_enc\"/" ./apply.env
+          fi
+        fi
+      fi
+  done
 }
 
 function check_remind_me() {

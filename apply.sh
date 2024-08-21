@@ -19,8 +19,8 @@ function usage() {
   echo -e "                            of the difference defined during build"
   echo -e "  -v | --version <label>  - Required label of version this artifact represents"
   echo -e "  -n | --noextract        - Optional do not move and extract artifact from depot "
-  echo -e "                            Can be used to extract files manually or use a allready extracted build"
-  echo -e "  -r | --redolog          - Optional to redo an installation and skip installation-step allready run"
+  echo -e "                            Can be used to extract files manually or use a already extracted build"
+  echo -e "  -r | --redolog          - Optional to redo an installation and skip installation-step already run"
   echo -e "  -s | --stepwise         - Runs the installation interactively step by step"
   echo ""
  	echo -e "${BWHITE}Examples:${NC}"
@@ -322,7 +322,7 @@ function extract_patchfile() {
       cp "${install_source_file}" "${install_target_path}"/
     else
       if [[ -e "${install_target_file}" ]]; then
-        timelog "${install_target_file} allready copied"
+        timelog "${install_target_file} already copied"
       else
         timelog "${install_target_file} not found, nothing to install" "${failure}"
         manage_result "failure"
@@ -993,7 +993,7 @@ function install_rest() {
 
 
 # when changelog is found and changelog template is defined then
-# execute template on configured schema apply.env:CHANGELOG_SCHEMA=?
+# execute template on configured schema build.env:CHANGELOG_SCHEMA=?
 function process_changelog() {
   chlfile=changelog_${mode}_${version}.md
   tplfile=reports/changelog/template.sql
@@ -1032,6 +1032,49 @@ function process_changelog() {
     fi
   else
     timelog "No changelog ${chlfile} found"
+  fi
+}
+
+# when releasenotes are found and release_note template is defined then
+# execute template on configured schema build.env:RELEASENOTES_SCHEMA=?
+function process_release_notes() {
+  rlsnfile=release_notes_${mode}_${version}.md
+  tplfile=reports/release_notes/template.sql
+  if [[ -f ${rlsnfile} ]]; then
+    timelog "release_note found"
+
+    if [[ -f "${tplfile}" ]]; then
+      timelog "templatefile found"
+
+      if [[ -n ${RELEASENOTES_SCHEMA} ]]; then
+        timelog "releasenote schema '${RELEASENOTES_SCHEMA}' is configured"
+
+        # now gen merged sql file
+        create_merged_report_file "${rlsnfile}" "${tplfile}" "${rlsnfile}.sql"
+
+        # and run
+        $SQLCLI -S -L "$(get_connect_string "${RELEASENOTES_SCHEMA}")" <<!
+
+          Prompt executing release_notes file ${rlsnfile}.sql
+          @${rlsnfile}.sql
+
+!
+
+        if [ $? -ne 0 ]
+        then
+          timelog "ERROR when runnin ${rlsnfile}.sql" "${failure}"
+          exit 1
+        else
+          rm "${rlsnfile}.sql"
+        fi
+      else
+        timelog "RELEASENOTES_SCHEMA is NOT configured"
+      fi
+    else
+      timelog "No templatefile found"
+    fi
+  else
+    timelog "No release_note ${rlsnfile} found"
   fi
 }
 
@@ -1171,8 +1214,22 @@ function manage_result() {
           echo_success "Adding all changes to this repo"
           git add --all
           git commit -m "${version}" --quiet
-          git tag "${version}"
-          git push --quiet
+
+          if [[ -n "$(git remote)" ]]; then
+            git push --quiet
+          fi
+
+          if [[ $(git tag -l "$version") ]]; then
+            echo_success "Tag $version already exists, nothing to do"
+          else
+            echo_success "Writing tag $version to repo"
+            git tag "${version}"
+
+            if [[ -n "$(git remote)" ]]; then
+              git push --quiet
+            fi
+          fi
+
         fi
       fi
     fi
@@ -1284,6 +1341,9 @@ execute_global_hook_scripts ".hooks/post/${mode}"
 [[ ${stepwise_option} == "NO" ]] || ask_step "Process changelogs"
 # take care of changelog
 process_changelog
+
+# and release notes
+process_release_notes
 
 [[ ${stepwise_option} == "NO" ]] || ask_step "Set Apps or RESTmodules online"
 # now enable all,

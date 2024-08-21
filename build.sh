@@ -1145,6 +1145,16 @@ function write_changelog() {
   fi
 }
 
+function write_release_notes() {
+  # check if there is a release_notes folder in reports
+  if [[ -d "${targetpath}/reports/release_notes" ]]; then
+    timelog "Retrieving release notes"
+    # copy all files (init = all, patch = changed) to a new file
+    for f in "${targetpath}"/reports/release_notes/release_note_*.md; do (cat "${f}"; echo) >> ${targetpath}/release_notes_${mode}_${version}.md; done
+  else
+    timelog "no release notes found"
+  fi
+}
 
 function copy_all_when_defined_on_patch() {
   if [[ ${mode} == "patch" ]] && [[ ${SHIP_ALL} == "TRUE" ]]; then
@@ -1306,6 +1316,9 @@ write_install_rest
 
 # changelog
 write_changelog
+
+# releasenotes
+write_release_notes
 
 # if all files should be included
 copy_all_when_defined_on_patch
