@@ -79,7 +79,7 @@ sources[develop]$: .dbFlow/setup.sh --generate todo
     Which dbFLow project type do you want to create? Single, Multi or Flex [M]: S
     When running release tests, what is your prefered branch name [build]:
     Would you like to process changelogs during deployment [N]:
-    Enter database connections [localhost:1521/xepdb1]:
+    Enter database connections [localhost:1521/freepdb1]:
     Enter username of admin user (admin, sys, ...) [sys]:
     Enter password for sys [leave blank and you will be asked for]: ************
     Enter password for user todo [leave blank and you will be asked for]: ************
@@ -102,7 +102,7 @@ sources[develop]$: .dbFlow/setup.sh --generate todo
       Build Branch:                     build
       Create Changelos:                 N
       Schema Changelog proccessed:
-      Connection:                       localhost:1521/xepdb1
+      Connection:                       localhost:1521/freepdb1
       Admin User:                       sys
       Deployment User:                  todo
       Location depot:                   ../_depot
@@ -274,9 +274,9 @@ instances/prod[master]$: code apply.env
 
 Since the copy of the configuration of course still points to the same database environment, it **must** now be adapted. For this we change the corresponding entry in the file `../instances/prod/apply.env`.
 
-![Change TNS from xepdb1 to xepdb2](images/tutorial/target-instance-tns.png)
+![Change TNS from freepdb1 to freepdb2](images/tutorial/target-instance-tns.png)
 
-> In our case, this is now the xepdb2 instead of xepdb1.
+> In our case, this is now the freepdb2 instead of freepdb1.
 
 
 ### Edit Stage
