@@ -1046,6 +1046,11 @@ function process_release_notes() {
     if [[ -f "${tplfile}" ]]; then
       timelog "templatefile found"
 
+      if [[ ${PROJECT_MODE} == "SINGLE" ]]; then
+        RELEASENOTES_SCHEMA=${APP_SCHEMA}
+        timelog "releasenote schema set to '${APP_SCHEMA}' because project mode is SINGLE"
+      fi
+
       if [[ -n ${RELEASENOTES_SCHEMA} ]]; then
         timelog "releasenote schema '${RELEASENOTES_SCHEMA}' is configured"
 
