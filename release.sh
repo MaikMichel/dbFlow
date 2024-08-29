@@ -99,7 +99,7 @@ usage() {
 }
 
 log() {
-  branch=$(git rev-parse --symbolic-full-name --abbrev-ref HEAD)
+  branch=$(git branch --show-current)
   echo -e "${YELLOW}OnBranch: ${NC}${PURPLE}$branch${NC} ${YELLOW}>>> ${NC}${BLUE}${1}${NC}"
 }
 
@@ -296,7 +296,7 @@ build_release() {
 
   for task in "${apply_tasks[@]}"
   do
-    log "${CYAN}call ${BWHITE}${task}${NC} ${CYAN}from your instance folder${NC}"
+    echo -e "${CYAN}call ${BWHITE}${task}${NC} ${CYAN}from your instance folder${NC}"
     if [[ ${RLS_TOFOLDER} != '-' ]]; then
       ${task}
     fi
