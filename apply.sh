@@ -70,6 +70,9 @@ basepath=$(pwd)
 #
 AT_LEAST_ON_INSTALLFILE_STARTED="NO"
 
+# initinlize env_vars array
+env_vars=()
+
 runfile=""
 debug="n"
 help="h"
@@ -167,6 +170,24 @@ function check_vars() {
 
   exec 3>&1 4>&2
   exec &> >(tee -a "$log_file")
+
+
+  # reading defined vars from VAR_LIST
+  if [ -n "$VAR_LIST" ]; then
+    # set IFS to colon
+    IFS=':'
+
+    # lets build an array from that list
+    read -ra VAR_ARRAY <<< "$VAR_LIST"
+
+    # reset IFS
+    unset IFS
+
+    # build the array to inject in sql hooks
+    for var_name in "${VAR_ARRAY[@]}"; do
+      env_vars+=( "define $(echo "$var_name" | tr '[:lower:]' '[:upper:]')=\"${!var_name}\" \"UNDEFINED\"" )
+    done
+  fi
 }
 
 function check_params() {
@@ -468,26 +489,34 @@ function execute_global_hook_scripts() {
         if [[ ${targetschema} != "_" ]]; then
           timelog "executing hook file ${runfile} in ${targetschema}"
           $SQLCLI -S -L "$(get_connect_string "${targetschema}")" <<!
-            define VERSION="${version}"
-            define MODE="${mode}"
+define VERSION="${version}"
+define MODE="${mode}"
 
-            set define '^'
-            set concat on
-            set concat .
-            set verify off
+$(
+  for element in "${env_vars[@]}"
+  do
+    echo "$element"
+  done
+)
 
-            set timing on
-            set trim on
-            set linesize 2000
-            set sqlblanklines on
-            set tab off
-            set pagesize 9999
-            set trimspool on
+set define '^'
+set concat on
+set concat .
+set verify off
 
-            set serveroutput on
 
-            Prompt calling file ${runfile}
-            @${runfile}
+set timing on
+set trim on
+set linesize 2000
+set sqlblanklines on
+set tab off
+set pagesize 9999
+set trimspool on
+
+set serveroutput on
+
+Prompt calling file ${runfile}
+@${runfile}
 !
 
         else
