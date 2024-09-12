@@ -1,5 +1,14 @@
 # Changelog
 
+## [3.1.0 - 2024-08-21]
+- New: Implement ReleaseNotes as TemplateFolder
+- New: Add ability to have custom passwords for db/schemas to connect as schema owner
+- New: Force release.sh to merge with stratie to theirs
+- New: Only add version tag, when not exits
+- Fix: many typos
+- New: Add `current` as option to version in release.sh
+- Upd: refresh tutorial to reflect current changes
+
 ## [3.0.0 - 2024-06-30]
 - New: When using release.sh you can set version to: major, minor or patch. dbFlow will calcualte the right version number for you
 - New: During deployment, translated Applications are se offline too.

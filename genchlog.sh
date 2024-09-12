@@ -160,86 +160,71 @@ function gen_changelog() {
   # define log
   changetime=`date "+%Y%m%d%H%M%S"`
   logf=changelog_${changetime}.md
-  tag_date=$(git log -1 --pretty=format:'%ad' --date=short ${current_tag})
+  tag_date=$(git log -1 --format=%as "${current_tag}")
 
-  printf "# ${PROJECT} - Changelog\n\n" > ${logf}
-  printf "## ${current_tag} (${tag_date})\n\n" >> ${logf}
 
   if [[ -n ${INTENT_PREFIXES} ]]; then
-    for intent in "${!INTENT_PREFIXES[@]}"; do
-      readarray -t fixes <<< $(git log ${current_tag}...${previous_tag} --pretty="%s" --reverse | grep -v Merge | grep "^${INTENT_PREFIXES[$intent]}: *")
-      eval fixes=($(printf "%q\n" "${fixes[@]}" | sort -u))
 
-      if [[ ${#fixes[@]} -gt 0 ]] && [[ ${fixes[0]} != "" ]]; then
-        printf "### ${INTENT_NAMES[$intent]}\n\n" >> ${logf}
+    # gen associative array
+    declare -A temp_files
 
-        for fix in "${fixes[@]}"; do
-          fix_line=${fix/"${INTENT_PREFIXES[$intent]}: "/}
-          fix_issue=""
-
-          if [[ -n ${TICKET_MATCH} ]]; then
-            fix_issue=$(echo "${fix_line}" | grep -e "${TICKET_MATCH}" -o || true)
-          fi
-
-          echo_line=""
-          if [[ $fix_issue != "" ]] && [[ -n ${TICKET_URL} ]]; then
-            echo_line="* ${fix_line} [View]($(force_trailing_slash ${TICKET_URL})${fix_issue})" >> ${logf}
-          else
-            echo_line="* ${fix_line}" >> ${logf}
-          fi
-
-          grep -qxF "${echo_line}" ${logf} || echo "${echo_line}" >> ${logf}
-        done
-        printf "\n\n" >> ${logf}
-      fi;
-
+    # gen tempfile for each intent
+    for intent in "${INTENT_PREFIXES[@]}"; do
+      temp_files[$intent]=$(mktemp)
     done
-  fi
+    other_file=$(mktemp)
 
-  # when INTENT_ELSE is defined output goes here
-  if [[ -n ${INTENT_ELSE} ]]; then
-    intent_pipes=$(printf '%s|' "${INTENT_PREFIXES[@]}" | sed 's/|$//')
-
-    readarray -t fixes <<< $(git log ${current_tag}...${previous_tag} --pretty="%s" --reverse | grep -v Merge | grep -v -E "^${intent_pipes}: *")
-    eval fixes=($(printf "%q\n" "${fixes[@]}" | sort -u))
-
-    if [[ ${#fixes[@]} -gt 0 ]] && [[ ${fixes[0]} != "" ]]; then
-      if [[ -n ${INTENT_PREFIXES} ]]; then
-        printf "### ${INTENT_ELSE}\n\n" >> ${logf}
+    # for each commit
+    git log ${current_tag}...${previous_tag} --pretty="%s" --reverse --no-merges | while read -r line; do
+      TICKET_ID=$(echo "$line" | sed -n "s/.*$TICKET_MATCH*/\1/p")
+      if [[ -n ${TICKET_ID} ]]; then
+        line="$line [${TICKET_ID}](${TICKET_URL}/${TICKET_ID})"
       fi
-
-      for fix in "${fixes[@]}"; do
-        fix_line=${fix}
-        fix_issue=$(echo "${fix_line}" | grep -e "${TICKET_MATCH}" -o || true)
-
-        if [[ $fix_issue != "" ]]; then
-          printf "* ${fix_line} [View]($(force_trailing_slash ${TICKET_URL})${fix_issue})\n" >> ${logf}
-        else
-          printf "* ${fix_line}\n" >> ${logf}
+      matched=false
+      for intent in "${!INTENT_PREFIXES[@]}"; do
+        if [[ $line == ${INTENT_PREFIXES[$intent]}:* ]]; then
+          echo "- ${line} " >> "${temp_files[${INTENT_PREFIXES[$intent]}]}"
+          matched=true
+          break
         fi
       done
-      printf "\n\n" >> ${logf}
-    fi;
+
+      # when nothing matched
+      if [ "$matched" = false ]; then
+        echo "- ${line}" >> "${other_file}"
+      fi
+    done
+
+    # gen full file
+    {
+      echo "# Changelog"
+      echo ""
+
+      for intent in "${!INTENT_PREFIXES[@]}"; do
+          if [ -s "${temp_files[${INTENT_PREFIXES[$intent]}]}" ]; then
+              echo "## ${INTENT_NAMES[$intent]}"
+              cat "${temp_files[${INTENT_PREFIXES[$intent]}]}"
+              echo ""
+          fi
+      done
+
+      if [ -s "$other_file" ]; then
+          echo "## ${INTENT_ELSE}"
+          cat "$other_file"
+          echo ""
+      fi
+
+    } > "$targetfile"
+
+    # Temporäre Dateien löschen
+    for intent in "${INTENT_PREFIXES[@]}"; do
+        rm -f "${temp_files[$intent]}"
+    done
+
+    rm -f "$other_file"
   fi
-
-  echo "---" >> ${logf}
-
-
-  if [[ -f ${targetfile} ]]; then
-    # remove first line
-    sed -i '1d' ${targetfile}
-
-    # append to new output
-    cat ${targetfile} >> ${logf}
-    rm ${targetfile}
-  fi
-
-
-  mv ${logf} ${targetfile}
   timelog "Changelog written to ${targetfile}" ${success}
 }
-
-
 
 # First check params
 check_params "$@"

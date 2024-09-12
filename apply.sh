@@ -1075,6 +1075,11 @@ function process_release_notes() {
     if [[ -f "${tplfile}" ]]; then
       timelog "templatefile found"
 
+      if [[ ${PROJECT_MODE} == "SINGLE" ]]; then
+        RELEASENOTES_SCHEMA=${APP_SCHEMA}
+        timelog "releasenote schema set to '${APP_SCHEMA}' because project mode is SINGLE"
+      fi
+
       if [[ -n ${RELEASENOTES_SCHEMA} ]]; then
         timelog "releasenote schema '${RELEASENOTES_SCHEMA}' is configured"
 
@@ -1243,15 +1248,22 @@ function manage_result() {
           echo_success "Adding all changes to this repo"
           git add --all
           git commit -m "${version}" --quiet
-          git push --quiet
+
+          if [[ -n "$(git remote)" ]]; then
+            git push --quiet
+          fi
 
           if [[ $(git tag -l "$version") ]]; then
             echo_success "Tag $version already exists, nothing to do"
           else
             echo_success "Writing tag $version to repo"
             git tag "${version}"
-            git push --quiet
+
+            if [[ -n "$(git remote)" ]]; then
+              git push --quiet
+            fi
           fi
+
         fi
       fi
     fi

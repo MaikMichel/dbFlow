@@ -2,9 +2,9 @@ A Tutorial
 
 ## Intro
 
-In this tutorial we will build a ToDo application. This application will be developed in our development database and will be updated from time to time in our production database. The production database reflects here only a part of our release pipeline. In a real environment we might need more target stages. For our tutorial this should be sufficient.
+In this tutorial, we will build a ToDo application. The application will be developed using our development database and periodically updated in our production database. In this context, the production database represents just one part of our release pipeline. In a real-world environment, additional target stages may be required. However, for the purposes of this tutorial, this setup should be sufficient.
 
-To build the whole system locally, I use dockawex. Here, a complete development environment including a second build environment (this is our prod) is built via docker-compose. Absolutely recommended. See: [dockawex](https://github.com/MaikMichel/dockawex)
+To build the entire system locally, I use dockAPEX. This creates a complete development environment, including a secondary build environment (which serves as our production environment), using Docker Compose. It is highly recommended. See: [dockAPEX](https://github.com/MaikMichel/dockAPEX)
 
 
 
@@ -13,12 +13,12 @@ To build the whole system locally, I use dockawex. Here, a complete development 
 - Two database connections and the ability to connect as sys or another authorized user to create schemas and users.
 - Every database with a proper installation of Oracle APEX
 
-> just use dockawex and build and start your containers
+> just use [dockAPEX](https://github.com/MaikMichel/dockAPEX) and build and start your containers
 
 
 ## 01. Configuration
 
-First we create a new project directory `todos`. In this directory we create the `_depot` folder, where the artifacts of the deployments will be stored and fetched later. In an `instance` directory we create a subfolder for each target environment. In our case this is the `prod` folder, which is the productive environment for this tutorial. Furthermore we create the actual working directory called `sources`. This is the actual development folder. and will be versioned via Git.
+First, we create a new project directory called todos. Inside this directory, we create a _depot folder, where deployment artifacts will be stored and later retrieved. In an instance directory, we create a subfolder for each target environment. In our case, this is the prod folder, which serves as the production environment for this tutorial. Additionally, we create the working directory named sources. This will be the development folder and will be version-controlled using Git.
 
 ```bash
 # create master directory
@@ -28,7 +28,7 @@ $: mkdir todos && cd todos
 todos$: mkdir _depot && mkdir -p instances/prod && mkdir sources
 
 # just to show current content
-todos$: find
+todos$: find | sort
 
 # should produce
 # .
@@ -39,18 +39,18 @@ todos$: find
 
 ```
 
-Now we change to our actual source directory, turn on version control and install **dbFlow**.
+Now we change into our actual source directory, turn on version control and install **dbFlow**.
 
 ```bash
 # go to sources
 todos$: cd sources
 
-# add git
+# install dbFlow and add enable git in current directory
 sources$: curl -sS https://raw.githubusercontent.com/MaikMichel/dbFlow/master/install.sh | bash
 
 ```
 
-Now that we have submitted the directory, we can save the current empty state and switch to a new develop branch where we will work.
+Now that we have created the directory structure, add current changes and switch to a new develop branch where we will work.
 
 ```sh
 # add current changes
@@ -66,34 +66,35 @@ sources[master]$: git checkout -b develop
 
 ## 02. Setup dbFlow
 
-Now that we have the directory and git set up, we can configure **dbFlow**. For our application and just for demo purposes a SingleSchema is completely sufficient. Additionally we place the depot a level up and negate the installation of the default features. I leave all other settings in the default.
+Now that we have set up the directory and Git, we can configure **dbFlow**. For our application and for demonstration purposes, a SingleSchema is entirely sufficient. Additionally, we place the depot one level up and disable the installation of the default features. I leave all other settings at their default values.
 
 ```bash
 sources[develop]$: .dbFlow/setup.sh --generate todo
 ```
 
-!!! note "output of project wizard"
+!!! note "Input to project wizard"
 
-    ```cmd
-    Generate Project: todo
-    Which dbFLow project type do you want to create? Single, Multi or Flex [M]: S
-    When running release tests, what is your prefered branch name [build]:
-    Would you like to process changelogs during deployment [N]:
-    Enter database connections [localhost:1521/xepdb1]:
-    Enter username of admin user (admin, sys, ...) [sys]:
-    Enter password for sys [leave blank and you will be asked for]: ************
-    Enter password for user todo [leave blank and you will be asked for]: ************
-    Enter path to depot [_depot]: ../_depot
-    Enter stage of this configuration mapped to branch (develop, test, master) [develop]:
-    Do you wish to generate and install default tooling? (Logger, utPLSQL, teplsql, tapi) [Y]: N
-    Install with sql(cl) or sqlplus? [sqlplus]:
-    Enter path to place logfiles and artifacts into after installation? [_log_path]
-    Enter application IDs (comma separated) you wish to use initialy (100,101,...):
-    Enter restful Moduls (comma separated) you wish to use initialy (api,test,...):
+    | Question                                                                                | Input        |
+    |------------------------------------------------------------------------------------------|--------------|
+    | Generate Project                                                                         | todo         |
+    | Which dbFLow project type do you want to create? Single, Multi or Flex [M]               | S            |
+    | When running release tests, what is your prefered branch name [build]                    |              |
+    | Would you like to process changelogs during deployment [N]                               |              |
+    | Enter database connections [localhost:1521/freepdb1]                                       |              |
+    | Enter username of admin user (admin, sys, ...) [sys]                                     |              |
+    | Enter password for sys [leave blank and you will be asked for]                           | ************ |
+    | Enter password for user todo [leave blank and you will be asked for]                     | ************ |
+    | Enter path to depot [_depot]                                                             | ../_depot    |
+    | Enter stage of this configuration mapped to branch (develop, test, master) [develop]     |              |
+    | Do you wish to generate and install default tooling? (Logger, utPLSQL, teplsql, tapi) [Y]| N            |
+    | Install with sql(cl) or sqlplus? [sqlplus]                                               |              |
+    | Enter path to place logfiles and artifacts into after installation? [_log_path]          |              |
+    | Enter application IDs (comma separated) you wish to use initialy (100,101,...)           |              |
+    | Enter restful Moduls (comma separated) you wish to use initialy (api,test,...)           |              |
 
-    ```
 
-!!! note "output of dbFlow, when generating the project"
+
+!!! note "Output of dbFlow, when generating the project"
 
     ```cmd
     Generating project with following options
@@ -102,7 +103,7 @@ sources[develop]$: .dbFlow/setup.sh --generate todo
       Build Branch:                     build
       Create Changelos:                 N
       Schema Changelog proccessed:
-      Connection:                       localhost:1521/xepdb1
+      Connection:                       localhost:1521/freepdb1
       Admin User:                       sys
       Deployment User:                  todo
       Location depot:                   ../_depot
@@ -113,10 +114,11 @@ sources[develop]$: .dbFlow/setup.sh --generate todo
       Configure with default modules:
       Just install environment onyl:    NO
 
-    ... workinging ...
+    ... working ...
 
 
-    Congratulations!
+    # Project - todo
+
     Your project todo has been successfully created.
     Scripts have been added inside directory: db/_setup that allow you
     to create the respective schemas, workspaces as well as ACLs and features, as long
@@ -124,6 +126,7 @@ sources[develop]$: .dbFlow/setup.sh --generate todo
 
     todo - directory structure
     |-- _depot                 >> Path to store your build artifacts
+    |-- _logs                  >> Path to store installation logs and artifacts to
     |-- .dbFlow                >> dbFlow itself
     |-- .hooks                 >> Scripts/Tasks to run pre or post deployment
     |-- apex                   >> APEX applications in subfolders (f123)
@@ -138,11 +141,13 @@ sources[develop]$: .dbFlow/setup.sh --generate todo
     |-- static                 >> StaticFiles used to uploads go here (managed by dbFlux)
     apply.env                  >> Environment configuration added to .gitignore
     build.env                  >> Project configuration
+
+    ...
     ```
 
 ### Review folders
 
-**dbFLow** has now created the complete directory structure for us. Additionally we see the files `build.env` and `apply.env`. In the file `build.env` project specific settings are stored and in the file `apply.env` environment specific settings are stored. Therefore **dbFlow** put the apply.env directly on the `gitignore` list. Later, when it comes to deployment to another environment, this configuration is adapted to the target system accordingly.
+**dbFlow** has now created the complete directory structure for us. Additionally, we can see the files `build.env` and `apply.env`. The `build.env` file stores project-specific settings, while the `apply.env` file stores environment-specific settings. Therefore, **dbFlow** automatically adds `apply.env` to the `.gitignore` list. Later, when deploying to another environment, this configuration will be adapted to the target system accordingly.
 
 **dbFlow** creates a folder `db/_setup`. Here we will find the scripts necessary to create the schema and the workspace for APEX. All files can be edited as required. **dbFlow** will install all existing files in the appropriate order. See: [install project](../setup/#install-project)
 
@@ -190,16 +195,21 @@ rm release_1.tar.gz
 
 !!! note
 
-    If you want to install the demo application with another ID then 108 you can rename the folder as you like (f###)
+    If you want to install the demo application with another ID as f108, then just rename the folder with an ID you prefer (f###)
 
 
 ### Install Application
 
-You have downloaded all the files and unpacked them into your prepared **dbFlow** project. That means we can tell **dbFLow** to install all the files. All you have to do is to build an **initial** version and give it the version name "install". **dbFlow** will then directly install the freshly built version into the current environment.
+You have downloaded all the files and unpacked them into your prepared **dbFlow** project. That means we can tell **dbFlow** to install all the files. All you have to do is to build an **initial** version and call apply by adding the flag `--apply`. **dbFlow** will then directly install the freshly built version into the current environment.
 
 ```bash
-sources[develop]$: .dbFlow/build.sh --init --version install
+sources[develop]$: .dbFlow/build.sh --init --version 1.0.0 --apply
 ```
+
+!!! warning "Attention"
+
+    **dbFlow** will prompt you to confirm before installing an initial release or artifact. This is because all used schemas will be cleared, meaning all objects will be removed.
+
 
 Then you can familiarize yourself with the application and the files it contains. In the schema you will find the *tasks* table and corresponding constraints, indexes and triggers. Additionally you will find the package *apx_tasks_util*, which contains the business logic of our application.
 
@@ -223,8 +233,7 @@ sources[develop]$: git commit -m "Version 1 of ToDo App"
 
 ### Deploy Application
 
-Now we have finished version 1 and want to deploy it to the production environment right away. To do this, we are now building our first deployment, our initial patch.
-The concept, which **dbFlow** is based on, assumes that there is a corresponding branch per target environment. (See: [Concept](../concept/#git-flow-to-db))
+We have now completed version 1 and want to deploy it to the production environment immediately. To do this, we will build our first deployment, the initial patch. The concept behind **dbFlow** assumes that there is a corresponding branch for each target environment. (See: [Concept](../concept/#git-flow-to-db))
 
 Therefore we now merge our current state in the branch `develop` to the `master` branch, our target branch.
 
@@ -274,9 +283,9 @@ instances/prod[master]$: code apply.env
 
 Since the copy of the configuration of course still points to the same database environment, it **must** now be adapted. For this we change the corresponding entry in the file `../instances/prod/apply.env`.
 
-![Change TNS from xepdb1 to xepdb2](images/tutorial/target-instance-tns.png)
+![Change TNS from freepdb1 to freepdb2](images/tutorial/target-instance-tns.png)
 
-> In our case, this is now the xepdb2 instead of xepdb1.
+> In our case, this is now the freepdb2 instead of freepdb1.
 
 
 ### Edit Stage
@@ -296,7 +305,7 @@ Because we have an additional level in the directory tree, we also have to adjus
 
 ### Install project definition (setup) to target database
 
-Now we can install the setup meaning our foundation of the application on the target database.
+Now we can install the setup, meaning our foundation of the application on the target database.
 
 
 ```bash
@@ -311,15 +320,10 @@ Now that we have everything set up, we can simply deploy the previously deployed
 instances/prod[master]$: .dbFlow/apply.sh --init --version 1.0.0
 ```
 
-> Since we want to do an `init` here, **dbFlow** will ask you if you really want to do this, cause an `init` will **ALWAYS** make all target schemas empty (delete all objects). For a CI/CD environment you can prevent this by setting the environment variable DBFLOW_JENKINS="YES".
+> Since we want to do an `init` here, **dbFlow** will ask you if you really want to do this, cause an `init` will **ALWAYS** make all target schemas empty (delete all objects). For a CI/CD environment you can prevent this by setting the environment variable `DBFLOW_JENKINS="YES"`.
 
 Now you should be able to visit our ToDo Application on your target instance.
 
-Because the target instance folder is also a Git folder, we can now commit everything to keep a proper history of our deployments in to that stage.
-
-```bash
-instances/prod[master]$: git add . && git commit -m "1.0.0"
-```
 
 
 ## 07. Implement the next version of our todo app
@@ -351,7 +355,7 @@ rm release_2.tar.gz
 
 !!! note
 
-    If you want to install the demo application with another ID then 108 you can rename the folder as you like (f###). Keep in mind, that in the case you have to remove the previous application folder.
+    If you have previously renamed the Application folder to another ID than 108 you have to remove the old one and rename the folder to your specific ID.
 
 ### Install Changes to development environment
 
@@ -359,7 +363,7 @@ After you extracted the changes from version 2 of the app you should have see th
 
 ![Files new or changed](images/tutorial/todo-files-v2.png)
 
-Let's add them an commit the changes.
+Let's add them and commit the changes.
 
 ```bash
 sources[develop]$: git add .
@@ -370,9 +374,8 @@ sources[develop]$: git add .
 Now install changed files to develop environment by building a patch and installing it instantly.
 
 ```bash
-sources[develop]$: .dbFlow/build.sh --patch --version install --cached
+sources[develop]$: .dbFlow/build.sh --patch --version 1.1.0 --cached --apply
 ```
-> Remember, when using "`install`" as version identifier **dbFlow** will apply the patch immediatly.
 
 !!! note
 
@@ -398,7 +401,7 @@ Now create the patch itself
 ```bash
 sources[master]$: .dbFlow/build.sh --patch --version 1.1.0
 ```
-> **dbFlow** will ask you to tag this specific version. This happens, when you build on main or master branch. You can ignore this at this moment. Keep in mind, that you can turn this off whenn running inside a CI/CD environment.
+> **dbFlow** will ask you to tag this specific version. This happens, when you build on main or master branch. You can ignore this at this moment. Keep in mind, that you can turn this off when running inside a CI/CD environment.
 
 dbFlow has now shipped the patch to the depot (`../_depot/master`).
 
