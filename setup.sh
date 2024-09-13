@@ -533,6 +533,9 @@ function write_apply() {
     echo ""
     echo "# Path to pace logs and artifacts into after installation"
     echo "LOG_PATH=${wiz_logpath}"
+    echo ""
+    echo "# List of Environment Vars to inject into global hooks, separated by colons"
+    echo "# VAR_LIST=\"LOG_PATH:STAGE:DEPOT_PATH\""
 
   } > apply.env
 }
