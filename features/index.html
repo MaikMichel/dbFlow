@@ -457,6 +457,33 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#generating-release-notes" class="md-nav__link">
+    Generating Release Notes
+  </a>
+  
+    <nav class="md-nav" aria-label="Generating Release Notes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configuration_1" class="md-nav__link">
+    Configuration
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example_1" class="md-nav__link">
+    Example
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#switching-off-the-applications" class="md-nav__link">
     Switching off the applications
   </a>
@@ -465,7 +492,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#example_1" class="md-nav__link">
+  <a href="#example_2" class="md-nav__link">
     Example
   </a>
   
@@ -486,6 +513,13 @@
         <li class="md-nav__item">
   <a href="#ms-teams-notification" class="md-nav__link">
     MS Teams Notification
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage-of-environment-variables" class="md-nav__link">
+    Usage of environment variables
   </a>
   
 </li>
@@ -668,9 +702,67 @@ TICKET_URL=&quot;https://[your-jira-url]/browse&quot;
 <span class="k">*</span><span class="w"> </span>XYZ-74: Aliases in own table [<span class="nt">View</span>](<span class="na">https://your-own-jira-url-for-example.com/browse/XYZ-74</span>)
 <span class="k">*</span><span class="w"> </span>XYZ-74: Nach Nachfrage aus bestehenden Supplier einen Alias machen [<span class="nt">View</span>](<span class="na">https://your-own-jira-url-for-example.com/browse/XYZ-74</span>)
 </code></pre></div>
+<h2 id="generating-release-notes">Generating Release Notes</h2>
+<p>Unlike changelogs, release notes are not generated from commit messages. Instead, they can be created as Markdown files. The release notes are stored as report templates in the <code>reports/release_notes</code> folder. In <code>init</code> mode, <strong>dbFlow</strong> concatenates all files beginning with the prefix <code>release_log_</code> into a single file. In <code>patch</code> mode, only the modified files are merged. The files are sorted alphabetically.</p>
+<h3 id="configuration_1">Configuration</h3>
+<p>First, the <code>reports/release_notes</code> directory must be created. Additionally, <strong>dbFlow</strong> expects a <code>template.sql</code> file. This file is executed when the release is applied and must follow this structure:</p>
+<p><div class="highlight"><pre><span></span><code><span class="w">  </span><span class="cm">/***********************************************</span>
+<span class="cm">    -------     TEMPLATE START            -------</span>
+<span class="cm">    l_bin         &gt;&gt;&gt; file content as blob</span>
+<span class="cm">    l_file_name   &gt;&gt;&gt; filename</span>
+<span class="cm">  ************************************************/</span>
+
+
+<span class="w">  </span><span class="k">Begin</span>
+<span class="w">    </span><span class="n">dbms_output</span><span class="p">.</span><span class="n">put_line</span><span class="p">(</span><span class="n">gc_green</span><span class="o">||</span><span class="s1">&#39;File: &#39;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">l_file_name</span><span class="w"> </span><span class="o">||</span><span class="n">gc_reset</span><span class="p">);</span>
+<span class="w">    </span><span class="n">dbms_output</span><span class="p">.</span><span class="n">put_line</span><span class="p">(</span><span class="n">gc_green</span><span class="o">||</span><span class="s1">&#39;Blob: &#39;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">dbms_lob</span><span class="p">.</span><span class="n">getlength</span><span class="p">(</span><span class="n">l_bin</span><span class="p">)</span><span class="w"> </span><span class="o">||</span><span class="n">gc_reset</span><span class="p">);</span>
+<span class="w">  </span><span class="k">End</span><span class="p">;</span>
+
+<span class="w">  </span><span class="cm">/***********************************************</span>
+<span class="cm">    -------     TEMPLATE END              -------</span>
+<span class="cm">  ************************************************/</span>
+</code></pre></div>
+The easiest way to do this is to use VSCode with the <a href="https://marketplace.visualstudio.com/items?itemName=MaikMichel.dbflow">dbFlux</a> plugin. Here you can then execute the command: <code>dbFlux: Add REPORT Type</code>.</p>
+<p>The code between Begin and End can be adapted according to your own wishes. This means that the release notes can be inserted into a corresponding target table during import.</p>
+<p>If the project mode is <em>MULTI</em> or <em>FLEX</em>, the variable <code>RELEASENOTES_SCHEMA</code> with the target schema must be defined in the <code>build.env</code> file. For example like this:</p>
+<div class="highlight"><pre><span></span><code>...
+<span class="nv">RELEASENOTES_SCHEMA</span><span class="o">=</span>todo_app
+...
+</code></pre></div>
+<p>You are now ready to write the actual release notes.</p>
+<h3 id="example_1">Example</h3>
+<p>Let's assume you work in sprints. Then you could create the following files.</p>
+<p>reports/release_notes/release_note_sprint_1.md
+<div class="highlight"><pre><span></span><code><span class="gu">## Version 1.2 (22.08.2024)</span>
+
+<span class="gu">### Features</span>
+
+<span class="k">-</span><span class="w"> </span>Add due date to task record
+<span class="k">-</span><span class="w"> </span>Add ability to check / uncheck tasks in classic report
+
+<span class="gu">### Fixes</span>
+
+<span class="k">-</span><span class="w"> </span>Fixed typo in modal dialog of task record
+</code></pre></div></p>
+<p>reports/release_notes/release_note_sprint_2.md
+<div class="highlight"><pre><span></span><code><span class="gu">## Version 1.3 (23.08.2024)</span>
+
+<span class="gu">### Features</span>
+
+<span class="k">-</span><span class="w"> </span>Add function to assign a user to a task
+
+<span class="gu">### Fixes</span>
+
+<span class="k">-</span><span class="w"> </span>Fixed error when submitting by doubleclick
+</code></pre></div></p>
+<p>In the case of an initial release, both files are copied together and processed by the <code>template.sql</code> file. And for a patch release 1.3.0, only the modified file <code>reports/release_notes/release_note_sprint_2.md</code> is passed through <code>template.sql</code>.</p>
+<blockquote>
+<p>You can then determine how the header or footer looks in the possible target table for yourself by modifying the template.sql data.</p>
+<p>You will always find the summarized ReleaseNotes file in the log directory.</p>
+</blockquote>
 <h2 id="switching-off-the-applications">Switching off the applications</h2>
 <p>During installation all known APEX applications will be set to unavailable. This is done by APEX's own API apex_util.set_application_status. The content of the file .dbFlow/maintence.html will be displayed as a message to the end user. But you have the option to use your own maintence.html file. dbFlow will first try to read the apex/maintence.html file. If it is found, the content will be displayed as a message. Otherwise the one that exists in the .dbFlow directory.</p>
-<h3 id="example_1">Example</h3>
+<h3 id="example_2">Example</h3>
 <div class="highlight"><pre><span></span><code><span class="p">&lt;</span><span class="nt">title</span><span class="p">&gt;</span>Site Maintenance<span class="p">&lt;/</span><span class="nt">title</span><span class="p">&gt;</span>
 <span class="p">&lt;</span><span class="nt">style</span><span class="p">&gt;</span>
 <span class="w">  </span><span class="nt">body</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">text-align</span><span class="p">:</span><span class="w"> </span><span class="kc">center</span><span class="p">;</span><span class="w"> </span><span class="k">padding</span><span class="p">:</span><span class="w"> </span><span class="mi">20</span><span class="kt">px</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
@@ -698,6 +790,37 @@ TICKET_URL=&quot;https://[your-jira-url]/browse&quot;
 <p>After a deployment <strong>dbFlow</strong> is able to send a message to a Microsoft Teams hook. All you have to do is to provide the hook link set the variable TEAMS_WEBHOOK_URL.</p>
 <div class="highlight"><pre><span></span><code><span class="nv">TEAMS_WEBHOOK_URL</span><span class="o">=</span>https://url-to-your-incoming-teams-webhook
 </code></pre></div>
+<h2 id="usage-of-environment-variables">Usage of environment variables</h2>
+<p>In addition to the installation mode (<code>MODE</code>) and the currently installed version (<code>VERSION</code>), you can use your own environment variables within the global hook SQL scripts from dbFlow 3.2 onwards.
+To be able to use environment variables, these must exist and be made known to dbFlow. For this purpose, dbFlow reads the variable <code>VAR_LIST</code>. As of version 3.2, this is generated in the apply.env file or can be added manually.</p>
+<div class="highlight"><pre><span></span><code>...
+<span class="c1"># List of Environment Vars to inject into global hooks, separated by colons</span>
+<span class="nv">VAR_LIST</span><span class="o">=</span><span class="s2">&quot;STAGE:DEPOT_PATH&quot;</span>
+</code></pre></div>
+<p>While dbFlow prepares the call of the global hooks, these are defined by SQLplus/SQLcl.</p>
+<blockquote>
+<div class="highlight"><pre><span></span><code><span class="c1">-- Example to show, how dbFlow prepars a var. You don&#39;t have to do this on your own</span>
+<span class="n">define</span><span class="w"> </span><span class="n">LOG_PATH</span><span class="o">=</span><span class="ss">&quot;${LOG_PATH}&quot;</span><span class="w"> </span><span class="ss">&quot;UNDEFINED&quot;</span>
+</code></pre></div>
+</blockquote>
+<p>You can then use the variables in your hook scripts.</p>
+<p><div class="highlight"><pre><span></span><code><span class="n">PROMPT</span><span class="w"> </span><span class="o">********************************************************************</span>
+<span class="n">PROMPT</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">VERSION</span><span class="p">:</span><span class="w">    </span><span class="o">^</span><span class="k">VERSION</span>
+<span class="n">PROMPT</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">MODE</span><span class="p">:</span><span class="w">       </span><span class="o">^</span><span class="k">MODE</span>
+<span class="n">PROMPT</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">STAGE</span><span class="p">:</span><span class="w">      </span><span class="o">^</span><span class="n">STAGE</span>
+<span class="n">PROMPT</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">DEPOT_PATH</span><span class="p">:</span><span class="w"> </span><span class="o">^</span><span class="n">DEPOT_PATH</span>
+<span class="n">PROMPT</span><span class="w"> </span><span class="o">********************************************************************</span>
+</code></pre></div>
+The output would look something like this</p>
+<blockquote>
+<div class="highlight"><pre><span></span><code>********************************************************************
+* VERSION:    1.2.3
+* MODE:       patch
+* STAGE:      develop
+* DEPOT_PATH: ./_logs
+********************************************************************
+</code></pre></div>
+</blockquote>
 
 
 
