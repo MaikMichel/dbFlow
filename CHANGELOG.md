@@ -1,5 +1,9 @@
 # Changelog
 
+## [3.2.0 - 2024-09-13]
+- New: Usage ov environment vars in global hooks
+- Upd: Some small improvements
+
 ## [3.1.0 - 2024-08-21]
 - New: Implement ReleaseNotes as TemplateFolder
 - New: Add ability to have custom passwords for db/schemas to connect as schema owner
