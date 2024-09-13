@@ -97,6 +97,85 @@ For example like this:
 * XYZ-74: Nach Nachfrage aus bestehenden Supplier einen Alias machen [View](https://your-own-jira-url-for-example.com/browse/XYZ-74)
 ```
 
+## Generating Release Notes
+
+Unlike changelogs, release notes are not generated from commit messages. Instead, they can be created as Markdown files. The release notes are stored as report templates in the `reports/release_notes` folder. In `init` mode, **dbFlow** concatenates all files beginning with the prefix `release_log_` into a single file. In `patch` mode, only the modified files are merged. The files are sorted alphabetically.
+
+### Configuration
+
+First, the `reports/release_notes` directory must be created. Additionally, **dbFlow** expects a `template.sql` file. This file is executed when the release is applied and must follow this structure:
+
+```sql
+  /***********************************************
+    -------     TEMPLATE START            -------
+    l_bin         >>> file content as blob
+    l_file_name   >>> filename
+  ************************************************/
+
+
+  Begin
+    dbms_output.put_line(gc_green||'File: ' || l_file_name ||gc_reset);
+    dbms_output.put_line(gc_green||'Blob: ' || dbms_lob.getlength(l_bin) ||gc_reset);
+  End;
+
+  /***********************************************
+    -------     TEMPLATE END              -------
+  ************************************************/
+
+```
+The easiest way to do this is to use VSCode with the [dbFlux](https://marketplace.visualstudio.com/items?itemName=MaikMichel.dbflow) plugin. Here you can then execute the command: `dbFlux: Add REPORT Type`.
+
+The code between Begin and End can be adapted according to your own wishes. This means that the release notes can be inserted into a corresponding target table during import.
+
+If the project mode is *MULTI* or *FLEX*, the variable `RELEASENOTES_SCHEMA` with the target schema must be defined in the `build.env` file. For example like this:
+
+```bash
+...
+RELEASENOTES_SCHEMA=todo_app
+...
+```
+
+You are now ready to write the actual release notes.
+
+### Example
+
+Let's assume you work in sprints. Then you could create the following files.
+
+reports/release_notes/release_note_sprint_1.md
+```md
+
+## Version 1.2 (22.08.2024)
+
+### Features
+
+- Add due date to task record
+- Add ability to check / uncheck tasks in classic report
+
+### Fixes
+
+- Fixed typo in modal dialog of task record
+```
+
+reports/release_notes/release_note_sprint_2.md
+```md
+
+## Version 1.3 (23.08.2024)
+
+### Features
+
+- Add function to assign a user to a task
+
+### Fixes
+
+- Fixed error when submitting by doubleclick
+```
+
+In the case of an initial release, both files are copied together and processed by the `template.sql` file. And for a patch release 1.3.0, only the modified file `reports/release_notes/release_note_sprint_2.md` is passed through `template.sql`.
+
+> You can then determine how the header or footer looks in the possible target table for yourself by modifying the template.sql data.
+
+> You will always find the summarized ReleaseNotes file in the log directory.
+
 
 ## Switching off the applications
 
@@ -138,3 +217,45 @@ After a deployment **dbFlow** is able to send a message to a Microsoft Teams hoo
 ```bash
 TEAMS_WEBHOOK_URL=https://url-to-your-incoming-teams-webhook
 ```
+
+## Usage of environment variables
+
+In addition to the installation mode (`MODE`) and the currently installed version (`VERSION`), you can use your own environment variables within the global hook SQL scripts from dbFlow 3.2 onwards.
+To be able to use environment variables, these must exist and be made known to dbFlow. For this purpose, dbFlow reads the variable `VAR_LIST`. As of version 3.2, this is generated in the apply.env file or can be added manually.
+
+
+```shell
+...
+# List of Environment Vars to inject into global hooks, separated by colons
+VAR_LIST="STAGE:DEPOT_PATH"
+```
+
+While dbFlow prepares the call of the global hooks, these are defined by SQLplus/SQLcl.
+
+
+> ```sql
+> -- Example to show, how dbFlow prepars a var. You don't have to do this on your own
+> define LOG_PATH="${LOG_PATH}" "UNDEFINED"
+> ```
+
+You can then use the variables in your hook scripts.
+
+```sql
+PROMPT ********************************************************************
+PROMPT * VERSION:    ^VERSION
+PROMPT * MODE:       ^MODE
+PROMPT * STAGE:      ^STAGE
+PROMPT * DEPOT_PATH: ^DEPOT_PATH
+PROMPT ********************************************************************
+```
+The output would look something like this
+> ```text
+> ********************************************************************
+> * VERSION:    1.2.3
+> * MODE:       patch
+> * STAGE:      develop
+> * DEPOT_PATH: ./_logs
+> ********************************************************************
+> ```
+
+
