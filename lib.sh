@@ -124,14 +124,14 @@ function define_folders() {
   # at INIT there is no pretreatment or an evaluation of the table_ddl
   # !: Don't forgett to change documentation when changing these arrays
   if [[ "${l_mode}" == "init" ]]; then
-    SCAN_PATHES=( .hooks/pre ddl/init/pre sequences tables indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies sources/types sources/packages sources/functions sources/procedures views mviews sources/triggers tests/packages synonyms/private synonyms/public ddl ddl/base ddl/init dml dml/init dml/base jobs .hooks/post)
+    SCAN_PATHES=( .hooks/pre ddl/init/pre sequences tables indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/uniques constraints/foreigns constraints/checks contexts policies sources/types sources/packages sources/functions sources/procedures views mviews sources/triggers tests/packages synonyms/private synonyms/public ddl ddl/base ddl/init dml dml/init dml/base jobs .hooks/post)
   else
     # building pre based on branches
     pres=( ".hooks/pre ddl/patch/pre_${l_branch}" "dml/patch/pre_${l_branch}" ddl/patch/pre dml/patch/pre )
     post=( "ddl" ddl/base ddl/patch/post dml dml/base dml/patch/post jobs .hooks/post )
 
     SCAN_PATHES=( ${pres[@]} )
-    SCAN_PATHES+=( sequences tables "tables/tables_ddl/${l_branch}" tables/tables_ddl indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/foreigns constraints/checks constraints/uniques contexts policies sources/types sources/packages sources/functions sources/procedures views mviews sources/triggers tests/packages synonyms/private synonyms/public )
+    SCAN_PATHES+=( sequences tables "tables/tables_ddl/${l_branch}" tables/tables_ddl indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/uniques constraints/foreigns constraints/checks contexts policies sources/types sources/packages sources/functions sources/procedures views mviews sources/triggers tests/packages synonyms/private synonyms/public )
     SCAN_PATHES+=( ${post[@]} )
   fi
 }
