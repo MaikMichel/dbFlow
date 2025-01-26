@@ -18,7 +18,7 @@ teplsql_schema="teplsql"
 teplsql_pass=$(base64 < /dev/urandom | tr -d 'O0Il1+/' | head -c 20; printf '\n')
 teplsql_tspace="users"
 
-tag_name=$(curl -s https://api.github.com/repos/MaikMichel/tePLSQL/releases/latest | grep -oP '"tag_name": "\K(.*)(?=")')
+tag_name=$(basename $(curl -fs -o/dev/null -w %{redirect_url} https://github.com/MaikMichel/tePLSQL/releases/latest))
 echo "Downloading ... https://github.com/MaikMichel/tePLSQL/archive/${tag_name}.zip"
 curl -OL "https://github.com/MaikMichel/tePLSQL/archive/${tag_name}.zip"
 

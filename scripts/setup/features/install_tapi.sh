@@ -18,14 +18,14 @@ tapi_schema="tapi"
 tapi_pass=$(base64 < /dev/urandom | tr -d 'O0Il1+/' | head -c 20; printf '\n')
 tapi_tspace="users"
 
-tag_name=$(curl -s https://api.github.com/repos/OraMUC/table-api-generator/releases/latest | grep -oP '"tag_name": "\K(.*)(?=")')
-echo "Downloading ... https://github.com/OraMUC/table-api-generator/archive/${tag_name}.zip"
-curl -OL "https://github.com/OraMUC/table-api-generator/archive/${tag_name}.zip"
+tag_name=$(basename $(curl -fs -o/dev/null -w %{redirect_url} https://github.com/MaikMichel/table-api-generator/releases/latest))
+echo "Downloading ... https://github.com/MaikMichel/table-api-generator/archive/${tag_name}.zip"
+curl -OL "https://github.com/MaikMichel/table-api-generator/archive/${tag_name}.zip"
 
 unzip ${tag_name}.zip -d "tapi-${tag_name}"
 rm ${tag_name}.zip
 
-cd "tapi-${tag_name}/table-api-generator-${tag_name/v/}" # remove v from tag-name
+cd tapi-${tag_name}/table-api-generator-${tag_name/v/} # remove v from tag-name
 
 if [[ -z "$DB_ADMIN_USER" ]]; then
   read -p "Enter username of admin user (admin, sys, ...) [sys]: " DB_ADMIN_USER
@@ -41,6 +41,7 @@ if [[ -z "$DB_ADMIN_PWD" ]]; then
   ask4pwd "Enter password für user ${DB_ADMIN_USER}: "
   DB_ADMIN_PWD=${pass}
 fi
+
 
 is_tapi_installed () {
     ${SQLCLI} -s ${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION} <<!
@@ -91,7 +92,7 @@ conn ${tapi_schema}/${tapi_pass}@$DB_TNS
 
 Prompt installing table-api
 
-@@om_tapigen_install.sql
+@@install.sql
 
 Prompt create public synonyms
 create or replace public synonym om_tapigen for ${tapi_schema}.om_tapigen;
