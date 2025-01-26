@@ -440,7 +440,7 @@ function prepare_redo() {
               line="Prompt skipped redo: $line"
           fi
         else
-          if [[ -v map[${key}] ]]; then
+          if [[ ${map[${key}]+_} ]]; then
               line="Prompt skipped redo: $line"
           fi
         fi
