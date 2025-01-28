@@ -1034,9 +1034,8 @@ function gen_changelog() {
 
   if [[ -n ${INTENT_PREFIXES} ]]; then
     for intent in "${!INTENT_PREFIXES[@]}"; do
-      # echo "git log ${log_args} --pretty=\"%s\" --reverse | grep -v Merge | grep \"^${INTENT_PREFIXES[$intent]}: *\""
-      IFS=$'\n' read -r -d '' -a fixes < <(git log ${log_args} --pretty="%s" --reverse | grep -v Merge | grep "^${INTENT_PREFIXES[$intent]}: *" && printf '\0')
-      eval fixes=($(printf "%q\n" "${fixes[@]}" | sort -u))
+      readarray -t fixes <<< "$(git log ${log_args} --pretty="%s" --reverse | grep -v Merge | grep "^${INTENT_PREFIXES[$intent]}: *")"
+      fixes=($(printf "%q\n" "${fixes[@]}" | sort -u))
 
       if [[ ${#fixes[@]} -gt 0 ]] && [[ ${fixes[0]} != "" ]]; then
         printf "### ${INTENT_NAMES[$intent]}\n\n" >> ${logf}
@@ -1067,9 +1066,8 @@ function gen_changelog() {
   # when INTENT_ELSE is defined output goes here
   if [[ -n ${INTENT_ELSE} ]]; then
     intent_pipes=$(printf '%s|' "${INTENT_PREFIXES[@]}" | sed 's/|$//')
-    # echo "git log ${log_args} --pretty=\"%s\" --reverse | grep -v Merge | grep -v -E \"^${intent_pipes}: *\""
-    IFS=$'\n' read -r -d '' -a fixes < <(git log ${log_args} --pretty="%s" --reverse | grep -v Merge | grep -v -E "^${intent_pipes}: *" && printf '\0')
-    eval fixes=($(printf "%q\n" "${fixes[@]}" | sort -u))
+    readarray -t fixes <<< "$(git log ${log_args} --pretty="%s" --reverse | grep -v Merge | grep -v -E "^${intent_pipes}: *")"
+    fixes=($(printf "%q\n" "${fixes[@]}" | sort -u))
 
     if [[ ${#fixes[@]} -gt 0 ]] && [[ ${fixes[0]} != "" ]]; then
       if [[ -n ${INTENT_PREFIXES} ]]; then
