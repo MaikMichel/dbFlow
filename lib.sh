@@ -182,6 +182,7 @@ mingw64_nt-10*)
 ;;
 esac
 
+THIS_OS=$(uname)
 
 ## Logging
 

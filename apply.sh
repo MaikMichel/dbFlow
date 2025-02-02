@@ -404,8 +404,6 @@ function prepare_redo() {
   if [[ -f "${oldlogfile}" ]]; then
     timelog "parsing redolog ${oldlogfile}"
 
-    this_os=$(uname)
-
     redo_file="redo_${MDATE}_${mode}_${version}.log"
     grep '^<<< ' "${oldlogfile}" | cat > "${redo_file}"
     sed -i 's/^<<< //' "${redo_file}"
@@ -434,7 +432,7 @@ function prepare_redo() {
       while IFS= read -r line; do
         key=${line/@@/db/$schema/}
 
-        if [[ ${this_os} == "Darwin" ]]; then
+        if [[ ${THIS_OS} == "Darwin" ]]; then
           # on macos double bracket lead to failure, for now I can't fix that cause I need assoziative array
           if [ -v map[${key}] ]; then
               line="Prompt skipped redo: $line"
@@ -579,7 +577,11 @@ function install_db_schemas() {
         timelog "Installing schema $schema to ${DB_APP_USER} on ${DB_TNS}"
 
         # uncomment cleaning scripts specific to this stage/branch ex:--test or --acceptance
-        sed -i -E "s:--$STAGE:Prompt uncommented cleanup for stage $STAGE\n:g" "${db_install_file}"
+        if [[ $THIS_OS == "Darwin" ]]; then
+          sed -i '' -E "s:--$STAGE:Prompt uncommented cleanup for stage $STAGE\n:g" "${db_install_file}"
+        else
+          sed -i -E "s:--$STAGE:Prompt uncommented cleanup for stage $STAGE\n:g" "${db_install_file}"
+        fi
 
         runfile=${db_install_file}
         AT_LEAST_ON_INSTALLFILE_STARTED="YES"
