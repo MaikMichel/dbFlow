@@ -57,13 +57,7 @@ fi
 # name of setup directory
 targetpath="db/_setup"
 basepath=$(pwd)
-this_os=$(uname)
 
-if [[ ${this_os} == "Darwin" ]]; then
-  sed_cmd='sed -i"y"'
-else
-  sed_cmd='sed -i'
-fi
 
 # array of subdirectories inside $targetpath to scan for executables (sh/sql)
 array=( tablespaces directories users features workspaces acls )
@@ -726,9 +720,9 @@ function generate() {
       sed "s/\^schema_name/${wiz_project_name}_logic/g" .dbFlow/scripts/setup/users/01_schema.sql > "${targetpath}/users/02_create_${wiz_project_name}_logic.sql"
       sed "s/\^schema_name/${wiz_project_name}_app/g" .dbFlow/scripts/setup/users/01_schema.sql > "${targetpath}/users/03_create_${wiz_project_name}_app.sql"
 
-      ${sed_cmd} "s/\^wiz_db_app_user/${wiz_project_name}_depl/g" "${targetpath}/users/01_create_${wiz_project_name}_data.sql"
-      ${sed_cmd} "s/\^wiz_db_app_user/${wiz_project_name}_depl/g" "${targetpath}/users/02_create_${wiz_project_name}_logic.sql"
-      ${sed_cmd} "s/\^wiz_db_app_user/${wiz_project_name}_depl/g" "${targetpath}/users/03_create_${wiz_project_name}_app.sql"
+      ${SED_CMD} "s/\^wiz_db_app_user/${wiz_project_name}_depl/g" "${targetpath}/users/01_create_${wiz_project_name}_data.sql"
+      ${SED_CMD} "s/\^wiz_db_app_user/${wiz_project_name}_depl/g" "${targetpath}/users/02_create_${wiz_project_name}_logic.sql"
+      ${SED_CMD} "s/\^wiz_db_app_user/${wiz_project_name}_depl/g" "${targetpath}/users/03_create_${wiz_project_name}_app.sql"
 
     elif [[ $(toLowerCase "${wiz_project_mode}") == "s" ]]; then
       sed "s/\^wiz_db_app_user/${wiz_project_name}/g" .dbFlow/scripts/setup/users/00_depl.sql > "${targetpath}/users/00_create_${wiz_project_name}.sql"
@@ -736,7 +730,7 @@ function generate() {
     elif [[ $(toLowerCase "${wiz_project_mode}") == "f" ]]; then
       sed "s/\^wiz_db_app_user/${wiz_project_name}_depl/g" .dbFlow/scripts/setup/users/00_depl.sql > "${targetpath}/users/00_create_${wiz_project_name}_depl.sql"
       sed "s/\^schema_name/${wiz_project_name}_app/g" .dbFlow/scripts/setup/users/01_schema.sql > "${targetpath}/users/01_create_${wiz_project_name}_app.sql"
-      ${sed_cmd} "s/\^wiz_db_app_user/${wiz_project_name}_depl/g" "${targetpath}/users/01_create_${wiz_project_name}_app.sql"
+      ${SED_CMD} "s/\^wiz_db_app_user/${wiz_project_name}_depl/g" "${targetpath}/users/01_create_${wiz_project_name}_app.sql"
     fi
 
     # static files
@@ -777,14 +771,14 @@ function generate() {
     done
 
     # workspace files
-    ${sed_cmd} "s/\^workspace/${wiz_project_name}/g" "${targetpath}/workspaces/${wiz_project_name}/create_00_workspace.sql"
-    ${sed_cmd} "s/\^workspace/${wiz_project_name}/g" "${targetpath}/workspaces/${wiz_project_name}/create_01_user_wsadmin.sql"
+    ${SED_CMD} "s/\^workspace/${wiz_project_name}/g" "${targetpath}/workspaces/${wiz_project_name}/create_00_workspace.sql"
+    ${SED_CMD} "s/\^workspace/${wiz_project_name}/g" "${targetpath}/workspaces/${wiz_project_name}/create_01_user_wsadmin.sql"
     if [[ $(toLowerCase "${wiz_project_mode}") == "s" ]]; then
-      ${sed_cmd} "s/\^app_schema/${wiz_project_name}/g" "${targetpath}/workspaces/${wiz_project_name}/create_00_workspace.sql"
-      ${sed_cmd} "s/\^app_schema/${wiz_project_name}/g" "${targetpath}/workspaces/${wiz_project_name}/create_01_user_wsadmin.sql"
+      ${SED_CMD} "s/\^app_schema/${wiz_project_name}/g" "${targetpath}/workspaces/${wiz_project_name}/create_00_workspace.sql"
+      ${SED_CMD} "s/\^app_schema/${wiz_project_name}/g" "${targetpath}/workspaces/${wiz_project_name}/create_01_user_wsadmin.sql"
     else
-      ${sed_cmd} "s/\^app_schema/${wiz_project_name}_app/g" "${targetpath}/workspaces/${wiz_project_name}/create_00_workspace.sql"
-      ${sed_cmd} "s/\^app_schema/${wiz_project_name}_app/g" "${targetpath}/workspaces/${wiz_project_name}/create_01_user_wsadmin.sql"
+      ${SED_CMD} "s/\^app_schema/${wiz_project_name}_app/g" "${targetpath}/workspaces/${wiz_project_name}/create_00_workspace.sql"
+      ${SED_CMD} "s/\^app_schema/${wiz_project_name}_app/g" "${targetpath}/workspaces/${wiz_project_name}/create_01_user_wsadmin.sql"
     fi
   fi
 

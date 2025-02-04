@@ -406,7 +406,7 @@ function prepare_redo() {
 
     redo_file="redo_${MDATE}_${mode}_${version}.log"
     grep '^<<< ' "${oldlogfile}" | cat > "${redo_file}"
-    sed -i 's/^<<< //' "${redo_file}"
+    ${SED_CMD} 's/^<<< //' "${redo_file}"
 
     # backup install files
     for schema in "${DBFOLDERS[@]}"
@@ -577,12 +577,8 @@ function install_db_schemas() {
         timelog "Installing schema $schema to ${DB_APP_USER} on ${DB_TNS}"
 
         # uncomment cleaning scripts specific to this stage/branch ex:--test or --acceptance
-        if [[ $THIS_OS == "Darwin" ]]; then
-          sed -i '' -E "s:--$STAGE:Prompt uncommented cleanup for stage $STAGE\n:g" "${db_install_file}"
-        else
-          sed -i -E "s:--$STAGE:Prompt uncommented cleanup for stage $STAGE\n:g" "${db_install_file}"
-        fi
-
+        ${SED_CMD} -E "s:--$STAGE:Prompt uncommented cleanup for stage $STAGE\n:g" "${db_install_file}"
+        
         runfile=${db_install_file}
         AT_LEAST_ON_INSTALLFILE_STARTED="YES"
         $SQLCLI -S -L "$(get_connect_string "${schema}")" @"${db_install_file}" "${version}" "${mode}"

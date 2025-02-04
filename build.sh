@@ -1111,7 +1111,7 @@ function gen_changelog() {
 
   if [[ -f ${targetfile} ]]; then
     # remove first line
-    sed -i '1d' ${targetfile}
+    ${SED_CMD} '1d' ${targetfile}
 
     # append to new output
     cat ${targetfile} >> ${logf}

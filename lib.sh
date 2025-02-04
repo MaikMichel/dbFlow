@@ -41,6 +41,16 @@ LIBSOURCED="TRUE"
 
 NUMBERPATTERN='^[0-9]+$'
 
+THIS_OS=$(uname)
+
+if [[ ${THIS_OS} == "Darwin" ]]; then
+  SED_CMD=(sed -i '')
+else
+  SED_CMD=(sed -i)
+fi
+
+
+
 pass=""
 function ask4pwd() {
   local prompt_text=$1
@@ -182,10 +192,7 @@ mingw64_nt-10*)
 ;;
 esac
 
-THIS_OS=$(uname)
-
 ## Logging
-
 failure="failure"
 success="success"
 warning="warning"
@@ -451,12 +458,7 @@ function validate_passes() {
     if [[ -n $DB_APP_PWD ]]; then
       pwd_enc=`echo "${DB_APP_PWD}" | base64`
 
-      # sed syntax is different in macos
-      if [[ $(uname) == "Darwin" ]]; then
-        sed -i"y" "/^DB_APP_PWD=/s/=.*/=\"\!$pwd_enc\"/" ./apply.env
-      else
-        sed -i "/^DB_APP_PWD=/s/=.*/=\"\!$pwd_enc\"/" ./apply.env
-      fi
+      ${SED_CMD} "/^DB_APP_PWD=/s/=.*/=\"\!$pwd_enc\"/" ./apply.env
     fi
   fi
 
@@ -468,12 +470,7 @@ function validate_passes() {
     if [[ -n $DB_ADMIN_PWD ]]; then
       pwd_enc=`echo "${DB_ADMIN_PWD}" | base64`
 
-      # sed syntax is different in macos
-      if [[ $(uname) == "Darwin" ]]; then
-        sed -i"y" "/^DB_ADMIN_PWD=/s/=.*/=\"\!$pwd_enc\"/" ./apply.env
-      else
-        sed -i "/^DB_ADMIN_PWD=/s/=.*/=\"\!$pwd_enc\"/" ./apply.env
-      fi
+      ${SED_CMD} "/^DB_ADMIN_PWD=/s/=.*/=\"\!$pwd_enc\"/" ./apply.env
     fi
   fi
 
@@ -493,12 +490,7 @@ function validate_passes() {
         if [[ -n $var_content ]]; then
           pwd_enc=`echo "${var_content}" | base64`
 
-          # sed syntax is different in macos
-          if [[ $(uname) == "Darwin" ]]; then
-            sed -i"y" "/^$var=/s/=.*/=\"\!$pwd_enc\"/" ./apply.env
-          else
-            sed -i "/^$var=/s/=.*/=\"\!$pwd_enc\"/" ./apply.env
-          fi
+          ${SED_CMD} "/^$var=/s/=.*/=\"\!$pwd_enc\"/" ./apply.env
         fi
       fi
   done
