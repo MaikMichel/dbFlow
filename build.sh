@@ -1034,17 +1034,18 @@ function gen_changelog() {
 
   if [[ -n ${INTENT_PREFIXES} ]]; then
     for intent in "${!INTENT_PREFIXES[@]}"; do
-      
-      if [[ $(uname) == "Darwin" ]]; then      
+
+      if [[ $(uname) == "Darwin" ]]; then
         fixes=()
         while IFS=$'\n' read -r line; do
           fixes+=("$line")
-        done < <(git log ${log_args} --pretty="%s" --reverse | grep -v Merge | grep "^${INTENT_PREFIXES[$intent]}: *")      
+        done < <(git log ${log_args} --pretty="%s" --reverse | grep -v Merge | grep "^${INTENT_PREFIXES[$intent]}: *")
       else
         readarray -t fixes <<< "$(git log ${log_args} --pretty="%s" --reverse | grep -v Merge | grep "^${INTENT_PREFIXES[$intent]}: *")"
       fi
-      
-      fixes=($(printf "%q\n" "${fixes[@]}" | sort -u))
+
+      IFS=$'\n' fixes=($(sort -u <<< "$(printf "%s\n" "${fixes[@]}")"))
+      unset IFS
 
       if [[ ${#fixes[@]} -gt 0 ]] && [[ ${fixes[0]} != "" ]]; then
         printf "### ${INTENT_NAMES[$intent]}\n\n" >> ${logf}
@@ -1074,18 +1075,19 @@ function gen_changelog() {
 
   # when INTENT_ELSE is defined output goes here
   if [[ -n ${INTENT_ELSE} ]]; then
-    # intent_pipes=$(printf '%s|' "${INTENT_PREFIXES[@]}" | sed 's/|$//')
+    intent_pipes="($(printf '%s|' "${INTENT_PREFIXES[@]}" | sed 's/|$//'))"
 
     if [[ $(uname) == "Darwin" ]]; then
       fixes=()
       while IFS=$'\n' read -r line; do
         fixes+=("$line")
-      done < <(git log ${log_args} --pretty="%s" --reverse | grep -v Merge | grep "^${intent_pipes}: *")
-    else    
-      readarray -t fixes <<< "$(git log ${log_args} --pretty="%s" --reverse | grep -v Merge | grep "^${intent_pipes}: *")"
+      done < <(git log ${log_args} --pretty="%s" --reverse | grep -v Merge | grep -Ev "^${intent_pipes}:")
+    else
+      readarray -t fixes <<< $(git log ${log_args} --pretty="%s" --reverse | grep -v Merge | grep -Ev "^${intent_pipes}:")
     fi
 
-    fixes=($(printf "%q\n" "${fixes[@]}" | sort -u))
+    IFS=$'\n' fixes=($(sort -u <<< "$(printf "%s\n" "${fixes[@]}")"))
+    unset IFS
 
     if [[ ${#fixes[@]} -gt 0 ]] && [[ ${fixes[0]} != "" ]]; then
       if [[ -n ${INTENT_PREFIXES} ]]; then
@@ -1097,9 +1099,9 @@ function gen_changelog() {
         fix_issue=$(echo "${fix_line}" | grep -e "${TICKET_MATCH}" -o || true)
 
         if [[ $fix_issue != "" ]]; then
-          echo "* ${fix_line} [View]($(force_trailing_slash ${TICKET_URL})${fix_issue})\n" >> ${logf}
+          echo "* ${fix_line} [View]($(force_trailing_slash ${TICKET_URL})${fix_issue})" >> ${logf}
         else
-          echo "* ${fix_line}\n" >> ${logf}
+          echo "* ${fix_line}" >> ${logf}
         fi
       done
       printf "\n\n" >> ${logf}
