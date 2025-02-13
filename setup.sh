@@ -720,9 +720,14 @@ function generate() {
       sed "s/\^schema_name/${wiz_project_name}_logic/g" .dbFlow/scripts/setup/users/01_schema.sql > "${targetpath}/users/02_create_${wiz_project_name}_logic.sql"
       sed "s/\^schema_name/${wiz_project_name}_app/g" .dbFlow/scripts/setup/users/01_schema.sql > "${targetpath}/users/03_create_${wiz_project_name}_app.sql"
 
-      ${SED_CMD} "s/\^wiz_db_app_user/${wiz_project_name}_depl/g" "${targetpath}/users/01_create_${wiz_project_name}_data.sql"
-      ${SED_CMD} "s/\^wiz_db_app_user/${wiz_project_name}_depl/g" "${targetpath}/users/02_create_${wiz_project_name}_logic.sql"
-      ${SED_CMD} "s/\^wiz_db_app_user/${wiz_project_name}_depl/g" "${targetpath}/users/03_create_${wiz_project_name}_app.sql"
+      schema_file="${targetpath}/users/01_create_${wiz_project_name}_data.sql"
+      sed "s/\^wiz_db_app_user/${wiz_project_name}_depl/g" "${schema_file}" > "${schema_file}.tmp" && mv "${schema_file}.tmp" "${schema_file}"
+      
+      schema_file="${targetpath}/users/01_create_${wiz_project_name}_logic.sql"
+      sed "s/\^wiz_db_app_user/${wiz_project_name}_depl/g" "${schema_file}" > "${schema_file}.tmp" && mv "${schema_file}.tmp" "${schema_file}"
+
+      schema_file="${targetpath}/users/01_create_${wiz_project_name}_app.sql"
+      sed "s/\^wiz_db_app_user/${wiz_project_name}_depl/g" "${schema_file}" > "${schema_file}.tmp" && mv "${schema_file}.tmp" "${schema_file}"
 
     elif [[ $(toLowerCase "${wiz_project_mode}") == "s" ]]; then
       sed "s/\^wiz_db_app_user/${wiz_project_name}/g" .dbFlow/scripts/setup/users/00_depl.sql > "${targetpath}/users/00_create_${wiz_project_name}.sql"
@@ -730,7 +735,9 @@ function generate() {
     elif [[ $(toLowerCase "${wiz_project_mode}") == "f" ]]; then
       sed "s/\^wiz_db_app_user/${wiz_project_name}_depl/g" .dbFlow/scripts/setup/users/00_depl.sql > "${targetpath}/users/00_create_${wiz_project_name}_depl.sql"
       sed "s/\^schema_name/${wiz_project_name}_app/g" .dbFlow/scripts/setup/users/01_schema.sql > "${targetpath}/users/01_create_${wiz_project_name}_app.sql"
-      ${SED_CMD} "s/\^wiz_db_app_user/${wiz_project_name}_depl/g" "${targetpath}/users/01_create_${wiz_project_name}_app.sql"
+
+      schema_file="${targetpath}/users/01_create_${wiz_project_name}_app.sql"
+      sed "s/\^wiz_db_app_user/${wiz_project_name}_depl/g" "${schema_file}" > "${schema_file}.tmp" && mv "${schema_file}.tmp" "${schema_file}"
     fi
 
     # static files
@@ -771,14 +778,18 @@ function generate() {
     done
 
     # workspace files
-    ${SED_CMD} "s/\^workspace/${wiz_project_name}/g" "${targetpath}/workspaces/${wiz_project_name}/create_00_workspace.sql"
-    ${SED_CMD} "s/\^workspace/${wiz_project_name}/g" "${targetpath}/workspaces/${wiz_project_name}/create_01_user_wsadmin.sql"
+    workspace_file="${targetpath}/workspaces/${wiz_project_name}/create_00_workspace.sql"
+    sed "s/\^workspace/${wiz_project_name}/g" "${workspace_file}" > "${workspace_file}.tmp" && mv "${workspace_file}.tmp" "${workspace_file}"
+
+    wsadmin_file="${targetpath}/workspaces/${wiz_project_name}/create_01_user_wsadmin.sql"
+    sed "s/\^workspace/${wiz_project_name}/g" "${wsadmin_file}" > "${wsadmin_file}.tmp" && mv "${wsadmin_file}.tmp" "${wsadmin_file}"
+
     if [[ $(toLowerCase "${wiz_project_mode}") == "s" ]]; then
-      ${SED_CMD} "s/\^app_schema/${wiz_project_name}/g" "${targetpath}/workspaces/${wiz_project_name}/create_00_workspace.sql"
-      ${SED_CMD} "s/\^app_schema/${wiz_project_name}/g" "${targetpath}/workspaces/${wiz_project_name}/create_01_user_wsadmin.sql"
+      sed "s/\^app_schema/${wiz_project_name}/g" "${workspace_file}" > "${workspace_file}.tmp" && mv "${workspace_file}.tmp" "${workspace_file}"
+      sed "s/\^app_schema/${wiz_project_name}/g" "${wsadmin_file}" > "${wsadmin_file}.tmp" && mv "${wsadmin_file}.tmp" "${wsadmin_file}"
     else
-      ${SED_CMD} "s/\^app_schema/${wiz_project_name}_app/g" "${targetpath}/workspaces/${wiz_project_name}/create_00_workspace.sql"
-      ${SED_CMD} "s/\^app_schema/${wiz_project_name}_app/g" "${targetpath}/workspaces/${wiz_project_name}/create_01_user_wsadmin.sql"
+      sed "s/\^app_schema/${wiz_project_name}_app/g" "${workspace_file}" > "${workspace_file}.tmp" && mv "${workspace_file}.tmp" "${workspace_file}"
+      sed "s/\^app_schema/${wiz_project_name}_app/g" "${wsadmin_file}" > "${wsadmin_file}.tmp" && mv "${wsadmin_file}.tmp" "${wsadmin_file}"
     fi
   fi
 

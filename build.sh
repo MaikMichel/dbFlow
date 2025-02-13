@@ -1113,8 +1113,8 @@ function gen_changelog() {
 
   if [[ -f ${targetfile} ]]; then
     # remove first line
-    ${SED_CMD} '1d' ${targetfile}
-
+    sed '1d' "${targetfile}" > "${targetfile}.tmp" && mv "${targetfile}.tmp" "${targetfile}"
+    
     # append to new output
     cat ${targetfile} >> ${logf}
     rm ${targetfile}
