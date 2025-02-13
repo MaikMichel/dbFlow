@@ -353,6 +353,11 @@ function extract_patchfile() {
     # extract file
     timelog "extracting file ${install_target_file}"
     tar -zxf "${install_target_file}"
+
+    # maybe something changed during the release
+    if [[ -e ./build.env ]]; then
+      source ./build.env
+    fi
   else
     timelog "artifact will not be extracted from depot"
   fi
