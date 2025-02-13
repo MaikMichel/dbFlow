@@ -406,8 +406,8 @@ function prepare_redo() {
 
     redo_file="redo_${MDATE}_${mode}_${version}.log"
     grep '^<<< ' "${oldlogfile}" | cat > "${redo_file}"
-    ${SED_CMD} 's/^<<< //' "${redo_file}"
-
+    sed "s/^<<< //" "${redo_file}" > "${redo_file}.tmp" && mv "${redo_file}.tmp" "${redo_file}"
+    
     # backup install files
     for schema in "${DBFOLDERS[@]}"
     do
@@ -570,6 +570,8 @@ function install_db_schemas() {
     if [[ -d ${schema} ]]; then
       cd "${schema}" || exit
 
+      [[ ${stepwise_option} == "NO" ]] || ask_step "Install Schema ${schema}"
+
       # now executing main installation file if exists
       db_install_file="${mode}_${schema}_${version}.sql"
       # exists db install file
@@ -577,7 +579,7 @@ function install_db_schemas() {
         timelog "Installing schema $schema to ${DB_APP_USER} on ${DB_TNS}"
 
         # uncomment cleaning scripts specific to this stage/branch ex:--test or --acceptance
-        ${SED_CMD} -E "s:--$STAGE:Prompt uncommented cleanup for stage $STAGE\n:g" "${db_install_file}"
+        sed "s:--$STAGE:Prompt uncommented cleanup for stage $STAGE\n:g" "${db_install_file}" > "${db_install_file}.tmp" && mv "${db_install_file}.tmp" "${db_install_file}"
         
         runfile=${db_install_file}
         AT_LEAST_ON_INSTALLFILE_STARTED="YES"
