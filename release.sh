@@ -282,15 +282,14 @@ build_release() {
   log "${GREEN}go to your instance directory where you host $RLS_TARGET_BRANCH and apply the following commands/patches${NC}"
 
   if [[ ${RLS_TOFOLDER} != '-' ]]; then
+    # current dbFlow branch?
+    local dbFlow_branch=$(git -C ".dbFlow" rev-parse --abbrev-ref HEAD)
+
     cd "${RLS_TOFOLDER}" || exit
+
     if [[ -d ".dbFlow" ]]; then
-      cd ".dbFlow" || exit
-      { #try
-        sub_pulled=$(git pull)
-      } || { # catch
-        sub_pulled="no"
-      }
-      cd ..
+     git -C ".dbFlow" checkout ${dbFlow_branch}
+     git -C ".dbFlow" pull origin ${dbFlow_branch}
     fi
   fi
 
