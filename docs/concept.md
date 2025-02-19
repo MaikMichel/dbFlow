@@ -105,6 +105,9 @@ Each schemafolder inside **db** folder except `_setup` is build with the same st
 | .... jobs         | Jobs, Scheduler scripts goes here
 | .... policies     | Policies
 | .... sequences    | Sequences must be scripted in a restartable manner
+| .... synonyms     | 
+| ...... private    | Private Synonyms
+| ...... public     | Public Synonyms
 | .... sources      | All PL/SQL Code is stored in respective subfolders
 | ...... functions  |
 | ...... packages   | Extension for package specification is pks and extension pkb <br/>is used for body
@@ -176,9 +179,9 @@ alter table employees add (
 - indexes/uniques
 - indexes/defaults
 - constraints/primaries
+- constraints/uniques
 - constraints/foreigns
 - constraints/checks
-- constraints/uniques
 - contexts
 - policies
 - sources/types
@@ -189,6 +192,8 @@ alter table employees add (
 - mviews
 - sources/triggers
 - tests/packages
+- synonyms/private
+- synonyms/public
 - ddl
 - ddl/init
 - dml
@@ -212,9 +217,9 @@ alter table employees add (
 - indexes/uniques
 - indexes/defaults
 - constraints/primaries
+- constraints/uniques
 - constraints/foreigns
 - constraints/checks
-- constraints/uniques
 - contexts
 - policies
 - sources/types
@@ -225,6 +230,8 @@ alter table employees add (
 - mviews
 - sources/triggers
 - tests/packages
+- synonyms/private
+- synonyms/public
 - ddl
 - ddl/patch/post_${*branch-name*}
 - dml/patch/post_${*branch-name*}

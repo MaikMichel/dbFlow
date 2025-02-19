@@ -1,5 +1,15 @@
 # Changelog
 
+## [3.3.0 - 2025-02-19]
+- New: Added mkdocs.sh to serve and modify documentation with docker
+- New: Added test_webhook.sh to check if webhook request is working
+- Upd: folder constraints/uniques will be executed directly after constraints/primaries
+- Upd: during init, folder dml/base is executed prio to dml/init
+- Upd: Source build.env after tar was unpacked
+- Upd: Set target dbFlow insice instance to the same branch when running build tests in release.sh
+- Fix: Fixed some issues concerning MacOS and sed
+- Fix: Fixed some issues when generating changelogs
+
 ## [3.2.0 - 2024-09-13]
 - New: Usage ov environment vars in global hooks
 - Upd: Some small improvements

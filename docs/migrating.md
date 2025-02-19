@@ -68,6 +68,10 @@ If you want to migrate from an old version to a new version, you have to do the 
     INTENT_NAMES=( Features Fixes )
     INTENT_ELSE="Others"
     TICKET_MATCH="[A-Z]\+-[0-9]\+"
-    TICKET_URL="https://url-to-your-issue-tracker-like-jira/browse"
+    TICKET_URL="https://url-to-your-issue-tracker-like-jira/browse"    
   ```
 
+### Following changes in directory structure from 3.2.0 - stable to 3.3.0
+
+1. The Folder `dml/base` is now executed prior `dml/init`. Files inside base directory are meant to run each time they are touched. If there is data depending on other data, you should provide a prefix to the files. Because all file are run in order.
+2. You have now the option to place synonyms in specific folders `synonyms/private` and `synoynms/public`. So you do not have to put them as ddl files anymore.
