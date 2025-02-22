@@ -703,7 +703,7 @@ function generate() {
     mkdir -p "${wiz_depot_path}"
 
     # copy some examples into it
-    if if [[ $(toLowerCase "${wiz_project_mode}") != "f" ]]; then
+    if [[ $(toLowerCase "${wiz_project_mode}") != "f" ]]; then
       cp -rf .dbFlow/scripts/setup/workspaces/workspace/* "${targetpath}/workspaces/${wiz_project_name}"
       cp -rf .dbFlow/scripts/setup/workspaces/*.* "${targetpath}/workspaces"
     fi
