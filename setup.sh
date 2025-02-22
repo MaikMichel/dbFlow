@@ -459,13 +459,15 @@ function wizard() {
       read -r -p "$(printf "Do you wish to generate and install default tooling? (Logger, utPLSQL, teplsql, tapi) [${BGRAY}Y${NC}]: ")" wiz_with_tools
       wiz_with_tools=${wiz_with_tools:-"Y"}
 
-      # ask for application IDs
-      wiz_apex_ids=""
-      read -r -p "Enter application IDs (comma separated) you wish to use initialy (100,101,...): " wiz_apex_ids
+      if [[ $(toLowerCase "${wiz_project_mode}") != "f" ]]; then
+        # ask for application IDs
+        wiz_apex_ids=""
+        read -r -p "Enter application IDs (comma separated) you wish to use initialy (100,101,...): " wiz_apex_ids
 
-      # ask for restful Modulsa
-      wiz_rest_modules=""
-      read -r -p "Enter restful Moduls (comma separated) you wish to use initialy (api,test,...): " wiz_rest_modules
+        # ask for restful Modulsa
+        wiz_rest_modules=""
+        read -r -p "Enter restful Moduls (comma separated) you wish to use initialy (api,test,...): " wiz_rest_modules
+      fi
     else
       wiz_with_tools="N"
     fi
@@ -701,8 +703,10 @@ function generate() {
     mkdir -p "${wiz_depot_path}"
 
     # copy some examples into it
-    cp -rf .dbFlow/scripts/setup/workspaces/workspace/* "${targetpath}/workspaces/${wiz_project_name}"
-    cp -rf .dbFlow/scripts/setup/workspaces/*.* "${targetpath}/workspaces"
+    if if [[ $(toLowerCase "${wiz_project_mode}") != "f" ]]; then
+      cp -rf .dbFlow/scripts/setup/workspaces/workspace/* "${targetpath}/workspaces/${wiz_project_name}"
+      cp -rf .dbFlow/scripts/setup/workspaces/*.* "${targetpath}/workspaces"
+    fi
     cp -rf .dbFlow/scripts/setup/acls/* "${targetpath}/acls"
 
     if [[ $(toLowerCase "${wiz_with_tools}") == "y" ]]; then
@@ -733,49 +737,34 @@ function generate() {
       sed "s/\^wiz_db_app_user/${wiz_project_name}/g" .dbFlow/scripts/setup/users/00_depl.sql > "${targetpath}/users/00_create_${wiz_project_name}.sql"
       sed "s/\^schema_name/${wiz_project_name}/g" .dbFlow/scripts/setup/users/02_grants.sql >> "${targetpath}/users/00_create_${wiz_project_name}.sql"
     elif [[ $(toLowerCase "${wiz_project_mode}") == "f" ]]; then
-      sed "s/\^wiz_db_app_user/${wiz_project_name}_depl/g" .dbFlow/scripts/setup/users/00_depl.sql > "${targetpath}/users/00_create_${wiz_project_name}_depl.sql"
-      sed "s/\^schema_name/${wiz_project_name}_app/g" .dbFlow/scripts/setup/users/01_schema.sql > "${targetpath}/users/01_create_${wiz_project_name}_app.sql"
-
-      schema_file="${targetpath}/users/01_create_${wiz_project_name}_app.sql"
-      sed "s/\^wiz_db_app_user/${wiz_project_name}_depl/g" "${schema_file}" > "${schema_file}.tmp" && mv "${schema_file}.tmp" "${schema_file}"
+      sed "s/\^wiz_db_app_user/${wiz_project_name}_depl/g" .dbFlow/scripts/setup/users/00_depl.sql > "${targetpath}/users/00_create_${wiz_project_name}_depl.sql"      
     fi
 
     # static files
     mkdir -p {apex,static,rest,reports,.hooks/{pre,post}}
-    if [[ $(toLowerCase "${wiz_project_mode}") == "f" ]]; then
-      mkdir -p apex/"${wiz_project_name}"_app/"${wiz_project_name}"
-      mkdir -p static/"${wiz_project_name}"_app/"${wiz_project_name}"
-      mkdir -p rest/"${wiz_project_name}"_app
-    fi
-
+    
     # default directories
     # split ids gen directories
-    apexids=(`echo "${wiz_apex_ids}" | sed 's/,/\n/g'`)
-    for apxID in "${apexids[@]}"
-    do
-      if [[ $(toLowerCase "${wiz_project_mode}") == "f" ]]; then
-        mkdir -p apex/"${wiz_project_name}"_app/"${wiz_project_name}"/f"${apxID}"
-        mkdir -p static/"${wiz_project_name}"_app/"${wiz_project_name}"/f"${apxID}"/{dist/{css,img,js},src/{css,img,js}}
-      else
+    if [[ $(toLowerCase "${wiz_project_mode}") != "f" ]]; then
+      apexids=(`echo "${wiz_apex_ids}" | sed 's/,/\n/g'`)
+      for apxID in "${apexids[@]}"
+      do    
         mkdir -p apex/f"${apxID}"
         mkdir -p static/f"${apxID}"/{dist/{css,img,js},src/{css,img,js}}
-      fi
-    done
+      done
+    fi
 
 
     # default directories
     # split modules
-    restmodules=(`echo "${wiz_rest_modules}" | sed 's/,/\n/g'`)
-    for restMOD in "${restmodules[@]}"
-    do
-      if [[ $(toLowerCase "${wiz_project_mode}") == "f" ]]; then
-        mkdir -p rest/"${wiz_project_name}"_app/modules/"${restMOD}"
-        mkdir -p rest/"${wiz_project_name}"_app/access/{privileges,roles,mapping}
-      else
+    if [[ $(toLowerCase "${wiz_project_mode}") != "f" ]]; then
+      restmodules=(`echo "${wiz_rest_modules}" | sed 's/,/\n/g'`)
+      for restMOD in "${restmodules[@]}"
+      do      
         mkdir -p rest/modules/"${restMOD}"
         mkdir -p rest/access/{privileges,roles,mapping}
-      fi
-    done
+      done
+    fi
 
     # workspace files
     workspace_file="${targetpath}/workspaces/${wiz_project_name}/create_00_workspace.sql"
@@ -787,7 +776,7 @@ function generate() {
     if [[ $(toLowerCase "${wiz_project_mode}") == "s" ]]; then
       sed "s/\^app_schema/${wiz_project_name}/g" "${workspace_file}" > "${workspace_file}.tmp" && mv "${workspace_file}.tmp" "${workspace_file}"
       sed "s/\^app_schema/${wiz_project_name}/g" "${wsadmin_file}" > "${wsadmin_file}.tmp" && mv "${wsadmin_file}.tmp" "${wsadmin_file}"
-    else
+    elif [[ $(toLowerCase "${wiz_project_mode}") == "m" ]]; then
       sed "s/\^app_schema/${wiz_project_name}_app/g" "${workspace_file}" > "${workspace_file}.tmp" && mv "${workspace_file}.tmp" "${workspace_file}"
       sed "s/\^app_schema/${wiz_project_name}_app/g" "${wsadmin_file}" > "${wsadmin_file}.tmp" && mv "${wsadmin_file}.tmp" "${wsadmin_file}"
     fi
