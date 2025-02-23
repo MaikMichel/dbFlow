@@ -28,6 +28,10 @@ function usage() {
   printf "\n"
   printf "  -a | --apply                   - Generate and write apply.env only\n"
   printf "     └─[ -w | --wizard ]         - do NOT start with a wizard questionare, import from env\n"
+  printf "\n"
+  printf "${PURPLE}Flex-Mode helpers${NC}\n"
+  printf "  -s | --add_schema <schema-name>    - add schema folder to apex, db, rest and _setup incl. install-file\n"  printf "\n"
+  printf "  -p | --add_workspace <schema-name> - add workspace folder to apex and _setup incl. install-files\n"
   echo
   printf "${BWHITE}Examples:${NC}\n"
   printf "  ${0} --generate mytest\n"
@@ -203,7 +207,13 @@ function show_generate_summary() {
   printf "To configure changelog settings, just modify corresponding parameters in \`${BWHITE}build.env${NC}\`\n"
   echo
   if [[ ${env_only} == "NO" ]]; then
-  printf "${BORANGE}Keep in mind that the script to create the workspace **${BWHITE}$PROJECT${NC}${BORANGE}** will drop the one with the same name!${NC}\n"
+    if [[ ${PROJECT_MODE} != "FLEX" ]]; then
+      printf "${BORANGE}Keep in mind that the script to create the workspace **${BWHITE}$PROJECT${NC}${BORANGE}** will drop the one with the same name!${NC}\n"
+    else
+      printf "${BORANGE}As you have choosen a flex project, you have now the option to add schemas or workspaces on your own. Just use:${NC}\n"
+      printf "${CYAN}.dbFlow/setup --add_workspace \"workspace_name\"${NC}\n" 
+      printf "${CYAN}.dbFlow/setup --add_schema \"schema_name\"${NC}\n"
+    fi
   fi
 
   if [[ -f "${log_file}.colored" ]]; then
@@ -767,18 +777,20 @@ function generate() {
     fi
 
     # workspace files
-    workspace_file="${targetpath}/workspaces/${wiz_project_name}/create_00_workspace.sql"
-    sed "s/\^workspace/${wiz_project_name}/g" "${workspace_file}" > "${workspace_file}.tmp" && mv "${workspace_file}.tmp" "${workspace_file}"
+    if [[ $(toLowerCase "${wiz_project_mode}") != "f" ]]; then
+      workspace_file="${targetpath}/workspaces/${wiz_project_name}/create_00_workspace.sql"
+      sed "s/\^workspace/${wiz_project_name}/g" "${workspace_file}" > "${workspace_file}.tmp" && mv "${workspace_file}.tmp" "${workspace_file}"
 
-    wsadmin_file="${targetpath}/workspaces/${wiz_project_name}/create_01_user_wsadmin.sql"
-    sed "s/\^workspace/${wiz_project_name}/g" "${wsadmin_file}" > "${wsadmin_file}.tmp" && mv "${wsadmin_file}.tmp" "${wsadmin_file}"
+      wsadmin_file="${targetpath}/workspaces/${wiz_project_name}/create_01_user_wsadmin.sql"
+      sed "s/\^workspace/${wiz_project_name}/g" "${wsadmin_file}" > "${wsadmin_file}.tmp" && mv "${wsadmin_file}.tmp" "${wsadmin_file}"
 
-    if [[ $(toLowerCase "${wiz_project_mode}") == "s" ]]; then
-      sed "s/\^app_schema/${wiz_project_name}/g" "${workspace_file}" > "${workspace_file}.tmp" && mv "${workspace_file}.tmp" "${workspace_file}"
-      sed "s/\^app_schema/${wiz_project_name}/g" "${wsadmin_file}" > "${wsadmin_file}.tmp" && mv "${wsadmin_file}.tmp" "${wsadmin_file}"
-    elif [[ $(toLowerCase "${wiz_project_mode}") == "m" ]]; then
-      sed "s/\^app_schema/${wiz_project_name}_app/g" "${workspace_file}" > "${workspace_file}.tmp" && mv "${workspace_file}.tmp" "${workspace_file}"
-      sed "s/\^app_schema/${wiz_project_name}_app/g" "${wsadmin_file}" > "${wsadmin_file}.tmp" && mv "${wsadmin_file}.tmp" "${wsadmin_file}"
+      if [[ $(toLowerCase "${wiz_project_mode}") == "s" ]]; then
+        sed "s/\^app_schema/${wiz_project_name}/g" "${workspace_file}" > "${workspace_file}.tmp" && mv "${workspace_file}.tmp" "${workspace_file}"
+        sed "s/\^app_schema/${wiz_project_name}/g" "${wsadmin_file}" > "${wsadmin_file}.tmp" && mv "${wsadmin_file}.tmp" "${wsadmin_file}"
+      else
+        sed "s/\^app_schema/${wiz_project_name}_app/g" "${workspace_file}" > "${workspace_file}.tmp" && mv "${workspace_file}.tmp" "${workspace_file}"
+        sed "s/\^app_schema/${wiz_project_name}_app/g" "${wsadmin_file}" > "${wsadmin_file}.tmp" && mv "${wsadmin_file}.tmp" "${wsadmin_file}"
+      fi
     fi
   fi
 
@@ -815,6 +827,90 @@ EOF
 
 }
 
+function add_workspace () {
+  local workspace_name=${1} 
+
+  # check if projectmode is flex
+  if [[ ${PROJECT_MODE} != "FLEX" ]]; then
+    echo_error "This option is only allowed when project mode is FLEX"
+    exit 1
+  fi
+
+  # check if there is at least one folder inside dir ./apex
+  if [[ ! -d "./apex" ]] || [[ -z $(ls -A ./apex) ]]; then
+    echo_error "No folders found inside ./apex"
+    exit 1
+  fi
+
+  # if there is exact one folder inside ./apex then assign it to a variable, otherwise let the user choose a folder
+  schema_folders=($(ls -d ./apex/*/))
+  if [[ ${#schema_folders[@]} -eq 1 ]]; then
+    chosen_folder=${schema_folders[0]}
+  else
+    echo "Multiple folders found inside ./apex. Please choose one:"
+    select chosen_folder in "${schema_folders[@]}"; do
+      if [[ -n $chosen_folder ]]; then
+        break
+      else
+        echo "Invalid selection. Please try again."
+      fi
+    done
+  fi
+
+  # add workspace folder to chosen folder
+  mkdir -p "${chosen_folder}/${workspace_name}"
+
+  # copy template files to setup
+  mkdir -p "${targetpath}/workspaces/${workspace_name}"
+  cp -rf .dbFlow/scripts/setup/workspaces/workspace/* "${targetpath}/workspaces/${workspace_name}/" 
+
+  echo_success "Workspace ${workspace_name} added successfully, workspace creation files created, you can edit or run them now" 
+  printf "see folder: ${BORANGE}${targetpath}/workspaces/${workspace_name}${NC}\n"
+  ls -la "${targetpath}/workspaces/${workspace_name}"
+
+  schema_name=$(basename "${chosen_folder}")
+  # loop through files and replace placeholders
+  for file in "${targetpath}/workspaces/${workspace_name}"/*; do
+    if [[ -f "${file}" ]]; then
+      sed "s/\^workspace/${workspace_name}/g" "${file}" > "${file}.tmp" && mv "${file}.tmp" "${file}"
+      sed "s/\^app_schema/${schema_name}/g" "${file}" > "${file}.tmp" && mv "${file}.tmp" "${file}"
+    fi
+  done
+
+  
+}
+
+function add_schema () {
+  local schema_name=${1} 
+
+  if [[ ${PROJECT_MODE} != "FLEX" ]]; then
+    echo_error "This option is only allowed when project mode is FLEX"
+    exit 1
+  fi
+
+  if [[ -d "db/${schema_name}" ]]; then
+    echo_error "Schema ${schema_name} already exists"
+    exit 1
+  fi
+
+  # count files in users
+  file_count=$(printf "%02d" "$(find "${targetpath}/users" -type f | wc -l)")
+
+  # edit files and replace placeholders
+  schema_file="${targetpath}/users/${file_count}_create_${schema_name}.sql"
+  sed "s/\^schema_name/${schema_name}/g" .dbFlow/scripts/setup/users/01_schema.sql > "${schema_file}"
+  sed "s/\^wiz_db_app_user/${schema_name}_depl/g" "${schema_file}" > "${schema_file}.tmp" && mv "${schema_file}.tmp" "${schema_file}"
+
+  echo_success "Schema ${schema_name} added successfully, schema creation file ${schema_file} created, you can edit or run it now"
+
+  # create folders
+  mkdir -p db/"${schema_name}"/{.hooks/{pre,post},sequences,tables/tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,mviews,tests/packages,patch/{private,public},ddl/{init,patch/{pre,post}},dml/{base,init,patch/{pre,post}}}}
+
+  mkdir "apex/${schema_name}"
+  mkdir "rest/${schema_name}"  
+
+  # no static folder because this is a dbFLux-feature      
+}
 
 function check_params_and_run_command() {
   pname_argument="-"
@@ -828,14 +924,24 @@ function check_params_and_run_command() {
   force_option="NO"
   wizard_option="NO"
   apply_option="NO"
+  add_workspace_option="NO"
+  add_schema_option="NO"
 
-  while getopts_long 'hg:ic:efwa help generate: install copyto: envonly force wizard apply' OPTKEY "${@}"; do
+  while getopts_long 'hg:p:s:ic:efwa help generate: add_workspace: add_schema: install copyto: envonly force wizard apply' OPTKEY "${@}"; do
       case ${OPTKEY} in
           'h'|'help')
               help_option="YES"
               ;;
           'g'|'generate')
               gen_project_option="YES"
+              pname_argument="${OPTARG}"
+              ;;
+          'p'|'add_workspace')
+              add_workspace_option="YES"
+              pname_argument="${OPTARG}"
+              ;;
+          's'|'add_schema')
+              add_schema_option="YES"
               pname_argument="${OPTARG}"
               ;;
           'i'|'install')
@@ -887,6 +993,15 @@ function check_params_and_run_command() {
     usage 2
   fi
 
+  if [[ ${add_workspace_option} == "YES" ]] && [[ ${#pname_argument} -lt 3 ]]; then
+    printf "${RED}Missing or to small argument workspace name (${pname_argument}) for command add_worspace${NC}\n" 1>&2
+    usage 2
+  fi
+
+  if [[ ${add_schema_option} == "YES" ]] && [[ ${#pname_argument} -lt 3 ]]; then
+    printf "${RED}Missing or to small argument schema name (${pname_argument}) for command add_schema${NC}\n" 1>&2
+    usage 2
+  fi
   if [[ ${copy_config_option} == "YES" ]] && [[ ${#folder_argument} -lt 3 ]]; then
     printf "${RED}Missing or to small argument target folder (${folder_argument}) for command copyto${NC}\n" 1>&2
     usage 3
@@ -903,6 +1018,26 @@ function check_params_and_run_command() {
       exit 0
     else
       printf "${RED}Invalid project name! Project name must be a valid schema name.${NC}\n" 1>&2
+      exit 4
+    fi
+  fi
+
+  if [[ ${add_workspace_option} == "YES" ]] && [[ ${#pname_argument} -gt 2 ]]; then
+    if [[ "${pname_argument}" =~ ^[a-zA-Z][a-zA-Z0-9_]*$ ]]; then
+      add_workspace ${pname_argument}
+      exit 0
+    else
+      printf "${RED}Invalid workspace name!${NC}\n" 1>&2
+      exit 4
+    fi
+  fi
+  
+  if [[ ${add_schema_option} == "YES" ]] && [[ ${#pname_argument} -gt 2 ]]; then
+    if [[ "${pname_argument}" =~ ^[a-zA-Z][a-zA-Z0-9_]*$ ]]; then
+      add_schema ${pname_argument}
+      exit 0
+    else
+      printf "${RED}Invalid schema name!${NC}\n" 1>&2
       exit 4
     fi
   fi
