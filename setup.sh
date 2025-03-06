@@ -211,7 +211,7 @@ function show_generate_summary() {
       printf "${BORANGE}Keep in mind that the script to create the workspace **${BWHITE}$PROJECT${NC}${BORANGE}** will drop the one with the same name!${NC}\n"
     else
       printf "${BORANGE}As you have choosen a flex project, you have now the option to add schemas or workspaces on your own. Just use:${NC}\n"
-      printf "${CYAN}.dbFlow/setup --add_workspace \"workspace_name\"${NC}\n" 
+      printf "${CYAN}.dbFlow/setup --add_workspace \"workspace_name\"${NC}\n"
       printf "${CYAN}.dbFlow/setup --add_schema \"schema_name\"${NC}\n"
     fi
   fi
@@ -736,7 +736,7 @@ function generate() {
 
       schema_file="${targetpath}/users/01_create_${wiz_project_name}_data.sql"
       sed "s/\^wiz_db_app_user/${wiz_project_name}_depl/g" "${schema_file}" > "${schema_file}.tmp" && mv "${schema_file}.tmp" "${schema_file}"
-      
+
       schema_file="${targetpath}/users/01_create_${wiz_project_name}_logic.sql"
       sed "s/\^wiz_db_app_user/${wiz_project_name}_depl/g" "${schema_file}" > "${schema_file}.tmp" && mv "${schema_file}.tmp" "${schema_file}"
 
@@ -747,18 +747,18 @@ function generate() {
       sed "s/\^wiz_db_app_user/${wiz_project_name}/g" .dbFlow/scripts/setup/users/00_depl.sql > "${targetpath}/users/00_create_${wiz_project_name}.sql"
       sed "s/\^schema_name/${wiz_project_name}/g" .dbFlow/scripts/setup/users/02_grants.sql >> "${targetpath}/users/00_create_${wiz_project_name}.sql"
     elif [[ $(toLowerCase "${wiz_project_mode}") == "f" ]]; then
-      sed "s/\^wiz_db_app_user/${wiz_project_name}_depl/g" .dbFlow/scripts/setup/users/00_depl.sql > "${targetpath}/users/00_create_${wiz_project_name}_depl.sql"      
+      sed "s/\^wiz_db_app_user/${wiz_project_name}_depl/g" .dbFlow/scripts/setup/users/00_depl.sql > "${targetpath}/users/00_create_${wiz_project_name}_depl.sql"
     fi
 
     # static files
     mkdir -p {apex,static,rest,reports,.hooks/{pre,post}}
-    
+
     # default directories
     # split ids gen directories
     if [[ $(toLowerCase "${wiz_project_mode}") != "f" ]]; then
       apexids=(`echo "${wiz_apex_ids}" | sed 's/,/\n/g'`)
       for apxID in "${apexids[@]}"
-      do    
+      do
         mkdir -p apex/f"${apxID}"
         mkdir -p static/f"${apxID}"/{dist/{css,img,js},src/{css,img,js}}
       done
@@ -770,7 +770,7 @@ function generate() {
     if [[ $(toLowerCase "${wiz_project_mode}") != "f" ]]; then
       restmodules=(`echo "${wiz_rest_modules}" | sed 's/,/\n/g'`)
       for restMOD in "${restmodules[@]}"
-      do      
+      do
         mkdir -p rest/modules/"${restMOD}"
         mkdir -p rest/access/{privileges,roles,mapping}
       done
@@ -828,7 +828,7 @@ EOF
 }
 
 function add_workspace () {
-  local workspace_name=${1} 
+  local workspace_name=${1}
 
   # check if projectmode is flex
   if [[ ${PROJECT_MODE} != "FLEX" ]]; then
@@ -862,9 +862,9 @@ function add_workspace () {
 
   # copy template files to setup
   mkdir -p "${targetpath}/workspaces/${workspace_name}"
-  cp -rf .dbFlow/scripts/setup/workspaces/workspace/* "${targetpath}/workspaces/${workspace_name}/" 
+  cp -rf .dbFlow/scripts/setup/workspaces/workspace/* "${targetpath}/workspaces/${workspace_name}/"
 
-  echo_success "Workspace ${workspace_name} added successfully, workspace creation files created, you can edit or run them now" 
+  echo_success "Workspace ${workspace_name} added successfully, workspace creation files created, you can edit or run them now"
   printf "see folder: ${BORANGE}${targetpath}/workspaces/${workspace_name}${NC}\n"
   ls -la "${targetpath}/workspaces/${workspace_name}"
 
@@ -877,11 +877,11 @@ function add_workspace () {
     fi
   done
 
-  
+
 }
 
 function add_schema () {
-  local schema_name=${1} 
+  local schema_name=${1}
 
   if [[ ${PROJECT_MODE} != "FLEX" ]]; then
     echo_error "This option is only allowed when project mode is FLEX"
@@ -907,9 +907,9 @@ function add_schema () {
   mkdir -p db/"${schema_name}"/{.hooks/{pre,post},sequences,tables/tables_ddl,indexes/{primaries,uniques,defaults},constraints/{primaries,foreigns,checks,uniques},contexts,policies,sources/{types,packages,functions,procedures,triggers},jobs,views,mviews,tests/packages,patch/{private,public},ddl/{init,patch/{pre,post}},dml/{base,init,patch/{pre,post}}}}
 
   mkdir "apex/${schema_name}"
-  mkdir "rest/${schema_name}"  
+  mkdir "rest/${schema_name}"
 
-  # no static folder because this is a dbFLux-feature      
+  # no static folder because this is a dbFLux-feature
 }
 
 function check_params_and_run_command() {
@@ -1031,7 +1031,7 @@ function check_params_and_run_command() {
       exit 4
     fi
   fi
-  
+
   if [[ ${add_schema_option} == "YES" ]] && [[ ${#pname_argument} -gt 2 ]]; then
     if [[ "${pname_argument}" =~ ^[a-zA-Z][a-zA-Z0-9_]*$ ]]; then
       add_schema ${pname_argument}
