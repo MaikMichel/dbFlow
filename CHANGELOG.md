@@ -1,8 +1,9 @@
 # Changelog
 
-## [3.3.0 - 2025-02-19]
+## [3.3.0 - 2025-03-09]
 - New: Added mkdocs.sh to serve and modify documentation with docker
 - New: Added test_webhook.sh to check if webhook request is working
+- New: Added list.sh to list git logs after last merge on target-branch
 - Upd: folder constraints/uniques will be executed directly after constraints/primaries
 - Upd: during init, folder dml/base is executed prio to dml/init
 - Upd: Source build.env after tar was unpacked

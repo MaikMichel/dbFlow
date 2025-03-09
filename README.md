@@ -13,7 +13,7 @@
 
 ### Quick Links
 
-<a href='https://maikmichel.github.io/dbFlow/'><img src='https://img.shields.io/badge/DOCS-gray?style=for-the-badge'></a> <a href='https://maikmichel.github.io/dbFlow/getting_started/'><img src='https://img.shields.io/badge/GETTING STARTED-blue?style=for-the-badge'></a> <a href='https://maikmichel.github.io/dbFlow/changelog/'><img src='https://img.shields.io/badge/CHANGELOG-green?style=for-the-badge'></a>
+<a href='https://maikmichel.github.io/dbFlow/'><img src='https://img.shields.io/badge/DOCS-gray?style=for-the-badge'></a> <a href='https://maikmichel.github.io/dbFlow/start/'><img src='https://img.shields.io/badge/GETTING STARTED-blue?style=for-the-badge'></a> <a href='https://github.com/MaikMichel/dbFlow/blob/master/CHANGELOG.md'><img src='https://img.shields.io/badge/CHANGELOG-green?style=for-the-badge'></a>
 
 </div>
 

@@ -33,6 +33,16 @@ If you want to migrate from an old version to a new version, you have to do the 
 
     ```
 
+## You need to look at
+
+### Sequence in processing the folders in version 3.3.0
+
+- This is the first release which will handle the content of the `base` folder before the `init` folder
+> So you have to check the dependency on underlying files not to depent on files running inside `init` folder
+
+
+
+
 ### Following changes in directory structure from 0.9.8 - stable to 1.0.0
 
 1. The folder `tables_ddl` becomes a subfolder of the folder `tables`.
