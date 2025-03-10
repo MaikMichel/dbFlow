@@ -1,5 +1,8 @@
 # Changelog
 
+## [3.3.1 - 2025-03-10]
+- Fix: Remove first line in apply.env when obfuscating DB_APP_PWD
+
 ## [3.3.0 - 2025-03-09]
 - New: Added mkdocs.sh to serve and modify documentation with docker
 - New: Added test_webhook.sh to check if webhook request is working
