@@ -451,7 +451,7 @@ function validate_passes() {
     if [[ -n $DB_APP_PWD ]]; then
       pwd_enc=`echo "${DB_APP_PWD}" | base64`
 
-      sed '1d' "apply.env" > "apply.env.tmp" && mv "apply.env.tmp" "apply.env"
+      sed "/^DB_APP_PWD=/s/=.*/=\"\!$pwd_enc\"/" "./apply.env" > "apply.env.tmp" && mv "apply.env.tmp" "apply.env"
     fi
   fi
 
