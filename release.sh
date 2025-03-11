@@ -95,6 +95,8 @@ usage() {
   echo -e "  $0 --source release --target test --version 1.2.3"
   echo -e "  $0 --source develop --target master -b"
   echo -e "  $0 --source develop --gate release --target test --version 2.0.3 --apply ../instances/test"
+  echo ""
+  echo -e "${BWHITE}TIPP:${NC} You can activate autocompletion by calling: ${BORANGE}source .dbFlow/activate_autocomplete.sh${NC}"
   exit 1
 }
 
