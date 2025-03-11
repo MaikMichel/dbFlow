@@ -6,6 +6,8 @@ if [[ -n $ZSH_VERSION ]]; then
   echo "Enabling bash completion in zsh"
   autoload -U +X compinit && compinit
   autoload -U +X bashcompinit && bashcompinit
+else
+  echo "Enabling bash completion"
 fi
 
 _release_completions() {
@@ -22,8 +24,13 @@ _release_completions() {
             return 0
             ;;
         --version)
-            local versions="major minor patch current"
+            local versions="major minor patch current 1.2.3"
             COMPREPLY=( $(compgen -W "${versions}" -- ${cur}) )
+            return 0
+            ;;
+        --apply)
+            local instances=$(ls ../instances | sed 's|^|../instances/|')
+            COMPREPLY=( $(compgen -W "${instances}" -- ${cur}) )
             return 0
             ;;
         *)
@@ -35,9 +42,10 @@ _release_completions() {
 
 _release_completions_zsh() {
     compadd `_release_completions`
-} 
+}
+
 if [[ -n $ZSH_VERSION ]]; then
-  complete -C _release_completions_zsh ./release.sh
+  complete -C _release_completions_zsh .dbFlow/release.sh
 else
-  complete -F _release_completions ./release.sh
+  complete -F _release_completions .dbFlow/release.sh
 fi
