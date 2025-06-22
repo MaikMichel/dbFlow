@@ -355,6 +355,7 @@ function extract_patchfile() {
     tar -zxf "${install_target_file}"
 
     # maybe something changed during the release
+    define_folders_and_schemas
     if [[ -e ./build.env ]]; then
       source ./build.env
     fi

@@ -289,7 +289,7 @@ function get_schema_from_file_name() {
 DBFOLDERS=()
 DBSCHEMAS=()
 
-{
+function define_folders_and_schemas() {
   if [[ -d "db" ]]; then
     for d in $(find db -maxdepth 1 -mindepth 1 -type d | sort -f)
     do
@@ -302,6 +302,7 @@ DBSCHEMAS=()
   fi
 }
 
+define_folders_and_schemas
 
 function write_line_if_not_exists () {
   local line=$1
