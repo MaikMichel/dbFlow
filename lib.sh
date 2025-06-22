@@ -286,10 +286,9 @@ function get_schema_from_file_name() {
 
 
 # fill dbschema and dbfolder
-DBFOLDERS=()
-DBSCHEMAS=()
-
 function define_folders_and_schemas() {
+  DBFOLDERS=()
+  DBSCHEMAS=()
   if [[ -d "db" ]]; then
     for d in $(find db -maxdepth 1 -mindepth 1 -type d | sort -f)
     do
