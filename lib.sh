@@ -299,6 +299,22 @@ function define_folders_and_schemas() {
       fi
     done
   fi
+
+  if [[ -n "${PROJECT_MODE}" && ${PROJECT_MODE} == "FLEX" ]]; then
+    SCHEMAS=(${DBSCHEMAS[@]})
+  else
+    # get distinct values of array
+    ALL_SCHEMAS=( "${DATA_SCHEMA}" "${LOGIC_SCHEMA}" "${APP_SCHEMA}" )
+    SCHEMAS=($(printf "%s\n" "${ALL_SCHEMAS[@]}" | sort -u))
+
+    # if length is equal than ALL_SCHEMAS, otherwise distinct
+    if [[ ${#SCHEMAS[@]} == ${#ALL_SCHEMAS[@]} ]]; then
+      SCHEMAS=(${ALL_SCHEMAS[@]})
+    fi
+
+    # When in Single or Multi Mode, Folders have to name as Schemas
+    DBFOLDERS=(${SCHEMAS[@]})
+  fi
 }
 
 define_folders_and_schemas

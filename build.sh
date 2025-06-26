@@ -40,14 +40,14 @@ function usage() {
   exit $1
 }
 
-
-# get required functions and vars
-source ./.dbFlow/lib.sh
-
 # set project-settings from build.env if exists
 if [[ -e ./build.env ]]; then
   source ./build.env
 fi
+
+# get required functions and vars
+source ./.dbFlow/lib.sh
+
 
 # set target-env settings from file if exists
 # only relevant to get depot_path... this var should
