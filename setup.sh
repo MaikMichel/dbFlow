@@ -737,10 +737,10 @@ function generate() {
       schema_file="${targetpath}/users/01_create_${wiz_project_name}_data.sql"
       sed "s/\^wiz_db_app_user/${wiz_project_name}_depl/g" "${schema_file}" > "${schema_file}.tmp" && mv "${schema_file}.tmp" "${schema_file}"
 
-      schema_file="${targetpath}/users/01_create_${wiz_project_name}_logic.sql"
+      schema_file="${targetpath}/users/02_create_${wiz_project_name}_logic.sql"
       sed "s/\^wiz_db_app_user/${wiz_project_name}_depl/g" "${schema_file}" > "${schema_file}.tmp" && mv "${schema_file}.tmp" "${schema_file}"
 
-      schema_file="${targetpath}/users/01_create_${wiz_project_name}_app.sql"
+      schema_file="${targetpath}/users/03_create_${wiz_project_name}_app.sql"
       sed "s/\^wiz_db_app_user/${wiz_project_name}_depl/g" "${schema_file}" > "${schema_file}.tmp" && mv "${schema_file}.tmp" "${schema_file}"
 
     elif [[ $(toLowerCase "${wiz_project_mode}") == "s" ]]; then
