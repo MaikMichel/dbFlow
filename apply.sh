@@ -31,13 +31,14 @@ function usage() {
 
   exit $1
 }
-# get required functions and vars
-source ./.dbFlow/lib.sh
 
 # set project-settings from build.env if exists
 if [[ -e ./build.env ]]; then
   source ./build.env
 fi
+
+# get required functions and vars
+source ./.dbFlow/lib.sh
 
 # set target-env settings from file if exists
 if [[ -e ./apply.env ]]; then
@@ -131,21 +132,7 @@ function check_vars() {
     fi
   fi
 
-  if [[ ${PROJECT_MODE} == "FLEX" ]]; then
-    SCHEMAS=(${DBSCHEMAS[@]})
-  else
-    # get distinct values of array
-    ALL_SCHEMAS=( "${DATA_SCHEMA}" "${LOGIC_SCHEMA}" "${APP_SCHEMA}" )
-    SCHEMAS=($(printf "%s\n" "${ALL_SCHEMAS[@]}" | sort -u))
-
-    # if length is equal than ALL_SCHEMAS, otherwise distinct
-    if [[ ${#SCHEMAS[@]} == ${#ALL_SCHEMAS[@]} ]]; then
-      SCHEMAS=(${ALL_SCHEMAS[@]})
-    fi
-
-    # When in Single or Multi Mode, Folders have to name as Schemas
-    DBFOLDERS=(${SCHEMAS[@]})
-  fi
+  
 
 
   ####
@@ -354,10 +341,13 @@ function extract_patchfile() {
     timelog "extracting file ${install_target_file}"
     tar -zxf "${install_target_file}"
 
-    # maybe something changed during the release
+
     if [[ -e ./build.env ]]; then
       source ./build.env
     fi
+    
+    # maybe something changed during the release
+    define_folders_and_schemas
   else
     timelog "artifact will not be extracted from depot"
   fi

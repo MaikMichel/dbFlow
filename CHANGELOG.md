@@ -1,5 +1,8 @@
 # Changelog
 
+## [3.3.2 - 2025-06-22]
+- Fix: Looking for folder changes after extracting the tarball #30
+
 ## [3.3.1 - 2025-03-10]
 - Fix: Remove first line in apply.env when obfuscating DB_APP_PWD
 
