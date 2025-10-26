@@ -551,7 +551,7 @@ function generate() {
   printf "  Project:                          ${BWHITE}${wiz_project_name}${NC}\n"
   printf "  Mode:                             ${BWHITE}${wiz_project_mode}${NC}\n"
   printf "  Build Branch:                     ${BWHITE}${wiz_build_branch}${NC}\n"
-  printf "  Create Changelos:                 ${BWHITE}${wiz_create_changelogs}${NC}\n"
+  printf "  Create Changelogs:                ${BWHITE}${wiz_create_changelogs}${NC}\n"
   printf "  Schema Changelog proccessed:      ${BWHITE}${wiz_chl_schema}${NC}\n"
   printf "  Connection:                       ${BWHITE}${wiz_db_tns}${NC}\n"
   printf "  Admin User:                       ${BWHITE}${wiz_db_admin_user}${NC}\n"

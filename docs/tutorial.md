@@ -101,7 +101,7 @@ sources[develop]$: .dbFlow/setup.sh --generate todo
       Project:                          todo
       Mode:                             S
       Build Branch:                     build
-      Create Changelos:                 N
+      Create Changelogs:                 N
       Schema Changelog proccessed:
       Connection:                       localhost:1521/freepdb1
       Admin User:                       sys
