@@ -60,7 +60,7 @@ begin
         if sqlcode = -55610 and cur.object_type = 'TABLE' then
           -- Disable flashback archive and retry
           begin
-            execute immediate 'ALTER TABLE ' || cur.object_name || ' NO FLASHBACK ARCHIVE';
+            execute immediate 'ALTER TABLE "' || cur.object_name || '" NO FLASHBACK ARCHIVE';
             execute immediate cur.v_sql;
           exception
             when others then
