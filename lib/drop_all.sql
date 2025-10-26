@@ -44,13 +44,32 @@ begin
           and object_name not like 'SYS_PLSQL_%'
           and object_name not like 'ISEQ$$_%'
       )
-      select 'DROP ' || object_type || ' ' || object_name || decode ( object_type, 'TABLE', ' CASCADE CONSTRAINTS PURGE', 'TYPE', ' force' ) as v_sql
+      select 'DROP ' || object_type || ' ' || object_name || decode ( object_type, 'TABLE', ' CASCADE CONSTRAINTS PURGE', 'TYPE', ' force' ) as v_sql,
+             object_type,
+             object_name
       from base
       order by decode( object_type, 'TRIGGER', 'AAA', object_type ), object_name
 
 
   ) loop
-    execute immediate cur.v_sql;
+    begin
+      execute immediate cur.v_sql;
+    exception
+      when others then
+        -- ORA-55610: Invalid DDL statement on history-tracked table
+        if sqlcode = -55610 and cur.object_type = 'TABLE' then
+          -- Disable flashback archive and retry
+          begin
+            execute immediate 'ALTER TABLE ' || cur.object_name || ' NO FLASHBACK ARCHIVE';
+            execute immediate cur.v_sql;
+          exception
+            when others then
+              raise;
+          end;
+        else
+          raise;
+        end if;
+    end;
   end loop;
 end;
 /
