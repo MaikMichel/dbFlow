@@ -1,0 +1,47 @@
+name: Fake host repo with submodule
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1) Das aktuelle Repo (dein eigentliches Projekt) auschecken,
+      #    nur damit du an die URL/Commit etc. kommst
+      - name: Checkout current repo
+        uses: actions/checkout@v4
+
+      # 2) Leeres Repo im Workspace erzeugen
+      - name: Init empty host repo and add submodule
+        run: |
+          # In ein neues Verzeichnis wechseln (Host-Repo)
+          mkdir host-repo
+          cd host-repo
+
+          # Leeres Git-Repo initialisieren
+          git init .
+
+          # Dein aktuelles Repo als Submodul im Ordner .dbFlow hinzufügen
+          git submodule add https://github.com/my-org/my-real-repo .dbFlow
+
+          # Optional: konkreten Commit pinnen (z.B. aktuellen HEAD)
+          cd .dbFlow
+          REAL_COMMIT=$(git rev-parse HEAD)
+          cd ..
+          git -C .dbFlow checkout "$REAL_COMMIT"
+
+          # Ein initialer Commit im Host-Repo (für Tools, die ein „echtes“ Repo erwarten)
+          git add .
+          git commit -m "Init host repo with .dbFlow submodule"
+
+      # 3) Tests gegen das Submodul laufen lassen
+      - name: Run tests using submodule
+        working-directory: host-repo
+        run: |
+          ls -la .dbFlow/
+          if [ -f ".dbFlow/lib/drop_all.sql" ]; then
+            echo "dbFlow submodule successfully set up"
+          fi
