@@ -25,7 +25,7 @@ jobs:
           git init .
 
           # Dein aktuelles Repo als Submodul im Ordner .dbFlow hinzufügen
-          git submodule add https://github.com/my-org/my-real-repo .dbFlow
+          git submodule add https://github.com/MaikMichel/dbFlow .dbFlow
 
           # Optional: konkreten Commit pinnen (z.B. aktuellen HEAD)
           cd .dbFlow
