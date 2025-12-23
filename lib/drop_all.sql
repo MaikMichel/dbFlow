@@ -47,8 +47,6 @@ begin
              object_name
       from base
       order by decode( object_type, 'TRIGGER', 'AAA', object_type ), object_name
-∫
-
   ) loop
     begin
       execute immediate cur.v_sql;
