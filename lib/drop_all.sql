@@ -31,26 +31,44 @@ begin
           select
                 object_type,
                 object_name
-          from user_objects
-          where object_type in ( 'TABLE', 'VIEW','MATERIALIZED VIEW', 'PACKAGE', 'TYPE', 'PROCEDURE', 'FUNCTION', 'TRIGGER', 'SEQUENCE', 'SYNONYM' )
-          and object_name not like 'SYS_PLSQL_%'
-          and object_name not like 'ISEQ$$_%'
+           from user_objects
+          where object_type in ( 'TABLE', 'VIEW','MATERIALIZED VIEW', 'PACKAGE', 'TYPE', 'PROCEDURE', 'FUNCTION', 'TRIGGER', 'SEQUENCE', 'SYNONYM' )          
+            and not regexp_like(object_name, '^(SYS_PLSQL_|ISEQ\$\$_|SYS_FBA_)')
           minus -- we have to remove the drop table command for materialized views as they appear twice above
           select
               'TABLE',
               object_name
-          from user_objects
+           from user_objects
           where object_type = 'MATERIALIZED VIEW'
-          and object_name not like 'SYS_PLSQL_%'
-          and object_name not like 'ISEQ$$_%'
+            and not regexp_like(object_name, '^(SYS_PLSQL_|ISEQ\$\$_|SYS_FBA_)')
       )
-      select 'DROP ' || object_type || ' ' || object_name || decode ( object_type, 'TABLE', ' CASCADE CONSTRAINTS PURGE', 'TYPE', ' force' ) as v_sql
+      select 'DROP ' || object_type || ' ' || object_name || decode ( object_type, 'TABLE', ' CASCADE CONSTRAINTS PURGE', 'TYPE', ' force' ) as v_sql,
+             object_type,
+             object_name
       from base
       order by decode( object_type, 'TRIGGER', 'AAA', object_type ), object_name
-
-
   ) loop
-    execute immediate cur.v_sql;
+    begin
+      execute immediate cur.v_sql;
+    exception
+      when others then
+        -- ORA-55610: Invalid DDL statement on history-tracked table
+        if sqlcode = -55610 and cur.object_type = 'TABLE' then
+          -- Disable flashback archive and retry
+          begin
+            execute immediate 'ALTER TABLE "' || cur.object_name || '" NO FLASHBACK ARCHIVE';
+            execute immediate cur.v_sql;
+          exception
+            when others then
+              raise;
+          end;
+        elsif sqlcode = -942 then
+          -- Handle table not found
+          continue;
+        else
+          raise;
+        end if;
+    end;
   end loop;
 end;
 /
