@@ -24,6 +24,7 @@ function usage() {
   echo ""
   echo -e "  -t | --transferall      - Optional transfer (copy) all folders [mode=patch]"
   echo -e "  -k | --keepfolder       - Optional keep buildfolder inside depot"
+  echo -e "  -o | --onefile          - Optional inline DB scripts into the generated install file"
   echo -e "  -l | --listfiles        - Optional flag to list files which will be a part of the patch"
   echo -e "  -a | --apply            - Optional flag to call apply directly after patch is build."
   echo -e "                            This will install the artifact in current environment."
@@ -125,9 +126,10 @@ function check_params() {
   cached_option="NO"
   apply_option="NO"
   forceddl_option="NO"
+  onefile_option="NO"
 
   # echo "check_params: ${@}"
-  while getopts_long 'hipv:s:e:cktlaf help init patch version: start: end: cached keepfolder transferall listfiles apply forceddl' OPTKEY "${@}"; do
+    while getopts_long 'hipv:s:e:cktlaf o help init patch version: start: end: cached keepfolder transferall listfiles apply onefile forceddl' OPTKEY "${@}"; do
       case ${OPTKEY} in
           'h'|'help')
               help_option="YES"
@@ -168,6 +170,9 @@ function check_params() {
           'f'|'forceddl')
               forceddl_option="YES"
               ;;
+              'o'|'onefile')
+                onefile_option="YES"
+                ;;
           '?')
               echo_error "INVALID OPTION -- ${OPTARG}" >&2
               usage 10
@@ -282,6 +287,12 @@ function check_params() {
     FORCE_TABLE_DDL="TRUE"
   else
     FORCE_TABLE_DDL="FALSE"
+  fi
+
+  if [[ ${onefile_option} == "YES" ]]; then
+    one_file="YES"
+  else
+    one_file="NO"
   fi
 
   if [[ ${list_option} == "YES" ]] && [[ $mode == "patch" ]]; then
@@ -621,17 +632,62 @@ function write_install_schemas(){
     timelog " ==== Checking Schemas ${SCHEMAS[@]} ===="
     timelog ""
 
+    include_or_inline() {
+      local rel_path="$1"; shift
+      local abs_path="$1"; shift
+      local args=("$@")
+
+      if [[ "${one_file}" == "YES" ]] && [[ -f "${abs_path}" ]]; then
+        if [[ ${#args[@]} -gt 0 ]]; then
+          local idx=1
+          for arg in "${args[@]}"; do
+            echo "define ${idx} = '${arg}'"
+            idx=$((idx+1))
+          done
+        fi
+
+        cat "${abs_path}"
+        echo
+
+
+        if [[ ${#args[@]} -gt 0 ]]; then
+          local idx=1
+          while [[ ${idx} -le ${#args[@]} ]]; do
+            echo "undefine ${idx}"
+            idx=$((idx+1))
+          done
+        fi
+      else
+        if [[ ${#args[@]} -gt 0 ]]; then
+          echo "@@${rel_path} ${args[*]}"
+        else
+          echo "@@${rel_path}"
+        fi
+      fi
+    }
+
     # loop through schemas
     for schema in "${SCHEMAS[@]}"
     do
       if [[ -d "${targetpath}"/db/${schema} ]]; then
         # file to write to
-        target_install_base=${mode}_${schema}_${version}.sql
-        target_install_file="${targetpath}"/db/${schema}/$target_install_base
+        if [[ "${one_file}" == "YES" ]] ; then
 
-        timelog ""
-        timelog " ==== Schema: ${schema} - /db/${schema}/$target_install_base ===="
-        timelog ""
+          target_install_base=${mode}_${schema}_${version}.sql
+          target_install_file="${targetpath}/$target_install_base"
+
+          timelog ""
+          timelog " ==== Schema: ${schema} - /db/${schema}/$target_install_base ===="
+          timelog ""
+        else
+          target_install_base=${mode}_${schema}_${version}.sql
+          target_install_file="${targetpath}"/db/${schema}/$target_install_base
+
+          timelog ""
+          timelog " ==== Schema: ${schema} - /db/${schema}/$target_install_base ===="
+          timelog ""
+        fi
+
 
         # write some infos
         {
@@ -709,7 +765,7 @@ function write_install_schemas(){
                       for table_item in "${table_set[@]}"
                       do
                         echo "Prompt >>> db/${schema}/.hooks/pre/${path}/${file} ${version} ${mode} ${table_item}.sql"
-                        echo "@@.hooks/pre/${path}/${file} ${version} ${mode} ${table_item}.sql"
+                        include_or_inline ".hooks/pre/${path}/${file}" "${entry}" "${version}" "${mode}" "${table_item}.sql"
                         echo "Prompt <<< db/${schema}/.hooks/pre/${path}/${file} ${version} ${mode} ${table_item}.sql"
                       done
                       echo "Prompt"
@@ -718,7 +774,7 @@ function write_install_schemas(){
 
                   else
                     echo "Prompt >>> db/${schema}/.hooks/pre/${path}/${file}"
-                    echo "@@.hooks/pre/${path}/${file}"
+                    include_or_inline ".hooks/pre/${path}/${file}" "${entry}"
                     echo "Prompt <<< db/${schema}/.hooks/pre/${path}/${file}"
                   fi
                 done
@@ -782,7 +838,7 @@ function write_install_schemas(){
                       echo "Prompt ... skipped ${file}"
                     else
                       echo "Prompt >>> db/${schema}/${path}/${file}"
-                      echo "@@${path}/${file}"
+                      include_or_inline "${path}/${file}" "${entry}"
                       echo "Prompt <<< db/${schema}/${path}/${file}"
                     fi
                   else
@@ -794,7 +850,7 @@ function write_install_schemas(){
                         for table_item in "${table_set[@]}"
                         do
                           echo "Prompt >>> db/${schema}/${path}/${file} ${version} ${mode} ${table_item}.sql"
-                          echo "@@${path}/${file} ${version} ${mode} ${table_item}.sql"
+                          include_or_inline "${path}/${file}" "${entry}" "${version}" "${mode}" "${table_item}.sql"
                           echo "Prompt <<< db/${schema}/${path}/${file} ${version} ${mode} ${table_item}.sql"
                         done
                         echo "Prompt"
@@ -807,7 +863,7 @@ function write_install_schemas(){
                         target_stage="${path/'ddl/pre_'/}"
                         echo "--${target_stage}@@${path}/${file}"
                       else
-                        echo "@@${path}/${file}"
+                        include_or_inline "${path}/${file}" "${entry}"
                         echo "Prompt <<< db/${schema}/${path}/${file}"
                       fi
 
@@ -849,7 +905,7 @@ function write_install_schemas(){
                       for table_item in "${table_set[@]}"
                       do
                         echo "Prompt >>> db/${schema}/.hooks/post/${path}/${file} ${version} ${mode} ${table_item}.sql"
-                        echo "@@.hooks/post/${path}/${file} ${version} ${mode} ${table_item}.sql"
+                        include_or_inline ".hooks/post/${path}/${file}" "${entry}" "${version}" "${mode}" "${table_item}.sql"
                         echo "Prompt <<< db/${schema}/.hooks/post/${path}/${file} ${version} ${mode} ${table_item}.sql"
                       done
                       echo "Prompt"
@@ -858,7 +914,7 @@ function write_install_schemas(){
 
                   else
                     echo "Prompt >>> db/${schema}/.hooks/post/${path}/${file}"
-                    echo "@@.hooks/post/${path}/${file}"
+                    include_or_inline ".hooks/post/${path}/${file}" "${entry}"
                     echo "Prompt <<< db/${schema}/.hooks/post/${path}/${file}"
                   fi
                 done
@@ -901,6 +957,7 @@ function write_install_apps() {
     timelog " ==== Checking APEX Applications ===="
     timelog ""
 
+
     # file to write to
     target_apex_file="${targetpath}/apex_files_$version.lst"
     [ -f "${target_apex_file}" ] && rm "${target_apex_file}"
@@ -913,17 +970,70 @@ function write_install_apps() {
     items=()
     IFS=$'\n' read -r -d '' -a items < <( find "${targetpath}/apex" -maxdepth "${depth}" -mindepth "${depth}" -type d && printf '\0' )
 
+
+    target_apex_install_file="${targetpath}/${mode}_apex_${version}.sql"
+
     for dirname in "${items[@]}"
     do
-      echo "${dirname/${targetpath}\//}" >> "${target_apex_file}"
       timelog "Writing call to install APP: ${dirname/${targetpath}\//} "
+
+      # If one_file option is set, inline the APEX install files
+      if [[ "${one_file}" == "YES" ]]; then
+        # Look for install.sql files in the directory
+        if [[ -f "${dirname}/install.sql" ]]; then
+          timelog "  Inlining ${dirname}/install.sql"
+
+          # Read install.sql and process @@ includes
+          while IFS= read -r line; do
+          if [[ $line =~ ^@@(.+)$ ]]; then
+            # Extract the file path after @@
+            included_file="${BASH_REMATCH[1]}"
+            # Trim whitespace
+            included_file=$(echo "$included_file" | xargs)
+
+            # Resolve relative path from dirname
+            full_path="${dirname}/${included_file}"
+
+            if [[ -f "${full_path}" ]]; then
+            timelog "    Including ${included_file}"
+            cat "${full_path}" >> "${target_apex_install_file}"
+            echo "" >> "${target_apex_install_file}"
+            else
+            timelog "    Warning: ${included_file} not found" "${warning}"
+            fi
+          else
+            # Copy non-include lines as-is
+            echo "$line" >> "${target_apex_install_file}"
+          fi
+          done < "${dirname}/install.sql"
+        fi
+      else
+        echo "${dirname/${targetpath}\//}" >> "${target_apex_file}"
+        timelog "Writing call to install APP: ${dirname/${targetpath}\//} "
+      fi
     done
   fi
 }
 
 function write_install_rest() {
+
   # check rest
   if [[ -d "${targetpath}"/rest ]]; then
+    include_or_inline() {
+      local rel_path="$1"; shift
+      local abs_path="$1"; shift
+      local args=("$@")
+
+      if [[ "${one_file}" == "YES" ]] && [[ -f "${abs_path}" ]]; then
+        # Inhalt ohne abschließenden Slash ausgeben
+        sed '$s:/*$::' "${abs_path}"
+
+        echo
+      else
+        echo "@@${rel_path}"
+      fi
+    }
+
     timelog ""
     timelog " ==== Checking REST Modules ===="
     timelog ""
@@ -943,14 +1053,20 @@ function write_install_rest() {
 
     for fldr in "${folders[@]}"
     do
+      timelog "Writing calls to install REST Modules"
       if [[ ${fldr} != "." ]]; then
         timelog " == Schema: $fldr"
       fi
       rest_to_install="FALSE"
 
       # file to write to
-      target_install_base=rest_${mode}_${version}.sql
-      target_install_file="${targetpath}/rest/$fldr/$target_install_base"
+      if [[ "${one_file}" == "YES" ]]; then
+        target_install_base=${mode}_rest_${version}.sql
+        target_install_file="${targetpath}/$target_install_base"
+      else
+        target_install_base=rest_${mode}_${version}.sql
+        target_install_file="${targetpath}/rest/$fldr/$target_install_base"
+      fi
       [ -f "${target_install_file}" ] && rm "${target_install_file}"
 
       # write some infos
@@ -982,23 +1098,26 @@ function write_install_rest() {
             base="${targetpath}/rest/$fldr/"
             part=${file#$base}
 
-            timelog "Writing call to install RESTModul: ${part} "
 
             if [[ "${part}" == *".sql" ]] && [[ "${part}" != *".condition.sql" ]]; then
+              timelog "  Inlining ${file} "
               echo "Prompt ... $part" >> "${target_install_file}"
 
               if [[ -f ${file/.sql/.condition.sql} ]]; then
                 echo "begin" >> "${target_install_file}"
                 echo "  if" >> "${target_install_file}"
-                echo "  @@${part/.sql/.condition.sql}" >> "${target_install_file}"
+                timelog "    Including ${part/.sql/.condition.sql}"
+                include_or_inline ${part/.sql/.condition.sql} ${file/.sql/.condition.sql}>> "${target_install_file}"
                 echo "  then" >> "${target_install_file}"
-                echo "    @@${part}" >> "${target_install_file}"
+                timelog "    Including ${part}"
+                include_or_inline ${part} ${file}>> "${target_install_file}"
                 echo "  else" >> "${target_install_file}"
                 echo "    dbms_output.put_line('!!! ${part} not installed cause condition did not match');" >> "${target_install_file}"
                 echo "  end if;" >> "${target_install_file}"
                 echo "end;" >> "${target_install_file}"
               else
-                echo "@@${part}" >> "${target_install_file}"
+                timelog "    Including ${part}"
+                include_or_inline ${part} ${file}>> "${target_install_file}"
               fi
               echo "/" >> "${target_install_file}"
             fi
@@ -1114,7 +1233,7 @@ function gen_changelog() {
   if [[ -f ${targetfile} ]]; then
     # remove first line
     sed '1d' "${targetfile}" > "${targetfile}.tmp" && mv "${targetfile}.tmp" "${targetfile}"
-    
+
     # append to new output
     cat ${targetfile} >> ${logf}
     rm ${targetfile}
@@ -1200,6 +1319,17 @@ function manage_artifact () {
 
     # write dbFlow version info to control file
     sed '/^## \[./!d;q' .dbFlow/CHANGELOG.md > "${targetpath}"/dbFlow_${mode}_${version}.version
+
+    if [[ ${one_file} == "YES" ]]; then
+      timelog "Clearing up ${targetpath} as one_file option is set" "${warning}"
+      rm -rf "${targetpath}/apex"
+      rm -rf "${targetpath}/db"
+      rm -rf "${targetpath}/reports"
+      rm -rf "${targetpath}/rest"
+      rm -rf "${targetpath}/.hooks"
+      rm -rf "${targetpath}/.gitignore"
+      rm -rf "${targetpath}/build.env"
+    fi
 
     # pack directoy
     tar -C "${targetpath}" -czf "${targetpath}.tar.gz" .
@@ -1298,11 +1428,20 @@ function check_make_new_version() {
 function call_apply_when_flag_is_set() {
   if [[ -z ${DBFLOW_RELEASE_IS_RUNNUNG:-} ]]; then
     if [[ ${APPLY_DIRECTLY} == "TRUE" ]]; then
-      echo "calling apply"
-
-      .dbFlow/apply.sh --"${mode}" --version "${version}"
+      if [[ ${one_file} == "YES" ]]; then
+        echo_error "Cannot apply directly when one_file option is set"
+      else
+        echo
+        echo_info "   **** calling apply ****"
+        echo
+        .dbFlow/apply.sh --"${mode}" --version "${version}"
+      fi
     else
-      echo -e "${LWHITE}just call ${NC}${BWHITE}.dbFlow/apply.sh --${mode} --version ${version} ${NC}${LWHITE}inside your instance folder${NC}"
+      if [[ ${one_file} == "YES" ]]; then
+        echo -e "${LWHITE}As one_file option was set, ${NC}${BWHITE}You have to run the files on your own.${NC}"
+      else
+        echo -e "${LWHITE}just call ${NC}${BWHITE}.dbFlow/apply.sh --${mode} --version ${version} ${NC}${LWHITE}inside your instance folder${NC}"
+      fi
     fi
   fi
 }
