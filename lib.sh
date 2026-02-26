@@ -101,6 +101,12 @@ function echo_success() {
   echo -e "${GREEN}$prompt_text${NC}"
 }
 
+function echo_info() {
+  local prompt_text=$1
+
+  echo -e "${CYAN}$prompt_text${NC}"
+}
+
 function echo_warning() {
   local prompt_text=$1
 
@@ -127,10 +133,10 @@ function define_folders() {
   # at INIT there is no pretreatment or an evaluation of the table_ddl
   # !: Don't forgett to change documentation when changing these arrays
   if [[ "${l_mode}" == "init" ]]; then
-    SCAN_PATHES=( .hooks/pre ddl/init/pre sequences tables indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/uniques constraints/foreigns constraints/checks contexts policies sources/types sources/packages sources/functions sources/procedures views mviews sources/triggers tests/packages synonyms/private synonyms/public ddl ddl/base ddl/init dml dml/base dml/init jobs .hooks/post)
+    SCAN_PATHES=( .hooks/pre .hooks/pre/init ddl/init/pre sequences tables indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/uniques constraints/foreigns constraints/checks contexts policies sources/types sources/packages sources/functions sources/procedures views mviews sources/triggers tests/packages synonyms/private synonyms/public ddl ddl/base ddl/init dml dml/base dml/init jobs .hooks/post)
   else
     # building pre based on branches
-    pres=( ".hooks/pre ddl/patch/pre_${l_branch}" "dml/patch/pre_${l_branch}" ddl/patch/pre dml/patch/pre )
+    pres=( ".hooks/pre .hooks/pre/patch ddl/patch/pre_${l_branch}" "dml/patch/pre_${l_branch}" ddl/patch/pre dml/patch/pre )
     post=( "ddl" ddl/base ddl/patch/post dml dml/base dml/patch/post jobs .hooks/post )
 
     SCAN_PATHES=( ${pres[@]} )
