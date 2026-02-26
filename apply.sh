@@ -132,7 +132,7 @@ function check_vars() {
     fi
   fi
 
-  
+
 
 
   ####
@@ -345,7 +345,7 @@ function extract_patchfile() {
     if [[ -e ./build.env ]]; then
       source ./build.env
     fi
-    
+
     # maybe something changed during the release
     define_folders_and_schemas
   else
@@ -402,7 +402,7 @@ function prepare_redo() {
     redo_file="redo_${MDATE}_${mode}_${version}.log"
     grep '^<<< ' "${oldlogfile}" | cat > "${redo_file}"
     sed "s/^<<< //" "${redo_file}" > "${redo_file}.tmp" && mv "${redo_file}.tmp" "${redo_file}"
-    
+
     # backup install files
     for schema in "${DBFOLDERS[@]}"
     do
@@ -528,15 +528,19 @@ Prompt calling file ${runfile}
 
 function clear_db_schemas_on_init() {
   if [[ "${mode}" == "init" ]]; then
-    [[ ${stepwise_option} == "NO" ]] || ask_step "${RED}INIT! > clear schemas${NC}"
-    timelog "INIT - Mode, Schemas will be cleared"
-    # loop through schemas reverse
-    for (( idx=${#SCHEMAS[@]}-1 ; idx>=0 ; idx-- )) ; do
-      local schema=${SCHEMAS[idx]}
-      # On init mode schema content will be dropped
-      timelog "DROPING ALL OBJECTS on schema ${schema}"
-       exit | $SQLCLI -S -L "$(get_connect_string "${schema}")" @".dbFlow/lib/drop_all.sql" "${full_log_file}" "${version}" "${mode}"
-    done
+    if [[ "${DO_NOT_CLEAR_SCHEMA_ON_INIT:-}" != "YES" ]]; then
+      [[ ${stepwise_option} == "NO" ]] || ask_step "${RED}INIT! > clear schemas${NC}"
+      timelog "INIT - Mode, Schemas will be cleared"
+      # loop through schemas reverse
+      for (( idx=${#SCHEMAS[@]}-1 ; idx>=0 ; idx-- )) ; do
+        local schema=${SCHEMAS[idx]}
+        # On init mode schema content will be dropped
+        timelog "DROPING ALL OBJECTS on schema ${schema}"
+        exit | $SQLCLI -S -L "$(get_connect_string "${schema}")" @".dbFlow/lib/drop_all.sql" "${full_log_file}" "${version}" "${mode}"
+      done
+    else
+      timelog "INIT - Mode, But Schemas woll not be touched as DO_NOT_CLEAR_SCHEMA_ON_INIT set to ${DO_NOT_CLEAR_SCHEMA_ON_INIT}" "info"
+    fi
   fi
 }
 
@@ -575,7 +579,7 @@ function install_db_schemas() {
 
         # uncomment cleaning scripts specific to this stage/branch ex:--test or --acceptance
         sed "s:--$STAGE:Prompt uncommented cleanup for stage $STAGE\n:g" "${db_install_file}" > "${db_install_file}.tmp" && mv "${db_install_file}.tmp" "${db_install_file}"
-        
+
         runfile=${db_install_file}
         AT_LEAST_ON_INSTALLFILE_STARTED="YES"
         $SQLCLI -S -L "$(get_connect_string "${schema}")" @"${db_install_file}" "${version}" "${mode}"
