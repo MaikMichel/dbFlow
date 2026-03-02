@@ -247,18 +247,32 @@ EOF
 function check_connection() {
   local CONN_STR="$(get_connect_string "${1}")"
 
-  sql_output=`${SQLCLI} -S -L "${CONN_STR}" <<EOF
-  select 'connected to schema '||user t from dual;
-  exit
-EOF
-` || true
+  if [[ "${CONN_MODE}" == "REST" ]] && [[ -n "${REST_SQL_URL}" ]]; then
+    rest_output=$(curl -s -X GET "${REST_SQL_URL}/compile")
 
-  if [[ $sql_output == *"connected to"* ]]; then
-    echo_success "Connection to schema ${1} is working"
+    if echo "${rest_output}" | grep -q '"success"\s*:\s*true'; then
+      echo_success "REST connection to ${REST_SQL_URL} is working"
+    else
+      echo_fatal "Error with REST connection to ${REST_SQL_URL}"
+      echo_error "${rest_output}"
+      exit 2
+    fi
   else
-    echo_fatal "Error to connect to schema ${1}"
-    echo_error "${sql_output}"
-    exit 2
+
+    sql_output=`${SQLCLI} -S -L "${CONN_STR}" <<EOF
+    select 'connected to schema '||user t from dual;
+    exit
+  EOF
+  ` || true
+
+    if [[ $sql_output == *"connected to"* ]]; then
+      echo_success "Connection to schema ${1} is working"
+    else
+      echo_fatal "Error to connect to schema ${1}"
+      echo_error "${sql_output}"
+      exit 2
+    fi
+
   fi
 }
 

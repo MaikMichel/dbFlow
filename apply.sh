@@ -58,6 +58,8 @@ maintence="<span />${maintence}"
 
 # choose CLI to call
 SQLCLI=${SQLCLI:-sqlplus}
+CONN_MODE=${CONN_MODE:-SQLNET}
+REST_SQL_CONTENT_TYPE=${REST_SQL_CONTENT_TYPE:-text/xml;charset=UTF-8}
 
 basepath=$(pwd)
 
@@ -83,6 +85,141 @@ version="-"
 noextract="n"
 redolog=""
 
+function run_sql_file_rest() {
+  local targetschema=$1
+  local sql_file=$2
+  local use_embeded=$3
+
+  if [[ ! -f "${sql_file}" ]]; then
+    timelog "REST execution failed: SQL file ${sql_file} does not exist" "${failure}"
+    return 1
+  fi
+
+  if [[ ${use_embeded} == "true" ]]; then
+    timelog "Running SQL file ${sql_file} on ${targetschema} via REST with embeded file calls"
+
+    local line
+    local include_file
+    local include_path
+    local include_base
+    local counter=0
+    include_base=$(dirname "${sql_file}")
+
+    while IFS= read -r line; do
+      if [[ "${line}" =~ ^@@([^[:space:];]+) ]]; then
+        include_file="${BASH_REMATCH[1]}"
+        include_path="${include_base}/${include_file}"
+
+        if [[ -f "${include_path}" ]]; then
+          counter=$((counter+1))
+          run_sql_file_rest "${targetschema}" "${include_path}" false
+          if [[ $? -ne 0 ]]; then
+            return 1
+          fi
+          # if (( counter == 25 )); then
+          #   exit 3
+          # fi
+        else
+          timelog "REST execution failed: included SQL file ${include_path} does not exist" "${failure}"
+          return 1
+        fi
+      fi
+    done < "${sql_file}"
+
+    return 0
+  fi
+
+  timelog "Running SQL file ${sql_file} on ${targetschema} via REST"
+
+  local -a curl_args
+  curl_args=(
+    -sS
+    -X POST{}
+    --header "Content-Type:${REST_SQL_CONTENT_TYPE}"
+    # --header "X-DBFLOW-SCHEMA:${targetschema}"
+    # --header "X-DBFLOW-MODE:${mode}"
+    # --header "X-DBFLOW-VERSION:${version}"
+  )
+
+  local header_var
+  while IFS= read -r header_var; do
+    local header_value="${!header_var}"
+    if [[ -n "${header_value}" ]]; then
+      curl_args+=( --header "${header_value}" )
+    fi
+  done < <(compgen -A variable REST_HEADER_ | sort)
+
+  if [[ -n "${REST_USER:-}" ]] || [[ -n "${REST_PWD:-}" ]]; then
+    curl_args+=( -u "${REST_USER:-}:${REST_PWD:-}" )
+  fi
+  local curl_response
+  curl_response=$(curl "${curl_args[@]}" --data-binary @"${sql_file}" "${REST_SQL_URL}/compile")
+  local curl_rc=$?
+
+  if [[ ${curl_rc} -ne 0 ]]; then
+    [[ -z "${curl_response}" ]] || echo "${curl_response}"
+    return ${curl_rc}
+  fi
+
+  # Print response only when it is not JSON or JSON.success != true
+  if [[ "${curl_response}" =~ ^[[:space:]]*\{ ]]; then
+    local compact_response
+    compact_response=$(echo "${curl_response}" | tr -d '\r\n')
+    if [[ ! "${compact_response}" =~ \"success\"[[:space:]]*:[[:space:]]*true ]]; then
+      echo "${curl_response}"
+      exit 4
+    fi
+  else
+    [[ -z "${curl_response}" ]] || echo "${curl_response}"
+  fi
+
+  return 0
+}
+
+function run_sql_file() {
+  local targetschema=$1
+  local sql_file=$2
+  local embeded=$3
+  shift 3
+  local -a sql_args=( "$@" )
+
+  if [[ "${CONN_MODE}" == "SQLNET" ]]; then
+    "$SQLCLI" -S -L "$(get_connect_string "${targetschema}")" @"${sql_file}" "${sql_args[@]}"
+    return $?
+  fi
+
+  run_sql_file_rest "${targetschema}" "${sql_file}" ${embeded}
+}
+
+function run_sql_block() {
+  local targetschema=$1
+  local sql_block=$2
+  local is_app_imp=${3:-false}
+
+  if [[ "${CONN_MODE}" == "SQLNET" ]]; then
+    "$SQLCLI" -S -L "$(get_connect_string "${targetschema}")" <<EOF
+${sql_block}
+EOF
+    return $?
+  fi
+
+  local tmp_sql
+  tmp_sql=$(mktemp "/tmp/dbflow_sql_block_XXXXXX")".sql"
+  echo_info "Running SQL Block on ${targetschema} via REST, writing to temp file ${tmp_sql}"
+  printf "%s\n" "${sql_block}" > "${tmp_sql}"
+
+  if [[ ${is_app_imp} == "true" ]]; then
+    # TODO - update ${tmp_sql}
+
+  fi
+  run_sql_file_rest "${targetschema}" "${tmp_sql}"
+  local rc=$?
+
+  rm -f "${tmp_sql}"
+  return ${rc}
+}
+
+
 function check_vars() {
   # validate parameters
   do_exit="NO"
@@ -104,6 +241,16 @@ function check_vars() {
 
   if [[ -z ${DB_TNS} ]]; then
     echo_error "TNS not defined"
+    do_exit="YES"
+  fi
+
+  if [[ "${CONN_MODE}" != "SQLNET" ]] && [[ "${CONN_MODE}" != "REST" ]]; then
+    echo_error "CONN_MODE must be SQLNET or REST"
+    do_exit="YES"
+  fi
+
+  if [[ "${CONN_MODE}" == "REST" ]] && [[ -z ${REST_SQL_URL:-} ]]; then
+    echo_error "REST_SQL_URL not defined (required when CONN_MODE=REST)"
     do_exit="YES"
   fi
 
@@ -316,6 +463,10 @@ function print_info() {
   timelog "Application Offset:  ${BWHITE}${APP_OFFSET}${NC}"
   timelog "Deployment User:     ${BWHITE}${DB_APP_USER}${NC}"
   timelog "DB Connection:       ${BWHITE}${DB_TNS}${NC}"
+  timelog "Connection Mode:     ${BWHITE}${CONN_MODE}${NC}"
+  if [[ "${CONN_MODE}" == "REST" ]]; then
+    timelog "REST SQL URL:        ${BWHITE}${REST_SQL_URL}${NC}"
+  fi
   timelog "----------------------------------------------------------"
   timelog
 }
@@ -481,7 +632,8 @@ function execute_global_hook_scripts() {
 
         if [[ ${targetschema} != "_" ]]; then
           timelog "executing hook file ${runfile} in ${targetschema}"
-          $SQLCLI -S -L "$(get_connect_string "${targetschema}")" <<!
+          local sql_block
+          sql_block=$(cat <<EOF
 define VERSION="${version}"
 define MODE="${mode}"
 
@@ -510,7 +662,9 @@ set serveroutput on
 
 Prompt calling file ${runfile}
 @${runfile}
-!
+EOF
+)
+          run_sql_block "${targetschema}" "${sql_block}"
 
         else
           timelog "no schema found to execute hook file ${runfile} target schema has to be a part of filename" "${warning}"
@@ -536,10 +690,10 @@ function clear_db_schemas_on_init() {
         local schema=${SCHEMAS[idx]}
         # On init mode schema content will be dropped
         timelog "DROPING ALL OBJECTS on schema ${schema}"
-        exit | $SQLCLI -S -L "$(get_connect_string "${schema}")" @".dbFlow/lib/drop_all.sql" "${full_log_file}" "${version}" "${mode}"
+        run_sql_file "${schema}" ".dbFlow/lib/drop_all.sql" false "${full_log_file}" "${version}" "${mode}"
       done
     else
-      timelog "INIT - Mode, But Schemas woll not be touched as DO_NOT_CLEAR_SCHEMA_ON_INIT set to ${DO_NOT_CLEAR_SCHEMA_ON_INIT}" "info"
+      timelog "INIT - Mode, But Schemas will not be touched as DO_NOT_CLEAR_SCHEMA_ON_INIT set to ${DO_NOT_CLEAR_SCHEMA_ON_INIT}" "info"
     fi
   fi
 }
@@ -582,7 +736,7 @@ function install_db_schemas() {
 
         runfile=${db_install_file}
         AT_LEAST_ON_INSTALLFILE_STARTED="YES"
-        $SQLCLI -S -L "$(get_connect_string "${schema}")" @"${db_install_file}" "${version}" "${mode}"
+        run_sql_file "${schema}" "${db_install_file}" true "${version}" "${mode}"
         runfile=""
 
         if [[ $? -ne 0 ]]; then
@@ -607,6 +761,10 @@ function install_db_schemas() {
 }
 
 function set_rest_publish_state() {
+  if [[ ${CONN_MODE} == "REST" ]]; then
+    return
+  fi
+
   cd "${basepath}" || exit
   local publish=$1
   if [[ -d "rest" ]]; then
@@ -635,7 +793,8 @@ function set_rest_publish_state() {
           modules+=( "${mbase}" )
         done
 
-        $SQLCLI -S -L "$(get_connect_string "${appschema}")" <<!
+        local sql_block
+        sql_block=$(cat <<EOF
           set define off;
           set serveroutput on;
           $(
@@ -658,7 +817,9 @@ function set_rest_publish_state() {
             done
           )
 
-!
+EOF
+)
+        run_sql_block "${appschema}" "${sql_block}"
       fi
     done
   else
@@ -670,6 +831,10 @@ function set_rest_publish_state() {
 
 
 function set_apps_unavailable() {
+  if [[ ${CONN_MODE} == "REST" ]]; then
+    return
+  fi
+
   cd "${basepath}" || exit
 
   if [[ -d "apex" ]]; then
@@ -693,7 +858,8 @@ function set_apps_unavailable() {
       fi
 
       timelog "disabling APEX-App ${app_id} in workspace ${workspace} for schema ${appschema}..."
-      $SQLCLI -S -L "$(get_connect_string "${appschema}")" <<!
+      local sql_block
+      sql_block=$(cat <<EOF
       set serveroutput on;
       set define off;
       Declare
@@ -746,7 +912,9 @@ function set_apps_unavailable() {
 End;
 /
 
-!
+EOF
+)
+      run_sql_block "${appschema}" "${sql_block}"
 
     done
   else
@@ -786,7 +954,8 @@ function set_apps_available() {
 
 
         timelog "enabling APEX-App ${app_id} in workspace ${workspace} for schema ${appschema}..."
-        $SQLCLI -S -L "$(get_connect_string "${appschema}")" <<!
+        local sql_block
+        sql_block=$(cat <<EOF
         set serveroutput on;
         set define off;
 
@@ -850,7 +1019,9 @@ function set_apps_available() {
             dbms_output.put_line((chr(27) || '[31m') || 'Workspace: '||upper('${workspace}')||' not found!' || (chr(27) || '[0m'));
         End;
 /
-!
+EOF
+)
+        run_sql_block "${appschema}" "${sql_block}"
       fi # grep
     done
 
@@ -891,7 +1062,8 @@ function install_apps() {
         fi
         timelog "Installing $line Num: ${app_id} Workspace: ${workspace} Schema: ${appschema} Original Num: ${original_app_id}"
 
-        $SQLCLI -S -L "$(get_connect_string "${appschema}")" << EOF
+        local sql_block
+        sql_block=$(cat <<EOF
           define VERSION="${version}"
           define MODE="${mode}"
 
@@ -934,6 +1106,8 @@ function install_apps() {
 
           @@install.sql
 EOF
+)
+        run_sql_block "${appschema}" "${sql_block}" true
 
 
         if [[ $? -ne 0 ]]; then
@@ -986,7 +1160,8 @@ function install_rest() {
         fi
 
         timelog "Installing REST-Services ${d}/${rest_install_file} on Schema ${appschema}"
-        $SQLCLI -S -L "$(get_connect_string "${appschema}")" <<!
+        local sql_block
+        sql_block=$(cat <<EOF
 
         define VERSION="${version}"
         define MODE="${mode}"
@@ -999,7 +1174,9 @@ function install_rest() {
         Prompt calling file ${instfile}
         @@${rest_install_file}
 
-!
+EOF
+)
+        run_sql_block "${appschema}" "${sql_block}"
 
 
         if [ $? -ne 0 ]
@@ -1038,12 +1215,15 @@ function process_changelog() {
         create_merged_report_file "${chlfile}" "${tplfile}" "${chlfile}.sql"
 
         # and run
-        $SQLCLI -S -L "$(get_connect_string "${CHANGELOG_SCHEMA}")" <<!
+        local sql_block
+        sql_block=$(cat <<EOF
 
           Prompt executing changelog file ${chlfile}.sql
           @${chlfile}.sql
 
-!
+EOF
+)
+        run_sql_block "${CHANGELOG_SCHEMA}" "${sql_block}"
 
         if [ $? -ne 0 ]
         then
@@ -1086,12 +1266,15 @@ function process_release_notes() {
         create_merged_report_file "${rlsnfile}" "${tplfile}" "${rlsnfile}.sql"
 
         # and run
-        $SQLCLI -S -L "$(get_connect_string "${RELEASENOTES_SCHEMA}")" <<!
+        local sql_block
+        sql_block=$(cat <<EOF
 
           Prompt executing release_notes file ${rlsnfile}.sql
           @${rlsnfile}.sql
 
-!
+EOF
+)
+        run_sql_block "${RELEASENOTES_SCHEMA}" "${sql_block}"
 
         if [ $? -ne 0 ]
         then
@@ -1362,6 +1545,7 @@ install_db_schemas
 
 [[ ${stepwise_option} == "NO" ]] || ask_step "Install APP(s)"
 install_apps
+exit 0 # just for testing, remove me
 
 [[ ${stepwise_option} == "NO" ]] || ask_step "Install RESTmodule(s)"
 install_rest
