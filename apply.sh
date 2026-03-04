@@ -59,7 +59,6 @@ maintence="<span />${maintence}"
 # choose CLI to call
 SQLCLI=${SQLCLI:-sqlplus}
 CONN_MODE=${CONN_MODE:-SQLNET}
-REST_SQL_CONTENT_TYPE=${REST_SQL_CONTENT_TYPE:-text/xml;charset=UTF-8}
 
 basepath=$(pwd)
 
@@ -96,23 +95,30 @@ function run_sql_file_rest() {
   fi
 
   if [[ ${use_embeded} == "true" ]]; then
-    timelog "Running SQL file ${sql_file} on ${targetschema} via REST with embeded file calls"
+    timelog "Running SQL file $(pwd)/${sql_file} on ${targetschema} via REST with embeded file calls"
 
     local line
     local include_file
     local include_path
+    local include_has_embedded
     local include_base
     local counter=0
     include_base=$(dirname "${sql_file}")
 
     while IFS= read -r line; do
-      if [[ "${line}" =~ ^@@([^[:space:];]+) ]]; then
+      if [[ "${line}" =~ ^[[:space:]]*@@([^[:space:];]+) ]]; then
         include_file="${BASH_REMATCH[1]}"
         include_path="${include_base}/${include_file}"
 
         if [[ -f "${include_path}" ]]; then
           counter=$((counter+1))
-          run_sql_file_rest "${targetschema}" "${include_path}" false
+          if grep -Eq '^[[:space:]]*@@([^[:space:];]+)' "${include_path}"; then
+            include_has_embedded=true
+          else
+            include_has_embedded=false
+          fi
+
+          run_sql_file_rest "${targetschema}" "${include_path}" "${include_has_embedded}"
           if [[ $? -ne 0 ]]; then
             return 1
           fi
@@ -129,16 +135,13 @@ function run_sql_file_rest() {
     return 0
   fi
 
-  timelog "Running SQL file ${sql_file} on ${targetschema} via REST"
+  timelog "Running SQL file $(pwd)/${sql_file} on ${targetschema} via REST"
 
   local -a curl_args
   curl_args=(
     -sS
-    -X POST{}
-    --header "Content-Type:${REST_SQL_CONTENT_TYPE}"
-    # --header "X-DBFLOW-SCHEMA:${targetschema}"
-    # --header "X-DBFLOW-MODE:${mode}"
-    # --header "X-DBFLOW-VERSION:${version}"
+    -X POST
+    --header "Content-Type:text/plain"
   )
 
   local header_var
@@ -167,11 +170,141 @@ function run_sql_file_rest() {
     compact_response=$(echo "${curl_response}" | tr -d '\r\n')
     if [[ ! "${compact_response}" =~ \"success\"[[:space:]]*:[[:space:]]*true ]]; then
       echo "${curl_response}"
-      exit 4
     fi
   else
     [[ -z "${curl_response}" ]] || echo "${curl_response}"
   fi
+
+  return 0
+}
+
+function run_app_import_rest() {
+  local targetschema=$1
+  local targetworkspace=$2
+  local targetappid=$3
+  local orginalappid=$4
+
+
+  local expanded_tmp_sql
+  expanded_tmp_sql=="$(mktemp -u ${log_file}.XXXXXX).imp.sql"
+
+  # Build expanded content from referenced @@ files only.
+  # Non-include lines in ${tmp_sql} are ignored by design for app imports.
+  # Include paths are resolved relative to the current app folder (PWD)
+  # and recursively relative to each included file's folder.
+  local expand_failed="false"
+  local includes_found="false"
+    _dbflow_expand_sql_file() {
+      local source_file=$1
+      local source_base=$2
+      local target_file=$3
+
+      local line
+      local include_file
+      local include_path
+
+      while IFS= read -r line; do
+        if [[ "${line}" =~ ^[[:space:]]*@@([^[:space:];]+) ]]; then
+          include_file="${BASH_REMATCH[1]}"
+
+          if [[ "${include_file}" == /* ]]; then
+            include_path="${include_file}"
+          else
+            include_path="${source_base}/${include_file}"
+          fi
+
+          if [[ -f "${include_path}" ]]; then
+            _dbflow_expand_sql_file "${include_path}" "$(dirname "${include_path}")" "${target_file}"
+            if [[ $? -ne 0 ]]; then
+              return 1
+            fi
+          else
+            timelog "REST execution failed: included SQL file ${include_path} does not exist" "${failure}"
+            return 1
+          fi
+        else
+          printf "%s\n" "${line}" >> "${target_file}"
+        fi
+      done < "${source_file}"
+
+      return 0
+    }
+
+    : > "${expanded_tmp_sql}"
+
+    while IFS= read -r line; do
+      if [[ "${line}" =~ ^[[:space:]]*@@([^[:space:];]+) ]]; then
+        includes_found="true"
+        include_file="${BASH_REMATCH[1]}"
+
+        if [[ "${include_file}" == /* ]]; then
+          include_path="${include_file}"
+        else
+          include_path="$(pwd)/${include_file}"
+        fi
+
+        if [[ -f "${include_path}" ]]; then
+          _dbflow_expand_sql_file "${include_path}" "$(dirname "${include_path}")" "${expanded_tmp_sql}"
+          if [[ $? -ne 0 ]]; then
+            expand_failed="true"
+            break
+          fi
+        else
+          timelog "REST execution failed: included SQL file ${include_path} does not exist" "${failure}"
+          expand_failed="true"
+          break
+        fi
+      fi
+    done < "install.sql"
+
+
+  timelog "Running APP Import file ${expanded_tmp_sql} on ${targetschema} via REST"
+
+  local -a curl_args
+  curl_args=(
+    -sS
+    -X POST
+    --header "Content-Type:text/plain"
+    --header "target_app_id:${targetappid}"
+    --header "target_schema:${targetschema}"
+    --header "target_workspace:${targetworkspace}"
+    --header "original_app_id:${orginalappid}"
+
+  )
+
+  local header_var
+  while IFS= read -r header_var; do
+    local header_value="${!header_var}"
+    if [[ -n "${header_value}" ]]; then
+      curl_args+=( --header "${header_value}" )
+    fi
+  done < <(compgen -A variable REST_HEADER_ | sort)
+
+  if [[ -n "${REST_USER:-}" ]] || [[ -n "${REST_PWD:-}" ]]; then
+    curl_args+=( -u "${REST_USER:-}:${REST_PWD:-}" )
+  fi
+  local curl_response
+
+  curl_response=$(curl "${curl_args[@]}" --data-binary @"${expanded_tmp_sql}" "${REST_SQL_URL}/impapp")
+  local curl_rc=$?
+
+  if [[ ${curl_rc} -ne 0 ]]; then
+    [[ -z "${curl_response}" ]] || echo_error "${curl_response}"
+    return ${curl_rc}
+  fi
+
+  # Print response only when it is not JSON or JSON.success != true
+  if [[ "${curl_response}" =~ ^[[:space:]]*\{ ]]; then
+    local compact_response
+    compact_response=$(echo "${curl_response}" | tr -d '\r\n')
+    if [[ ! "${compact_response}" =~ \"success\"[[:space:]]*:[[:space:]]*true ]]; then
+      echo_warning "${curl_response}"
+    fi
+  else
+    [[ -z "${curl_response}" ]] || echo_warning "${curl_response}"
+  fi
+
+  rm -f "${expanded_tmp_sql}"
 
   return 0
 }
@@ -194,7 +327,7 @@ function run_sql_file() {
 function run_sql_block() {
   local targetschema=$1
   local sql_block=$2
-  local is_app_imp=${3:-false}
+  local embeded=${3:-false}
 
   if [[ "${CONN_MODE}" == "SQLNET" ]]; then
     "$SQLCLI" -S -L "$(get_connect_string "${targetschema}")" <<EOF
@@ -204,18 +337,14 @@ EOF
   fi
 
   local tmp_sql
-  tmp_sql=$(mktemp "/tmp/dbflow_sql_block_XXXXXX")".sql"
-  echo_info "Running SQL Block on ${targetschema} via REST, writing to temp file ${tmp_sql}"
+  tmp_sql="$(mktemp -u ${log_file}.XXXXXX).sql"
   printf "%s\n" "${sql_block}" > "${tmp_sql}"
 
-  if [[ ${is_app_imp} == "true" ]]; then
-    # TODO - update ${tmp_sql}
-
-  fi
-  run_sql_file_rest "${targetschema}" "${tmp_sql}"
+  timelog "Running SQL Block on ${REST_APP_SCHEMA} via REST, writing to temp file $(pwd)/${tmp_sql}"
+  run_sql_file_rest "${REST_APP_SCHEMA}" "${tmp_sql}" ${embeded}
   local rc=$?
 
-  rm -f "${tmp_sql}"
+  # rm -f "${tmp_sql}"
   return ${rc}
 }
 
@@ -234,16 +363,6 @@ function check_vars() {
     do_exit="YES"
   fi
 
-  if [[ -z ${DB_APP_USER:-} ]]; then
-    echo_error "App-User not defined"
-    do_exit="YES"
-  fi
-
-  if [[ -z ${DB_TNS} ]]; then
-    echo_error "TNS not defined"
-    do_exit="YES"
-  fi
-
   if [[ "${CONN_MODE}" != "SQLNET" ]] && [[ "${CONN_MODE}" != "REST" ]]; then
     echo_error "CONN_MODE must be SQLNET or REST"
     do_exit="YES"
@@ -253,6 +372,17 @@ function check_vars() {
     echo_error "REST_SQL_URL not defined (required when CONN_MODE=REST)"
     do_exit="YES"
   fi
+
+  if [[ "${CONN_MODE}" == "SQLNET" ]] && [[ -z ${DB_APP_USER:-} ]]; then
+    echo_error "App-User not defined"
+    do_exit="YES"
+  fi
+
+  if [[ "${CONN_MODE}" == "SQLNET" ]] && [[ -z ${DB_TNS} ]]; then
+    echo_error "TNS not defined"
+    do_exit="YES"
+  fi
+
 
   if [[ -d ${DEPOT_PATH}/${STAGE} ]]; then
     install_source_path=${basepath}/${DEPOT_PATH}/${STAGE}
@@ -461,8 +591,10 @@ function print_info() {
   timelog "Depot:               ${BWHITE}${DEPOT_PATH}${NC}"
   timelog "Logs :               ${BWHITE}${LOG_PATH}${NC}"
   timelog "Application Offset:  ${BWHITE}${APP_OFFSET}${NC}"
-  timelog "Deployment User:     ${BWHITE}${DB_APP_USER}${NC}"
-  timelog "DB Connection:       ${BWHITE}${DB_TNS}${NC}"
+  if [[ "${CONN_MODE}" == "SQLNET" ]]; then
+    timelog "Deployment User:     ${BWHITE}${DB_APP_USER}${NC}"
+    timelog "DB Connection:       ${BWHITE}${DB_TNS}${NC}"
+  fi
   timelog "Connection Mode:     ${BWHITE}${CONN_MODE}${NC}"
   if [[ "${CONN_MODE}" == "REST" ]]; then
     timelog "REST SQL URL:        ${BWHITE}${REST_SQL_URL}${NC}"
@@ -596,11 +728,13 @@ function prepare_redo() {
 }
 
 function read_db_pass() {
-  if [[ -z "$DB_APP_PWD" ]]; then
-    ask4pwd "Enter Password for deployment user ${DB_APP_USER} on ${DB_TNS}: "
-    DB_APP_PWD=${pass}
-  else
-    timelog "Password has already been set"
+  if [[ "${CONN_MODE}" == "SQLNET" ]]; then
+    if [[ -z "$DB_APP_PWD" ]]; then
+      ask4pwd "Enter Password for deployment user ${DB_APP_USER} on ${DB_TNS}: "
+      DB_APP_PWD=${pass}
+    else
+      timelog "Password has already been set"
+    fi
   fi
 }
 
@@ -621,7 +755,7 @@ function execute_global_hook_scripts() {
   local entrypath=$1    # pre or post
   local targetschema=""
 
-  timelog "checking hook ${entrypath}"
+  timelog "Checking hook ${entrypath}"
 
   if [[ -d "${entrypath}" ]]; then
     for file in $(ls "${entrypath}" | sort )
@@ -729,7 +863,11 @@ function install_db_schemas() {
       db_install_file="${mode}_${schema}_${version}.sql"
       # exists db install file
       if [[ -e $db_install_file ]]; then
-        timelog "Installing schema $schema to ${DB_APP_USER} on ${DB_TNS}"
+        if [[ "${CONN_MODE}" == "REST" ]]; then
+          timelog "Installing objects of folder $schema to ${WKSP_APEXDX} using ${REST_SQL_URL}"
+        else
+          timelog "Installing objects of folder $schema to ${DB_APP_USER} on ${DB_TNS}"
+        fi
 
         # uncomment cleaning scripts specific to this stage/branch ex:--test or --acceptance
         sed "s:--$STAGE:Prompt uncommented cleanup for stage $STAGE\n:g" "${db_install_file}" > "${db_install_file}.tmp" && mv "${db_install_file}.tmp" "${db_install_file}"
@@ -761,10 +899,6 @@ function install_db_schemas() {
 }
 
 function set_rest_publish_state() {
-  if [[ ${CONN_MODE} == "REST" ]]; then
-    return
-  fi
-
   cd "${basepath}" || exit
   local publish=$1
   if [[ -d "rest" ]]; then
@@ -831,10 +965,6 @@ EOF
 
 
 function set_apps_unavailable() {
-  if [[ ${CONN_MODE} == "REST" ]]; then
-    return
-  fi
-
   cd "${basepath}" || exit
 
   if [[ -d "apex" ]]; then
@@ -847,29 +977,35 @@ function set_apps_unavailable() {
     for d in $(find apex -maxdepth ${depth} -mindepth ${depth} -type d)
     do
       local app_name=$(basename "${d}")
-      local app_id=${app_name/f}
-
-      local workspace=${WORKSPACE}
-      local appschema=${APP_SCHEMA}
+      local l_app_id=${app_name/f}
+      local l_workspace=${WORKSPACE}
+      local l_appschema=${APP_SCHEMA}
 
       if [[ ${PROJECT_MODE} == "FLEX" ]]; then
-        workspace=$(basename $(dirname "${d}"))
-        appschema=$(basename $(dirname $(dirname "${d}")))
+        l_workspace=$(basename $(dirname "${d}"))
+        l_appschema=$(basename $(dirname $(dirname "${d}")))
       fi
 
-      timelog "disabling APEX-App ${app_id} in workspace ${workspace} for schema ${appschema}..."
+      if [[ ${CONN_MODE} == "REST" ]]; then
+        l_app_id=${REST_APP_ID}
+        l_workspace=${REST_WORKSPACE}
+        l_appschema=${REST_APP_SCHEMA}
+      fi
+
+      timelog "disabling APEX-App ${l_app_id} in workspace ${l_workspace} for schema ${l_appschema}..."
+
       local sql_block
       sql_block=$(cat <<EOF
       set serveroutput on;
       set define off;
       Declare
-        v_application_id  apex_application_build_options.application_id%type := ${app_id} + ${APP_OFFSET};
+        v_application_id  apex_application_build_options.application_id%type := ${l_app_id} + ${APP_OFFSET};
         v_workspace_id    apex_workspaces.workspace_id%type;
       Begin
         select workspace_id
           into v_workspace_id
           from apex_workspaces
-          where workspace = upper('${workspace}');
+          where workspace = upper('${l_workspace}');
 
         apex_application_install.set_workspace_id(v_workspace_id);
         apex_util.set_security_group_id(p_security_group_id => apex_application_install.get_workspace_id);
@@ -894,7 +1030,7 @@ function set_apps_unavailable() {
           exception
             when others then
               if sqlerrm like '%Application not found%' then
-                dbms_output.put_line((chr(27) || '[33m') || 'Application: '||upper(cur.translated_application_id)||' probably not published!' || (chr(27) || '[0m'));
+                dbms_output.put_line( 'Application: '||upper(cur.translated_application_id)||' probably not published!');
               else
                 raise;
               end if;
@@ -902,10 +1038,10 @@ function set_apps_unavailable() {
         end loop;
       Exception
         when no_data_found then
-          dbms_output.put_line((chr(27) || '[31m') || 'Workspace: '||upper('${workspace}')||' not found!' || (chr(27) || '[0m'));
+          dbms_output.put_line('Workspace: '||upper('${l_workspace}')||' not found!');
         when others then
           if sqlerrm like '%Application not found%' then
-            dbms_output.put_line((chr(27) || '[31m') || 'Application: '||upper(v_application_id)||' not found!' || (chr(27) || '[0m'));
+            dbms_output.put_line('Application: '||upper(v_application_id)||' not found!');
           else
             raise;
           end if;
@@ -935,89 +1071,91 @@ function set_apps_available() {
 
     for d in $(find apex -maxdepth ${depth} -mindepth ${depth} -type d)
     do
-      local app_name=$(basename "${d}")
-      local app_id=${app_name/f}
+      local l_app_name=$(basename "${d}")
+      local l_app_id=${l_app_name/f}
+      local l_workspace=${WORKSPACE}
+      local l_appschema=${APP_SCHEMA}
+
+      if [[ ${PROJECT_MODE} == "FLEX" ]]; then
+        l_workspace=$(basename $(dirname ${d}))
+        l_appschema=$(basename $(dirname $(dirname ${d})))
+      fi
+
+      if [[ ${CONN_MODE} == "REST" ]]; then
+        l_app_id=${REST_APP_ID}
+        l_workspace=${REST_WORKSPACE}
+        l_appschema=${REST_APP_SCHEMA}
+      fi
 
       # Enable only Applications which were not part of the current deployment process
-      if grep -q "\b${app_name}\b" "${app_install_file}"; then
-        timelog "no enabling APEX-App ${app_id} in workspace ${workspace} because it was part of the deployment"
-        timelog "...any existent translated apps have to be published on your own, using hooks"
+      if grep -q "\b${l_app_name}\b" "${app_install_file}"; then
+        timelog "App ${l_app_id} not enabled; included in deployment. Publish translated apps manually using hooks."
       else
-
-        local workspace=${WORKSPACE}
-        local appschema=${APP_SCHEMA}
-
-        if [[ ${PROJECT_MODE} == "FLEX" ]]; then
-          workspace=$(basename $(dirname ${d}))
-          appschema=$(basename $(dirname $(dirname ${d})))
-        fi
-
-
-        timelog "enabling APEX-App ${app_id} in workspace ${workspace} for schema ${appschema}..."
+        timelog "enabling APEX-App ${l_app_id} in workspace ${l_workspace} for schema ${appschema}..."
         local sql_block
         sql_block=$(cat <<EOF
-        set serveroutput on;
-        set define off;
+set serveroutput on;
+set define off;
 
-        Declare
-          v_application_id  apex_application_build_options.application_id%type := ${app_id} + ${APP_OFFSET};
-          v_workspace_id    apex_workspaces.workspace_id%type;
-          l_text            varchar2(100);
-        Begin
+Declare
+  v_application_id  apex_application_build_options.application_id%type := ${l_app_id} + ${APP_OFFSET};
+  v_workspace_id    apex_workspaces.workspace_id%type;
+  l_text            varchar2(100);
+Begin
 
-          select workspace_id
-            into v_workspace_id
-            from apex_workspaces
-            where workspace = upper('${workspace}');
+  select workspace_id
+    into v_workspace_id
+    from apex_workspaces
+    where workspace = upper('${l_workspace}');
 
-          apex_application_install.set_workspace_id(v_workspace_id);
-          apex_util.set_security_group_id(p_security_group_id => apex_application_install.get_workspace_id);
+  apex_application_install.set_workspace_id(v_workspace_id);
+  apex_util.set_security_group_id(p_security_group_id => apex_application_install.get_workspace_id);
 
-          begin
-            select substr(unavailable_text, 1, 50)
-              into l_text
-              from apex_applications
-            where application_id = v_application_id;
+  begin
+    select substr(unavailable_text, 1, 50)
+      into l_text
+      from apex_applications
+    where application_id = v_application_id;
 
-            -- only enable, what has been disabled by dbFlow with the marker "<span />"
-            if (apex_util.get_application_status(p_application_id => v_application_id) = 'UNAVAILABLE' and l_text like '<span />%') then
+    -- only enable, what has been disabled by dbFlow with the marker "<span />"
+    if (apex_util.get_application_status(p_application_id => v_application_id) = 'UNAVAILABLE' and l_text like '<span />%') then
 
-              apex_util.set_application_status(p_application_id     => v_application_id,
-                                              p_application_status => 'AVAILABLE_W_EDIT_LINK',
-                                              p_unavailable_value  => null );
+      apex_util.set_application_status(p_application_id     => v_application_id,
+                                      p_application_status => 'AVAILABLE_W_EDIT_LINK',
+                                      p_unavailable_value  => null );
 
-              dbms_output.put_line('.. APP: '|| v_application_id || ' has been enabled');
+      dbms_output.put_line('.. APP: '|| v_application_id || ' has been enabled');
 
 
-              -- check translated Applications additionally
-              for cur in ( select translated_application_id, translated_app_language
-                              from apex_application_trans_map
-                            where primary_application_id = v_application_id )
-              loop
-                begin
-                  apex_util.set_application_status(p_application_id     => cur.translated_application_id,
-                                                  p_application_status => 'AVAILABLE_W_EDIT_LINK',
-                                                  p_unavailable_value  => null );
+      -- check translated Applications additionally
+      for cur in ( select translated_application_id, translated_app_language
+                      from apex_application_trans_map
+                    where primary_application_id = v_application_id )
+      loop
+        begin
+          apex_util.set_application_status(p_application_id     => cur.translated_application_id,
+                                          p_application_status => 'AVAILABLE_W_EDIT_LINK',
+                                          p_unavailable_value  => null );
 
-                  dbms_output.put_line('.... Translated APP: '|| cur.translated_application_id || ' (' || cur.translated_app_language || ') has been enabled');
-                exception
-                  when others then
-                    if sqlerrm like '%Application not found%' then
-                      dbms_output.put_line((chr(27) || '[31m') || 'Application: '||upper(v_application_id)||' probably not published!' || (chr(27) || '[0m'));
-                    else
-                      raise;
-                    end if;
-                end;
-              end loop;
+          dbms_output.put_line('.... Translated APP: '|| cur.translated_application_id || ' (' || cur.translated_app_language || ') has been enabled');
+        exception
+          when others then
+            if sqlerrm like '%Application not found%' then
+              dbms_output.put_line((chr(27) || '[31m') || 'Application: '||upper(v_application_id)||' probably not published!' || (chr(27) || '[0m'));
+            else
+              raise;
             end if;
-          exception
-            when no_data_found then
-              dbms_output.put_line((chr(27) || '[31m') || 'Application: '||upper(v_application_id)||' not found!' || (chr(27) || '[0m'));
-          end;
-        Exception
-          when no_data_found then
-            dbms_output.put_line((chr(27) || '[31m') || 'Workspace: '||upper('${workspace}')||' not found!' || (chr(27) || '[0m'));
-        End;
+        end;
+      end loop;
+    end if;
+  exception
+    when no_data_found then
+      dbms_output.put_line((chr(27) || '[31m') || 'Application: '||upper(v_application_id)||' not found!' || (chr(27) || '[0m'));
+  end;
+Exception
+  when no_data_found then
+    dbms_output.put_line((chr(27) || '[31m') || 'Workspace: '||upper('${l_workspace}')||' not found!' || (chr(27) || '[0m'));
+End;
 /
 EOF
 )
@@ -1060,67 +1198,66 @@ function install_apps() {
         else
           local original_app_id=$(grep -oP 'p_default_application_id=>\K\d+' "application/set_environment.sql")
         fi
-        timelog "Installing $line Num: ${app_id} Workspace: ${workspace} Schema: ${appschema} Original Num: ${original_app_id}"
 
-        local sql_block
-        sql_block=$(cat <<EOF
-          define VERSION="${version}"
-          define MODE="${mode}"
+        if [[ "${CONN_MODE}" == "SQLNET" ]]; then
+          timelog "Installing $line Num: ${app_id} Workspace: ${workspace} Schema: ${appschema} Original Num: ${original_app_id}"
 
-          set define '^'
-          set concat on
-          set concat .
-          set verify off
+          local sql_block
+          sql_block=$(cat <<EOF
+define VERSION="${version}"
+define MODE="${mode}"
 
-          set serveroutput on
+set define '^'
+set concat on
+set concat .
+set verify off
 
-          Prompt Workspace: ${workspace}
-          Prompt Application: ${app_id}
-          declare
-            v_workspace_id	apex_workspaces.workspace_id%type;
-          begin
-            select workspace_id
-              into v_workspace_id
-              from apex_workspaces
-            where workspace = upper('${workspace}');
+set serveroutput on
 
-            apex_application_install.set_workspace_id(v_workspace_id);
+Prompt Workspace: ${workspace}
+Prompt Application: ${app_id}
+declare
+  v_workspace_id	apex_workspaces.workspace_id%type;
+begin
+  select workspace_id
+    into v_workspace_id
+    from apex_workspaces
+  where workspace = upper('${workspace}');
 
-            apex_application_install.set_application_id(${app_id} + nvl(${APP_OFFSET}, 0));
+  apex_application_install.set_workspace_id(v_workspace_id);
 
-            if nvl(${APP_OFFSET}, 0) > 0 or ${app_id} != nvl(${original_app_id}, 0) then
-              dbms_output.put_line((chr(27) || '[33m') || 'Original APP ID differs from Target APP ID. Generating Offset.' || (chr(27) || '[0m'));
-              apex_application_install.generate_offset;
-              -- alias must be unique per instance, so when offset is definded
-              -- it should be modified. In this case a post hook at root level
-              -- has to be used to give it a correct alias
-              apex_application_install.set_application_alias('${app_id}_${APP_OFFSET}');
-            end if;
+  apex_application_install.set_application_id(${app_id} + nvl(${APP_OFFSET}, 0));
 
-            apex_application_install.set_schema(upper('${appschema}'));
-          Exception
-            when no_data_found then
-              dbms_output.put_line((chr(27) || '[31m') || 'Workspace: '||upper('${workspace}')||' not found!' || (chr(27) || '[0m'));
-          end;
-          /
+  if nvl(${APP_OFFSET}, 0) > 0 or ${app_id} != nvl(${original_app_id}, 0) then
+    dbms_output.put_line((chr(27) || '[33m') || 'Original APP ID differs from Target APP ID. Generating Offset.' || (chr(27) || '[0m'));
+    apex_application_install.generate_offset;
+    -- alias must be unique per instance, so when offset is definded
+    -- it should be modified. In this case a post hook at root level
+    -- has to be used to give it a correct alias
+    apex_application_install.set_application_alias('${app_id}_${APP_OFFSET}');
+  end if;
 
-          @@install.sql
+  apex_application_install.set_schema(upper('${appschema}'));
+Exception
+  when no_data_found then
+    dbms_output.put_line((chr(27) || '[31m') || 'Workspace: '||upper('${workspace}')||' not found!' || (chr(27) || '[0m'));
+end;
+/
+
+@@install.sql
+
 EOF
 )
-        run_sql_block "${appschema}" "${sql_block}" true
-
-
+          run_sql_block "${appschema}" "${sql_block}" true
+        else
+          timelog "Installing $line using REST API Num: ${REST_APP_ID} Workspace: ${REST_WORKSPACE} Schema: ${REST_APP_SCHEMA} Original Num: ${original_app_id}"
+          run_app_import_rest "${REST_APP_SCHEMA}" "${REST_WORKSPACE}" "${REST_APP_ID}" "${original_app_id}"
+        fi
         if [[ $? -ne 0 ]]; then
           timelog "ERROR when executing ${line}" "${failure}"
           manage_result "failure"
         fi
 
-        # only for syntax highlighting
-        if [[ 1 == 2 ]]; then
-          echo <<!
-          '\'
-!
-        fi
 
         cd "${basepath}" || exit
       fi
@@ -1159,24 +1296,25 @@ function install_rest() {
           appschema=$(basename "${d}")
         fi
 
-        timelog "Installing REST-Services ${d}/${rest_install_file} on Schema ${appschema}"
+        timelog "Installing REST-Services ..."
         local sql_block
         sql_block=$(cat <<EOF
 
-        define VERSION="${version}"
-        define MODE="${mode}"
+define VERSION="${version}"
+define MODE="${mode}"
 
-        set define '^'
-        set concat on
-        set concat .
-        set verify off
+set define '^'
+set concat on
+set concat .
+set verify off
 
-        Prompt calling file ${instfile}
-        @@${rest_install_file}
+Prompt calling file ${instfile}
+@@${rest_install_file}
 
 EOF
 )
-        run_sql_block "${appschema}" "${sql_block}"
+
+        run_sql_block "${appschema}" "${sql_block}" true
 
 
         if [ $? -ne 0 ]
@@ -1203,10 +1341,10 @@ function process_changelog() {
   chlfile=changelog_${mode}_${version}.md
   tplfile=reports/changelog/template.sql
   if [[ -f ${chlfile} ]]; then
-    timelog "changelog found"
+    timelog "Changelog found"
 
     if [[ -f "${tplfile}" ]]; then
-      timelog "templatefile found"
+      timelog "Template file found"
 
       if [[ -n ${CHANGELOG_SCHEMA} ]]; then
         timelog "changelog schema '${CHANGELOG_SCHEMA}' is configured"
@@ -1218,19 +1356,19 @@ function process_changelog() {
         local sql_block
         sql_block=$(cat <<EOF
 
-          Prompt executing changelog file ${chlfile}.sql
-          @${chlfile}.sql
+Prompt executing changelog file ${chlfile}.sql
+@@${chlfile}.sql
 
 EOF
 )
-        run_sql_block "${CHANGELOG_SCHEMA}" "${sql_block}"
+        run_sql_block "${CHANGELOG_SCHEMA}" "${sql_block}" true
 
         if [ $? -ne 0 ]
         then
           timelog "ERROR when runnin ${chlfile}.sql" "${failure}"
           exit 1
-        else
-          rm "${chlfile}.sql"
+        # else
+        #   rm "${chlfile}.sql"
         fi
       else
         timelog "changelog schema is NOT configured"
@@ -1249,18 +1387,18 @@ function process_release_notes() {
   rlsnfile=release_notes_${mode}_${version}.md
   tplfile=reports/release_notes/template.sql
   if [[ -f ${rlsnfile} ]]; then
-    timelog "release_note found"
+    timelog "Release note found"
 
     if [[ -f "${tplfile}" ]]; then
-      timelog "templatefile found"
+      timelog "Template file found"
 
       if [[ ${PROJECT_MODE} == "SINGLE" ]]; then
         RELEASENOTES_SCHEMA=${APP_SCHEMA}
-        timelog "releasenote schema set to '${APP_SCHEMA}' because project mode is SINGLE"
+        timelog "Release note schema set to '${APP_SCHEMA}' because project mode is SINGLE"
       fi
 
       if [[ -n ${RELEASENOTES_SCHEMA} ]]; then
-        timelog "releasenote schema '${RELEASENOTES_SCHEMA}' is configured"
+        timelog "Release note schema '${RELEASENOTES_SCHEMA}' is configured"
 
         # now gen merged sql file
         create_merged_report_file "${rlsnfile}" "${tplfile}" "${rlsnfile}.sql"
@@ -1269,12 +1407,12 @@ function process_release_notes() {
         local sql_block
         sql_block=$(cat <<EOF
 
-          Prompt executing release_notes file ${rlsnfile}.sql
-          @${rlsnfile}.sql
+Prompt executing release_notes file ${rlsnfile}.sql
+@@${rlsnfile}.sql
 
 EOF
 )
-        run_sql_block "${RELEASENOTES_SCHEMA}" "${sql_block}"
+        run_sql_block "${RELEASENOTES_SCHEMA}" "${sql_block}" true
 
         if [ $? -ne 0 ]
         then
@@ -1287,10 +1425,10 @@ EOF
         timelog "RELEASENOTES_SCHEMA is NOT configured"
       fi
     else
-      timelog "No templatefile found"
+      timelog "No template file found"
     fi
   else
-    timelog "No release_note ${rlsnfile} found"
+    timelog "No release note ${rlsnfile} found"
   fi
 }
 
@@ -1545,7 +1683,6 @@ install_db_schemas
 
 [[ ${stepwise_option} == "NO" ]] || ask_step "Install APP(s)"
 install_apps
-exit 0 # just for testing, remove me
 
 [[ ${stepwise_option} == "NO" ]] || ask_step "Install RESTmodule(s)"
 install_rest

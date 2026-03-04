@@ -236,7 +236,7 @@ EOF
 ` || true
 
   if [[ $sql_output == *"connected as"* ]]; then
-    echo_success "Connection as ${DB_ADMIN_USER} is working"
+    timelog "Connection as ${DB_ADMIN_USER} is working" ${success}
   else
     echo_fatal "Error to connect as ${DB_ADMIN_USER}/${DB_ADMIN_PWD}@${DB_TNS}${DBA_OPTION}"
     echo_error "${sql_output}"
@@ -245,19 +245,18 @@ EOF
 }
 
 function check_connection() {
-  local CONN_STR="$(get_connect_string "${1}")"
-
   if [[ "${CONN_MODE}" == "REST" ]] && [[ -n "${REST_SQL_URL}" ]]; then
     rest_output=$(curl -s -X GET "${REST_SQL_URL}/compile")
 
     if echo "${rest_output}" | grep -q '"success"\s*:\s*true'; then
-      echo_success "REST connection to ${REST_SQL_URL} is working"
+      timelog "REST connection to ${REST_SQL_URL} is working" ${success}
     else
       echo_fatal "Error with REST connection to ${REST_SQL_URL}"
       echo_error "${rest_output}"
       exit 2
     fi
   else
+    local CONN_STR="$(get_connect_string "${1}")"
 
     sql_output=`${SQLCLI} -S -L "${CONN_STR}" <<EOF
     select 'connected to schema '||user t from dual;
