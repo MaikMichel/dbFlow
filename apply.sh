@@ -95,7 +95,7 @@ function run_sql_file_rest() {
   fi
 
   if [[ ${use_embeded} == "true" ]]; then
-    timelog "Running SQL file $(pwd)/${sql_file} on ${targetschema} via REST with embeded file calls"
+    timelog "Running SQL file ${sql_file} via REST with embeded file calls"
 
     local line
     local include_file
@@ -135,7 +135,7 @@ function run_sql_file_rest() {
     return 0
   fi
 
-  timelog "Running SQL file $(pwd)/${sql_file} on ${targetschema} via REST"
+  timelog "Running SQL file ${sql_file} via REST"
 
   local -a curl_args
   curl_args=(
@@ -678,6 +678,55 @@ function validate_init_mode() {
   fi
 }
 
+function prepare_excludes() {
+  if [[ -n ${EXCLUDE_EXEC_DB_PATHES+x} ]] && [[ ${#EXCLUDE_EXEC_DB_PATHES[@]} -gt 0 ]]; then
+    timelog "Preparing to exclude: (${BWHITE}${EXCLUDE_EXEC_DB_PATHES[*]}${NC})"
+
+    for schema in "${DBFOLDERS[@]}"
+    do
+      db_install_file=./db/$schema/${mode}_${schema}_${version}.sql
+
+      if [[ -f "${db_install_file}" ]]; then
+        local tmp_install_file="${db_install_file}.tmp"
+        local exclude_comment_count=0
+        : > "${tmp_install_file}"
+
+        while IFS= read -r line || [[ -n "${line}" ]]; do
+          if [[ "${line}" =~ ^[[:space:]]*@@([^[:space:];]+) ]]; then
+            local include_path="${BASH_REMATCH[1]}"
+            local normalized_include_path="${include_path#./}"
+            local must_exclude="NO"
+
+            for exclude_dir in "${EXCLUDE_EXEC_DB_PATHES[@]}"
+            do
+              local normalized_exclude_dir="${exclude_dir#./}"
+              normalized_exclude_dir="${normalized_exclude_dir%/}"
+
+              if [[ -n "${normalized_exclude_dir}" ]] && \
+                 ([[ "${normalized_include_path}" == "${normalized_exclude_dir}" ]] || [[ "${normalized_include_path}" == "${normalized_exclude_dir}/"* ]]); then
+                must_exclude="YES"
+                break
+              fi
+            done
+
+            if [[ "${must_exclude}" == "YES" ]] && [[ ! "${line}" =~ ^[[:space:]]*-- ]]; then
+              line="--${line}"
+              exclude_comment_count=$((exclude_comment_count+1))
+            fi
+          fi
+
+          printf "%s\n" "${line}" >> "${tmp_install_file}"
+        done < "${db_install_file}"
+
+        mv "${tmp_install_file}" "${db_install_file}"
+        timelog "Excluded ${exclude_comment_count} include(s) in ${db_install_file}"
+      fi
+
+    done # schema
+
+  fi
+}
+
 function prepare_redo() {
   if [[ -f "${oldlogfile}" ]]; then
     timelog "parsing redolog ${oldlogfile}"
@@ -992,7 +1041,7 @@ function set_apps_unavailable() {
         l_appschema=${REST_APP_SCHEMA}
       fi
 
-      timelog "disabling APEX-App ${l_app_id} in workspace ${l_workspace} for schema ${l_appschema}..."
+      timelog "Disabling APEX-App ${l_app_id} in workspace ${l_workspace} for schema ${l_appschema}..."
 
       local sql_block
       sql_block=$(cat <<EOF
@@ -1658,6 +1707,7 @@ validate_dbflow_version
 read_db_pass
 validate_connections
 prepare_redo
+prepare_excludes
 
 [[ ${stepwise_option} == "NO" ]] || ask_step "Remove dropped files"
 # files to be removed
