@@ -394,6 +394,11 @@ function setup_env() {
   timelog "Targetpath:    ${BWHITE}${rel_targetpath}${NC}"
   timelog "Sourcepath:    ${BWHITE}${sourcepath}${NC}"
   timelog "Keepfolder:    ${BWHITE}${KEEP_FOLDER}${NC}"
+  if [[ -n ${EXCLUDE_SCAN_DB_PATHES+x} ]] && [[ ${#EXCLUDE_SCAN_DB_PATHES[@]} -gt 0 ]]; then
+    timelog "Excl DB Paths: (${BWHITE}${EXCLUDE_SCAN_DB_PATHES[*]}${NC})"
+  else
+    timelog "Excl DB Paths: (${BWHITE}-${NC})"
+  fi
   timelog "----------------------------------------------------------"
   timelog "----------------------------------------------------------"
   timelog "----------------------------------------------------------"

@@ -129,6 +129,8 @@ function define_folders() {
   local l_mode="${1}";
   local undef_branch="_undefined_branch";
   local l_branch="${2:-${undef_branch}}";
+  local filtered_pathes=()
+  local is_excluded="FALSE"
 
   # at INIT there is no pretreatment or an evaluation of the table_ddl
   # !: Don't forgett to change documentation when changing these arrays
@@ -142,6 +144,29 @@ function define_folders() {
     SCAN_PATHES=( ${pres[@]} )
     SCAN_PATHES+=( sequences tables "tables/tables_ddl/${l_branch}" tables/tables_ddl indexes/primaries indexes/uniques indexes/defaults constraints/primaries constraints/uniques constraints/foreigns constraints/checks contexts policies sources/types sources/packages sources/functions sources/procedures views mviews sources/triggers tests/packages synonyms/private synonyms/public )
     SCAN_PATHES+=( ${post[@]} )
+  fi
+
+  # filter excluded paths (exact match)
+  if [[ -n ${EXCLUDE_SCAN_DB_PATHES+x} ]] && [[ ${#EXCLUDE_SCAN_DB_PATHES[@]} -gt 0 ]]; then
+    filtered_pathes=()
+    for scan_path in "${SCAN_PATHES[@]}"
+    do
+      is_excluded="FALSE"
+
+      for exclude_path in "${EXCLUDE_SCAN_DB_PATHES[@]}"
+      do
+        if [[ "${scan_path}" == "${exclude_path}" ]]; then
+          is_excluded="TRUE"
+          break
+        fi
+      done
+
+      if [[ "${is_excluded}" == "FALSE" ]]; then
+        filtered_pathes+=( "${scan_path}" )
+      fi
+    done
+
+    SCAN_PATHES=( "${filtered_pathes[@]}" )
   fi
 }
 
