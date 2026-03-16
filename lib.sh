@@ -37,6 +37,20 @@ BUNLINE="\e[1;4m"
 BGRAY="\e[0;90m"
 BLBACK="\e[30;48;5;81m"
 
+# Central ANSI building blocks used by dbFlow scripts
+# (kept code-identical to historical values from apply.sh)
+ESC="\e"
+BSE_RESET="[0m"
+BSE_DGRAY="[90m"
+BSE_LBLUE="[38;5;74m"
+BSE_REDBGR="[41m"
+BSE_LVIOLETE="[38;5;68m"
+BSE_GREENBGR="[48;5;28m"
+BSE_GREEN="[38;5;28m"
+BSE_ORANGEBGR="[48;5;172m"
+BSE_ORANGE="[38;5;172m"
+BSE_RED="[31m"
+
 LIBSOURCED="TRUE"
 
 NUMBERPATTERN='^[0-9]+$'
@@ -271,7 +285,36 @@ EOF
 
 function check_connection() {
   if [[ "${CONN_MODE}" == "REST" ]] && [[ -n "${REST_SQL_URL}" ]]; then
-    rest_output=$(curl -s -X GET "${REST_SQL_URL}/compile")
+    if ! command -v jq >/dev/null 2>&1; then
+      echo_fatal "REST OAuth requires jq to parse token response"
+      exit 2
+    fi
+
+    if [[ -z "${REST_OAUTH_TOKEN_URL:-}" ]] || [[ -z "${REST_OAUTH_CLIENT_ID:-}" ]] || [[ -z "${REST_OAUTH_CLIENT_SECRET:-}" ]]; then
+      echo_fatal "Missing REST OAuth config (REST_OAUTH_TOKEN_URL, REST_OAUTH_CLIENT_ID, REST_OAUTH_CLIENT_SECRET)"
+      exit 2
+    fi
+
+    token_response=$(curl -sS -X POST \
+      --user "${REST_OAUTH_CLIENT_ID}:${REST_OAUTH_CLIENT_SECRET}" \
+      --data "grant_type=client_credentials" \
+      "${REST_OAUTH_TOKEN_URL}")
+    token_rc=$?
+
+    if [[ ${token_rc} -ne 0 ]]; then
+      echo_fatal "Error getting OAuth token from ${REST_OAUTH_TOKEN_URL}"
+      echo_error "${token_response}"
+      exit 2
+    fi
+
+    access_token=$(jq -r '.access_token // empty' <<< "${token_response}" 2>/dev/null)
+    if [[ -z "${access_token}" ]]; then
+      echo_fatal "OAuth token response does not contain access_token"
+      echo_error "${token_response}"
+      exit 2
+    fi
+
+    rest_output=$(curl -sS -X GET --header "Authorization: Bearer ${access_token}" "${REST_SQL_URL}/compile")
 
     if echo "${rest_output}" | grep -q '"success"\s*:\s*true'; then
       timelog "REST connection to ${REST_SQL_URL} is working" ${success}

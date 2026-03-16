@@ -59,6 +59,9 @@ maintence="<span />${maintence}"
 # choose CLI to call
 SQLCLI=${SQLCLI:-sqlplus}
 CONN_MODE=${CONN_MODE:-SQLNET}
+REST_ACCESS_TOKEN=""
+REST_ACCESS_TOKEN_EXPIRES_AT=0
+REST_TOKEN_EXPIRY_SAFETY_SECONDS=30
 
 basepath=$(pwd)
 
@@ -83,18 +86,6 @@ patch="n"
 version="-"
 noextract="n"
 redolog=""
-
-ESC="\e"
-BSE_RESET="[0m";
-BSE_DGRAY="[90m"          # Dark Gray
-BSE_LBLUE="[38;5;74m"     # Light Blue
-BSE_REDBGR="[41m"         # Red Background
-BSE_LVIOLETE="[38;5;68m"     # Light Violet
-BSE_GREENBGR="[48;5;28m"     # Light Violet
-BSE_GREEN="[38;5;28m"     # Light Violet
-BSE_ORANGEBGR="[48;5;172m"     # Light Violet
-BSE_ORANGE="[38;5;172m"     # Light Violet
-BSE_RED="[31m"     # Light Violet
 
 function print_rest_response_as_problem_lines() {
   local json_response="$1"
@@ -131,7 +122,7 @@ function print_rest_response_as_problem_lines() {
       msg_fg="${color_orange}"
     fi
 
-    printf "%b%s%b %b%s%b %b%s%b %b%s%b\n" \
+    printf "%b%s%b %b%s%b %b%s%b\n%b%s%b\n" \
       "${sev_bg}" "${severity}" "${color_off}" \
       "${sev_fg}" "${code}" "${color_off}" \
       "${color_dgray}" "${fileinfo}" "${color_off}" \
@@ -183,10 +174,56 @@ function print_rest_response_as_problem_lines() {
   local fallback_code
   local fallback_message
   fallback_code=$(jq -r 'if .code != null then (.code|tostring) else "ORA-ERROR" end' <<< "${json_response}" 2>/dev/null)
-  fallback_message=$(jq -r 'first([.log_results[]?.error_message?, .message?] | map(select(. != null and . != ""))[]) // "Compilation error"' <<< "${json_response}" 2>/dev/null)
-
+  fallback_message=$(jq -r 'first([.log_results[]?.error_message?, .cause?, .message?] | map(select(. != null and . != ""))[]) // "Compilation error"' <<< "${json_response}" 2>/dev/null)
   REST_ERRORS_FOUND=1
   print_problem_line "ERROR" "${fallback_code}" "${default_fileinfo}" "${fallback_message}"
+}
+
+function ensure_rest_access_token() {
+  local now
+  now=$(date +%s)
+
+  if [[ -n "${REST_ACCESS_TOKEN:-}" ]] && [[ ${REST_ACCESS_TOKEN_EXPIRES_AT:-0} -gt $((now + REST_TOKEN_EXPIRY_SAFETY_SECONDS)) ]]; then
+    return 0
+  fi
+
+  if ! command -v jq >/dev/null 2>&1; then
+    timelog "REST OAuth requires jq to parse token response" "${failure}"
+    return 1
+  fi
+
+  local token_response
+  token_response=$(curl -sS -X POST \
+    --user "${REST_OAUTH_CLIENT_ID}:${REST_OAUTH_CLIENT_SECRET}" \
+    --data "grant_type=client_credentials" \
+    "${REST_OAUTH_TOKEN_URL}")
+  local token_rc=$?
+
+  if [[ ${token_rc} -ne 0 ]]; then
+    [[ -z "${token_response}" ]] || echo_error "${token_response}"
+    timelog "Failed to get OAuth access token from ${REST_OAUTH_TOKEN_URL}" "${failure}"
+    return ${token_rc}
+  fi
+
+  local access_token
+  local expires_in
+  access_token=$(jq -r '.access_token // empty' <<< "${token_response}" 2>/dev/null)
+  expires_in=$(jq -r '.expires_in // 3600' <<< "${token_response}" 2>/dev/null)
+
+  if [[ -z "${access_token}" ]]; then
+    [[ -z "${token_response}" ]] || echo_error "${token_response}"
+    timelog "OAuth token response did not contain access_token" "${failure}"
+    return 1
+  fi
+
+  if [[ ! "${expires_in}" =~ ^[0-9]+$ ]]; then
+    expires_in=3600
+  fi
+
+  REST_ACCESS_TOKEN="${access_token}"
+  REST_ACCESS_TOKEN_EXPIRES_AT=$((now + expires_in))
+
+  return 0
 }
 
 function run_sql_file_rest() {
@@ -261,9 +298,12 @@ function run_sql_file_rest() {
     fi
   done < <(compgen -A variable REST_HEADER_ | sort)
 
-  if [[ -n "${REST_USER:-}" ]] || [[ -n "${REST_PWD:-}" ]]; then
-    curl_args+=( -u "${REST_USER:-}:${REST_PWD:-}" )
+  ensure_rest_access_token
+  if [[ $? -ne 0 ]]; then
+    return 1
   fi
+  curl_args+=( --header "Authorization: Bearer ${REST_ACCESS_TOKEN}" )
+
   local curl_response
   curl_response=$(curl "${curl_args[@]}" --data-binary @"${sql_file}" "${REST_SQL_URL}/compile")
   local curl_rc=$?
@@ -389,9 +429,12 @@ function run_app_import_rest() {
     fi
   done < <(compgen -A variable REST_HEADER_ | sort)
 
-  if [[ -n "${REST_USER:-}" ]] || [[ -n "${REST_PWD:-}" ]]; then
-    curl_args+=( -u "${REST_USER:-}:${REST_PWD:-}" )
+  ensure_rest_access_token
+  if [[ $? -ne 0 ]]; then
+    return 1
   fi
+  curl_args+=( --header "Authorization: Bearer ${REST_ACCESS_TOKEN}" )
+
   local curl_response
 
   curl_response=$(curl "${curl_args[@]}" --data-binary @"${expanded_tmp_sql}" "${REST_SQL_URL}/impapp")
@@ -479,6 +522,21 @@ function check_vars() {
 
   if [[ "${CONN_MODE}" == "REST" ]] && [[ -z ${REST_SQL_URL:-} ]]; then
     echo_error "REST_SQL_URL not defined (required when CONN_MODE=REST)"
+    do_exit="YES"
+  fi
+
+  if [[ "${CONN_MODE}" == "REST" ]] && [[ -z ${REST_OAUTH_TOKEN_URL:-} ]]; then
+    echo_error "REST_OAUTH_TOKEN_URL not defined (required when CONN_MODE=REST)"
+    do_exit="YES"
+  fi
+
+  if [[ "${CONN_MODE}" == "REST" ]] && [[ -z ${REST_OAUTH_CLIENT_ID:-} ]]; then
+    echo_error "REST_OAUTH_CLIENT_ID not defined (required when CONN_MODE=REST)"
+    do_exit="YES"
+  fi
+
+  if [[ "${CONN_MODE}" == "REST" ]] && [[ -z ${REST_OAUTH_CLIENT_SECRET:-} ]]; then
+    echo_error "REST_OAUTH_CLIENT_SECRET not defined (required when CONN_MODE=REST)"
     do_exit="YES"
   fi
 
@@ -707,6 +765,8 @@ function print_info() {
   timelog "Connection Mode:     ${BWHITE}${CONN_MODE}${NC}"
   if [[ "${CONN_MODE}" == "REST" ]]; then
     timelog "REST SQL URL:        ${BWHITE}${REST_SQL_URL}${NC}"
+    timelog "REST OAuth URL:      ${BWHITE}${REST_OAUTH_TOKEN_URL}${NC}"
+    timelog "REST OAuth Client:   ${BWHITE}${REST_OAUTH_CLIENT_ID}${NC}"
   fi
   timelog "----------------------------------------------------------"
   timelog
