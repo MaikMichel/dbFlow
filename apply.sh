@@ -193,7 +193,7 @@ function ensure_rest_access_token() {
   fi
 
   local token_response
-  token_response=$(curl -sS -X POST \
+  token_response=$(curl -sS \
     --user "${REST_OAUTH_CLIENT_ID}:${REST_OAUTH_CLIENT_SECRET}" \
     --data "grant_type=client_credentials" \
     "${REST_OAUTH_TOKEN_URL}")
@@ -267,9 +267,7 @@ function run_sql_file_rest() {
           if [[ $? -ne 0 ]]; then
             return 1
           fi
-          # if (( counter == 25 )); then
-          #   exit 3
-          # fi
+          
         else
           timelog "REST execution failed: included SQL file ${include_path} does not exist" "${failure}"
           return 1
@@ -490,7 +488,7 @@ EOF
 
   local tmp_sql
   tmp_sql="$(mktemp -u ${log_file}.XXXXXX).sql"
-  timelog "Writing to temp file ${tmp_sql}"
+  timelog "Writing to temp file ${tmp_sql}" ${grayed}
   printf "%s\n" "${sql_block}" > "${tmp_sql}"
 
   run_sql_file_rest "${REST_APP_SCHEMA}" "${tmp_sql}" ${embeded}
@@ -1122,28 +1120,40 @@ function set_rest_publish_state() {
   if [[ -d "rest" ]]; then
     local appschema=${APP_SCHEMA}
 
-    folders=()
+    local -a folders=()
     if [[ ${PROJECT_MODE} == "FLEX" ]]; then
-      for d in $(find rest -maxdepth 1 -mindepth 1 -type d | sort -f)
-      do
-        folders+=( $(basename "${d}")/modules )
-      done
+      while IFS= read -r d; do
+        folders+=( "$(basename "${d}")/modules" )
+      done < <(find rest -maxdepth 1 -mindepth 1 -type d | sort -f)
     else
       folders=( "modules" )
     fi
 
-    for fldr in "${folders[@]}"
-    do
+    local fldr
+    for fldr in "${folders[@]}"; do
       if [[ ${PROJECT_MODE} == "FLEX" ]]; then
         appschema=${fldr/\/modules/}
       fi
-      modules=()
+      local -a modules=()
       if [[ -d "rest/$fldr" ]]; then
-        for mods in $(find rest/$fldr -maxdepth 1 -mindepth 1 -type d)
-        do
+        while IFS= read -r mods; do
+          local mbase
+          local module_def
           mbase=$(basename "${mods}")
-          modules+=( "${mbase}" )
-        done
+          module_def="${mods}/${mbase}.module.sql"
+
+          # A REST module is valid only if a file named
+          # <module-folder>/<module-folder>.module.sql exists.
+          if [[ -f "${module_def}" ]]; then
+            timelog "Setting REST publish state ${publish} for module ${mbase} in schema ${appschema}"
+            modules+=( "${mbase}" )
+          fi
+        done < <(find "rest/$fldr" -maxdepth 1 -mindepth 1 -type d | sort -f)
+
+        if [[ ${#modules[@]} -eq 0 ]]; then
+          timelog "No REST modules with '*.module.sql' definition found in rest/${fldr}" "info"
+          continue
+        fi
 
         local sql_block
         sql_block=$(cat <<EOF
@@ -1170,8 +1180,9 @@ function set_rest_publish_state() {
           )
 
 EOF
-)
-        run_sql_block "${appschema}" "${sql_block}"
+)   
+      
+        run_sql_block "${appschema}" "${sql_block}" 
       fi
     done
   else

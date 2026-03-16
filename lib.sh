@@ -235,6 +235,7 @@ failure="failure"
 success="success"
 warning="warning"
 info="info"
+grayed="grayed"
 
 timelog () {
   local text=${1:-""}
@@ -255,6 +256,10 @@ timelog () {
       ;;
     "${info}")
       color=${CYAN}
+      reset=${NC}
+      ;;
+    "${grayed}")
+      color=${LWHITE}
       reset=${NC}
       ;;
     *)
