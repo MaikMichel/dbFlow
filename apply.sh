@@ -84,6 +84,111 @@ version="-"
 noextract="n"
 redolog=""
 
+ESC="\e"
+BSE_RESET="[0m";
+BSE_DGRAY="[90m"          # Dark Gray
+BSE_LBLUE="[38;5;74m"     # Light Blue
+BSE_REDBGR="[41m"         # Red Background
+BSE_LVIOLETE="[38;5;68m"     # Light Violet
+BSE_GREENBGR="[48;5;28m"     # Light Violet
+BSE_GREEN="[38;5;28m"     # Light Violet
+BSE_ORANGEBGR="[48;5;172m"     # Light Violet
+BSE_ORANGE="[38;5;172m"     # Light Violet
+BSE_RED="[31m"     # Light Violet
+
+function print_rest_response_as_problem_lines() {
+  local json_response="$1"
+  local default_fileinfo="${2}:1:1"
+
+  local color_off=""
+  local color_orangeb=""
+  local color_orange=""
+  local color_redb=""
+  local color_red=""
+  local color_dgray=""
+
+  # if [[ "${DBFLOW_COLOR_ON}" == "true" ]]; then
+    color_off="${ESC}${BSE_RESET}"
+    color_orangeb="${ESC}${BSE_ORANGEBGR}"
+    color_orange="${ESC}${BSE_ORANGE}"
+    color_redb="${ESC}${BSE_REDBGR}"
+    color_red="${ESC}${BSE_RED}"
+    color_dgray="${ESC}${BSE_DGRAY}"
+  # fi
+
+  function print_problem_line() {
+    local severity="$1"
+    local code="$2"
+    local fileinfo="$3"
+    local message="$4"
+    local sev_bg="${color_redb}"
+    local sev_fg="${color_red}"
+    local msg_fg="${color_red}"
+
+    if [[ "${severity}" == "WARNING" ]]; then
+      sev_bg="${color_orangeb}"
+      sev_fg="${color_orange}"
+      msg_fg="${color_orange}"
+    fi
+
+    printf "%b%s%b %b%s%b %b%s%b %b%s%b\n" \
+      "${sev_bg}" "${severity}" "${color_off}" \
+      "${sev_fg}" "${code}" "${color_off}" \
+      "${color_dgray}" "${fileinfo}" "${color_off}" \
+      "${msg_fg}" "${message}" "${color_off}"
+  }
+
+  # Prefer jq for robust JSON parsing. Fallback prints raw response.
+  if ! command -v jq >/dev/null 2>&1; then
+    [[ -z "${json_response}" ]] || echo "${json_response}"
+    return 0
+  fi
+
+  # Return silently for successful JSON response
+  if jq -e '(.success // false) == true' >/dev/null 2>&1 <<< "${json_response}"; then
+    return 0
+  fi
+
+  # 1) Primary path: parse detailed user_errors into matcher compatible lines
+  local parsed_lines
+  parsed_lines=$(jq -r --arg default_file "${default_fileinfo}" '
+      [ .log_results[]?.user_errors[]? |
+        [
+          ((.attribute // "ERROR") | ascii_upcase),
+          (.typeid // "ORA-24344"),
+          (.fileinfo // $default_file),
+          ((.errtext // "Compilation error") | gsub("[\\r\\n]+"; " "))
+        ]
+      ]
+      | .[]
+      | @tsv
+    ' <<< "${json_response}" 2>/dev/null)
+
+  if [[ $? -ne 0 ]]; then
+    # Fallback: at least emit raw response so user sees compile failure.
+    [[ -z "${json_response}" ]] || echo "${json_response}"
+    return 0
+  fi
+
+  if [[ -n "${parsed_lines}" ]]; then
+    REST_ERRORS_FOUND=1
+    while IFS=$'\t' read -r attribute code fileinfo errtext; do
+      [[ -n "${attribute}" ]] || continue
+      print_problem_line "${attribute}" "${code}" "${fileinfo}" "${errtext}"
+    done <<< "${parsed_lines}"
+    return 0
+  fi
+
+  # 2) Secondary path: fallback from top-level/log_results message
+  local fallback_code
+  local fallback_message
+  fallback_code=$(jq -r 'if .code != null then (.code|tostring) else "ORA-ERROR" end' <<< "${json_response}" 2>/dev/null)
+  fallback_message=$(jq -r 'first([.log_results[]?.error_message?, .message?] | map(select(. != null and . != ""))[]) // "Compilation error"' <<< "${json_response}" 2>/dev/null)
+
+  REST_ERRORS_FOUND=1
+  print_problem_line "ERROR" "${fallback_code}" "${default_fileinfo}" "${fallback_message}"
+}
+
 function run_sql_file_rest() {
   local targetschema=$1
   local sql_file=$2
@@ -94,8 +199,11 @@ function run_sql_file_rest() {
     return 1
   fi
 
+  abs_file="$(realpath "$sql_file")"
+  rel_file="${abs_file#"$basepath"/}"    
+
   if [[ ${use_embeded} == "true" ]]; then
-    timelog "Running SQL file ${sql_file} via REST with embeded file calls"
+    timelog "Running SQL file ${rel_file} via REST with embeded file calls"
 
     local line
     local include_file
@@ -134,14 +242,15 @@ function run_sql_file_rest() {
 
     return 0
   fi
-
-  timelog "Running SQL file ${sql_file} via REST"
+  
+  timelog "Running SQL file ${rel_file} via REST"
 
   local -a curl_args
   curl_args=(
     -sS
     -X POST
     --header "Content-Type:text/plain"
+    --header "file_name:${rel_file}"
   )
 
   local header_var
@@ -169,7 +278,7 @@ function run_sql_file_rest() {
     local compact_response
     compact_response=$(echo "${curl_response}" | tr -d '\r\n')
     if [[ ! "${compact_response}" =~ \"success\"[[:space:]]*:[[:space:]]*true ]]; then
-      echo "${curl_response}"
+      print_rest_response_as_problem_lines "${curl_response}" "${rel_file}"
     fi
   else
     [[ -z "${curl_response}" ]] || echo "${curl_response}"
@@ -338,9 +447,9 @@ EOF
 
   local tmp_sql
   tmp_sql="$(mktemp -u ${log_file}.XXXXXX).sql"
+  timelog "Writing to temp file ${tmp_sql}"
   printf "%s\n" "${sql_block}" > "${tmp_sql}"
 
-  timelog "Running SQL Block on ${REST_APP_SCHEMA} via REST, writing to temp file $(pwd)/${tmp_sql}"
   run_sql_file_rest "${REST_APP_SCHEMA}" "${tmp_sql}" ${embeded}
   local rc=$?
 
