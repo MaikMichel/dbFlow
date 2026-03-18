@@ -498,6 +498,48 @@ EOF
   return ${rc}
 }
 
+function resolve_rest_target_app_id() {
+  local source_app_id=$1
+  local map_string="${REST_APP_ID_MAP:-}"
+
+  if [[ -z "${source_app_id}" ]]; then
+    timelog "REST APP ID resolution failed: source_app_id is empty" "${failure}"
+    return 1
+  fi
+
+  # If no mapping is provided, use source app id as target app id.
+  if [[ -z "${map_string}" ]]; then
+    echo "${source_app_id}"
+    return 0
+  fi
+
+  local pair
+  local source_id
+  local target_id
+
+  IFS=',' read -ra __rest_map_pairs <<< "${map_string}"
+  for pair in "${__rest_map_pairs[@]}"; do
+    pair="$(echo "${pair}" | tr -d '[:space:]')"
+    [[ -n "${pair}" ]] || continue
+
+    if [[ ! "${pair}" =~ ^[0-9]+:[0-9]+$ ]]; then
+      timelog "Invalid REST_APP_ID_MAP entry '${pair}'. Expected format <source>:<target>, e.g. 1111:12120" "${failure}"
+      return 1
+    fi
+
+    source_id="${pair%%:*}"
+    target_id="${pair##*:}"
+
+    if [[ "${source_id}" == "${source_app_id}" ]]; then
+      echo "${target_id}"
+      return 0
+    fi
+  done
+
+  timelog "No REST APP ID mapping found for source app ${source_app_id} in REST_APP_ID_MAP" "${failure}"
+  return 1
+}
+
 
 function check_vars() {
   # validate parameters
@@ -1211,7 +1253,10 @@ function set_apps_unavailable() {
       fi
 
       if [[ ${CONN_MODE} == "REST" ]]; then
-        l_app_id=${REST_APP_ID}
+        l_app_id=$(resolve_rest_target_app_id "${l_app_id}")
+        if [[ $? -ne 0 ]] || [[ -z "${l_app_id}" ]]; then
+          exit 3
+        fi
         l_workspace=${REST_WORKSPACE}
         l_appschema=${REST_APP_SCHEMA}
       fi
@@ -1306,7 +1351,10 @@ function set_apps_available() {
       fi
 
       if [[ ${CONN_MODE} == "REST" ]]; then
-        l_app_id=${REST_APP_ID}
+        l_app_id=$(resolve_rest_target_app_id "${l_app_id}")
+        if [[ $? -ne 0 ]] || [[ -z "${l_app_id}" ]]; then
+          exit 3
+        fi
         l_workspace=${REST_WORKSPACE}
         l_appschema=${REST_APP_SCHEMA}
       fi
@@ -1474,12 +1522,19 @@ EOF
 )
           run_sql_block "${appschema}" "${sql_block}" true
         else
-          timelog "Installing $line using REST API Num: ${REST_APP_ID} Workspace: ${REST_WORKSPACE} Schema: ${REST_APP_SCHEMA} Original Num: ${original_app_id}"
-          run_app_import_rest "${REST_APP_SCHEMA}" "${REST_WORKSPACE}" "${REST_APP_ID}" "${original_app_id}"
+          local target_app_id
+          target_app_id=$(resolve_rest_target_app_id "${app_id}")
+          if [[ $? -ne 0 ]] || [[ -z "${target_app_id}" ]]; then
+            timelog "ERROR when resolving REST target app id for source app ${app_id}" "${failure}"
+            exit 3
+          fi
+
+          timelog "Installing $line using REST API Num: ${target_app_id} Workspace: ${REST_WORKSPACE} Schema: ${REST_APP_SCHEMA} Original Num: ${original_app_id}"
+          run_app_import_rest "${REST_APP_SCHEMA}" "${REST_WORKSPACE}" "${target_app_id}" "${original_app_id}"
         fi
         if [[ $? -ne 0 ]]; then
           timelog "ERROR when executing ${line}" "${failure}"
-          manage_result "failure"
+          exit 3
         fi
 
 

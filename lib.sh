@@ -295,13 +295,13 @@ function check_connection() {
       exit 2
     fi
 
-    if [[ -z "${REST_OAUTH_TOKEN_URL:-}" ]] || [[ -z "${REST_OAUTH_CLIENT_ID:-}" ]] || [[ -z "${REST_OAUTH_CLIENT_SECRET:-}" ]]; then
-      echo_fatal "Missing REST OAuth config (REST_OAUTH_TOKEN_URL, REST_OAUTH_CLIENT_ID, REST_OAUTH_CLIENT_SECRET)"
+    if [[ -z "${REST_OAUTH_TOKEN_URL:-}" ]] || [[ -z "${REST_OAUTH_BASIC_B64:-}" ]]; then
+      echo_fatal "Missing REST OAuth config (REST_OAUTH_TOKEN_URL, REST_OAUTH_BASIC_B64)"
       exit 2
     fi
 
-    token_response=$(curl -sS -X POST \
-      --user "${REST_OAUTH_CLIENT_ID}:${REST_OAUTH_CLIENT_SECRET}" \
+    token_response=$(curl -sS \
+      --header "Authorization: Basic ${REST_OAUTH_BASIC_B64}" \
       --data "grant_type=client_credentials" \
       "${REST_OAUTH_TOKEN_URL}")
     token_rc=$?
