@@ -194,7 +194,7 @@ function ensure_rest_access_token() {
 
   local token_response
   token_response=$(curl -sS \
-    --user "${REST_OAUTH_CLIENT_ID}:${REST_OAUTH_CLIENT_SECRET}" \
+    --header "Authorization: Basic ${REST_OAUTH_BASIC_B64}" \
     --data "grant_type=client_credentials" \
     "${REST_OAUTH_TOKEN_URL}")
   local token_rc=$?
@@ -528,13 +528,8 @@ function check_vars() {
     do_exit="YES"
   fi
 
-  if [[ "${CONN_MODE}" == "REST" ]] && [[ -z ${REST_OAUTH_CLIENT_ID:-} ]]; then
-    echo_error "REST_OAUTH_CLIENT_ID not defined (required when CONN_MODE=REST)"
-    do_exit="YES"
-  fi
-
-  if [[ "${CONN_MODE}" == "REST" ]] && [[ -z ${REST_OAUTH_CLIENT_SECRET:-} ]]; then
-    echo_error "REST_OAUTH_CLIENT_SECRET not defined (required when CONN_MODE=REST)"
+  if [[ "${CONN_MODE}" == "REST" ]] && [[ -z ${REST_OAUTH_BASIC_B64:-} ]]; then
+    echo_error "REST_OAUTH_BASIC_B64 not defined (required when CONN_MODE=REST)"
     do_exit="YES"
   fi
 
@@ -764,7 +759,7 @@ function print_info() {
   if [[ "${CONN_MODE}" == "REST" ]]; then
     timelog "REST SQL URL:        ${BWHITE}${REST_SQL_URL}${NC}"
     timelog "REST OAuth URL:      ${BWHITE}${REST_OAUTH_TOKEN_URL}${NC}"
-    timelog "REST OAuth Client:   ${BWHITE}${REST_OAUTH_CLIENT_ID}${NC}"
+    timelog "REST OAuth Basic:    ${BWHITE}TRUE${NC}"
   fi
   timelog "----------------------------------------------------------"
   timelog
