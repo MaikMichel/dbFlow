@@ -460,7 +460,7 @@ function check_params() {
   fi
 
   RLS_VERSION=$version
-  RLS_BUILD=${build^^}
+  RLS_BUILD=$(printf '%s' "$build" | tr '[:lower:]' '[:upper:]')
 
   if [[ ${apply_folder} != '-' ]] && [[ ! -d ${apply_folder} ]]; then
     echo_error "Folder to apply to does not exist!"
