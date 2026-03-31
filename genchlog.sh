@@ -163,27 +163,27 @@ function gen_changelog() {
   tag_date=$(git log -1 --format=%as "${current_tag}")
 
 
-  if [[ -n ${INTENT_PREFIXES} ]]; then
+  if [[ ${#INTENT_PREFIXES[@]} -gt 0 ]]; then
 
-    # gen associative array
-    declare -A temp_files
+    # bash 3.2 on macOS has no associative arrays, so keep temp files by index
+    declare -a temp_files
 
     # gen tempfile for each intent
-    for intent in "${INTENT_PREFIXES[@]}"; do
+    for intent in "${!INTENT_PREFIXES[@]}"; do
       temp_files[$intent]=$(mktemp)
     done
     other_file=$(mktemp)
 
     # for each commit
     git log ${current_tag}...${previous_tag} --pretty="%s" --reverse --no-merges | while read -r line; do
-      TICKET_ID=$(echo "$line" | sed -n "s/.*$TICKET_MATCH*/\1/p")
+      TICKET_ID=$(printf '%s\n' "$line" | grep -e "${TICKET_MATCH}" -o | head -n 1 || true)
       if [[ -n ${TICKET_ID} ]]; then
         line="$line [${TICKET_ID}](${TICKET_URL}/${TICKET_ID})"
       fi
       matched=false
       for intent in "${!INTENT_PREFIXES[@]}"; do
-        if [[ $line == ${INTENT_PREFIXES[$intent]}:* ]]; then
-          echo "- ${line} " >> "${temp_files[${INTENT_PREFIXES[$intent]}]}"
+        if [[ $line == "${INTENT_PREFIXES[$intent]}:"* ]]; then
+          echo "- ${line} " >> "${temp_files[$intent]}"
           matched=true
           break
         fi
@@ -201,9 +201,9 @@ function gen_changelog() {
       echo ""
 
       for intent in "${!INTENT_PREFIXES[@]}"; do
-          if [ -s "${temp_files[${INTENT_PREFIXES[$intent]}]}" ]; then
+          if [ -s "${temp_files[$intent]}" ]; then
               echo "## ${INTENT_NAMES[$intent]}"
-              cat "${temp_files[${INTENT_PREFIXES[$intent]}]}"
+              cat "${temp_files[$intent]}"
               echo ""
           fi
       done
@@ -217,7 +217,7 @@ function gen_changelog() {
     } > "$targetfile"
 
     # Temporäre Dateien löschen
-    for intent in "${INTENT_PREFIXES[@]}"; do
+    for intent in "${!INTENT_PREFIXES[@]}"; do
         rm -f "${temp_files[$intent]}"
     done
 
