@@ -1497,6 +1497,16 @@ function install_apps() {
         else
           local original_app_id=$(grep -oP 'p_default_application_id=>\K\d+' "application/set_environment.sql")
         fi
+        
+        # begin .hooks/pre
+        if [[ -d ".hooks/pre" ]]; then
+          for pre_hook in .hooks/pre/*.sh; do
+            [[ -e "${pre_hook}" ]] || continue
+            timelog "Running hook ${pre_hook}" "${info}"
+            "${pre_hook}"
+          done
+        fi
+        # end .hooks/pre
 
         if [[ "${CONN_MODE}" == "SQLNET" ]]; then
           timelog "Installing $line Num: ${app_id} Workspace: ${workspace} Schema: ${appschema} Original Num: ${original_app_id}"
@@ -1564,9 +1574,19 @@ EOF
           exit 3
         fi
 
+        # begin .hooks/post
+        if [[ -d ".hooks/post" ]]; then
+          for post_hook in .hooks/post/*.sh; do
+            [[ -e "${post_hook}" ]] || continue
+            timelog "Running hook ${post_hook}" "${info}"
+            "${post_hook}"
+          done
+        fi
+        # end .hooks/post
 
         cd "${basepath}" || exit
       fi
+
     done < "$app_install_file"
   else
     timelog "File $app_install_file does not exist" "${warning}"
