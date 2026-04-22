@@ -1,0 +1,10 @@
+-- Installscript for rest_compile
+---------------------------------
+
+-- File: db/_setup/rest_compile/rest_compile_logs.sql
+-- File: db/_setup/rest_compile/rest_compile.pks
+-- File: db/_setup/rest_compile/rest_compile.pkb
+-- File: db/_setup/rest_compile/com.dbflow.deploy.module.sql
+-- File: db/_setup/rest_compile/rest_compile_api_role.sql
+-- File: db/_setup/rest_compile/rest_compile_api_priv.sql
+-- File: db/_setup/rest_compile/rest_compile_api_client.sql
