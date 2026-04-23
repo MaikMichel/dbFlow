@@ -34,6 +34,8 @@
 - Deploy patches to target instances
 - Copy configuration to other instances
 - Generate Test deployments as Insert Scripts
+- Bootstrap Codex `AGENTS.md` instructions with `.dbFlow/setup.sh --agents`
+- Run targeted SQL and PL/SQL checks with `.dbFlow/exec-sql.sh`
 
 
 ### Generate project "demo"
@@ -119,6 +121,16 @@ $ .dbFlow/setup.sh --install
 
 ## Documentation
   [Just read the docs](https://maikmichel.github.io/dbFlow/)
+
+## Codex / AGENTS
+
+For Codex-based workflows you can generate or refresh the dbFlow managed `AGENTS.md` block with:
+
+```bash
+.dbFlow/setup.sh --agents
+```
+
+This installs a reusable instruction block that points agents to `.dbFlow/exec-sql.sh` for ad-hoc SQL, PL/SQL, and compile checks while keeping `.dbFlow/apply.sh` for full deployment flows.
 
 ## Frequently Asked Question
 
