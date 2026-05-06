@@ -2,8 +2,17 @@
 
 set -euo pipefail
 
-DEF_FILE="${1:-db/_setup/rest_compile/install.def}"
-OUT_FILE="${2:-db/_setup/rest_compile/install.sql}"
+START_DIR="$(pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DEF_FILE="${SCRIPT_DIR}/install.def"
+OUT_FILE="${SCRIPT_DIR}/install.sql"
+DEF_FILE_DISPLAY="${DEF_FILE}"
+
+if [[ "${DEF_FILE}" == "${START_DIR}/"* ]]; then
+  DEF_FILE_DISPLAY="${DEF_FILE#${START_DIR}/}"
+elif [[ "${DEF_FILE}" == "${START_DIR}" ]]; then
+  DEF_FILE_DISPLAY="."
+fi
 
 if [[ ! -f "$DEF_FILE" ]]; then
   echo "ERROR: Definition file not found: $DEF_FILE" >&2
@@ -15,7 +24,7 @@ mkdir -p "$OUT_DIR"
 
 {
   echo "-- Auto-generated install script"
-  echo "-- Source definition: $DEF_FILE"
+  echo "-- Source definition: $DEF_FILE_DISPLAY"
   echo "-- Generated at: $(date '+%Y-%m-%d %H:%M:%S %z')"
   echo
   echo "set define off"
@@ -27,12 +36,19 @@ found_any=0
 while IFS= read -r line || [[ -n "$line" ]]; do
   if [[ "$line" =~ ^[[:space:]]*--[[:space:]]*File:[[:space:]]*(.+)$ ]]; then
     src_file="${BASH_REMATCH[1]}"
+    src_path=""
     src_file="${src_file%$'\r'}"
     src_file="${src_file#"${src_file%%[![:space:]]*}"}"
     src_file="${src_file%"${src_file##*[![:space:]]}"}"
 
-    if [[ ! -f "$src_file" ]]; then
-      echo "ERROR: Referenced file not found: $src_file" >&2
+    if [[ "${src_file}" = /* ]]; then
+      src_path="${src_file}"
+    else
+      src_path="${SCRIPT_DIR}/${src_file}"
+    fi
+
+    if [[ ! -f "$src_path" ]]; then
+      echo "ERROR: Referenced file not found: $src_path" >&2
       exit 1
     fi
 
@@ -43,7 +59,7 @@ while IFS= read -r line || [[ -n "$line" ]]; do
       echo "-- ====================================================================="
       echo "-- Begin File: $src_file"
       echo "-- ====================================================================="
-      cat "$src_file"
+      cat "$src_path"
       echo
       echo "-- ====================================================================="
       echo "-- End File: $src_file"
