@@ -10,6 +10,7 @@ function usage() {
   printf "  ${0} --generate <project-name> [--envonly]\n"
   printf "  ${0} --install [--force]\n"
   printf "  ${0} --copyto <target-path>\n"
+  printf "  ${0} --agents\n"
   echo
   printf "${BWHITE}Options${NC}\n"
   printf "  -h | --help                    - Show this screen\n"
@@ -29,6 +30,8 @@ function usage() {
   printf "  -a | --apply                   - Generate and write apply.env only\n"
   printf "     └─[ -w | --wizard ]         - do NOT start with a wizard questionare, import from env\n"
   printf "\n"
+  printf "  --agents                       - create or refresh the dbFlow managed block in AGENTS.md\n"
+  printf "\n"
   printf "${PURPLE}Flex-Mode helpers${NC}\n"
   printf "  -s | --add_schema <schema-name>    - add schema folder to apex, db, rest and _setup incl. install-file\n"  printf "\n"
   printf "  -p | --add_workspace <schema-name> - add workspace folder to apex and _setup incl. install-files\n"
@@ -37,6 +40,7 @@ function usage() {
   printf "  ${0} --generate mytest\n"
   printf "  ${0} --install\n"
   printf "  ${0} --copyto \"../instances/build\"\n"
+  printf "  ${0} --agents\n"
   echo
   echo
   exit $1
@@ -65,6 +69,9 @@ basepath=$(pwd)
 
 # array of subdirectories inside $targetpath to scan for executables (sh/sql)
 array=( tablespaces directories users features workspaces acls )
+DBFLOW_AGENTS_START="<!-- dbFlow:BEGIN exec-sql -->"
+DBFLOW_AGENTS_END="<!-- dbFlow:END exec-sql -->"
+DBFLOW_AGENTS_SNIPPET=".dbFlow/docs/agents/exec-sql.md"
 
 function notify() {
     [[ ${1} = 0 ]] || echo ❌ EXIT "${1}"
@@ -536,6 +543,78 @@ function copytopath() {
   else
     echo ".dbFlow/setup.sh --install is only available with CONN_MODE=SQLNET"
   fi
+}
+
+function manage_agents_file() {
+  local agents_file="AGENTS.md"
+  local tmp_file="${agents_file}.tmp"
+  local block_file=""
+
+  if [[ ! -f "${DBFLOW_AGENTS_SNIPPET}" ]]; then
+    echo_error "Missing AGENTS snippet ${DBFLOW_AGENTS_SNIPPET}"
+    exit 1
+  fi
+
+  block_file=$(mktemp)
+  {
+    printf "%s\n" "${DBFLOW_AGENTS_START}"
+    cat "${DBFLOW_AGENTS_SNIPPET}"
+    printf "%s\n" "${DBFLOW_AGENTS_END}"
+  } > "${block_file}"
+
+  if [[ ! -f "${agents_file}" ]]; then
+    {
+      printf "# Repository Guidelines\n\n"
+      cat "${block_file}"
+      printf "\n"
+    } > "${agents_file}"
+    rm -f "${block_file}"
+    echo_success "Created ${agents_file} with dbFlow managed AGENTS block"
+    return 0
+  fi
+
+  awk \
+    -v start="${DBFLOW_AGENTS_START}" \
+    -v end="${DBFLOW_AGENTS_END}" \
+    -v block_file="${block_file}" \
+    '
+      function print_block() {
+        while ((getline line < block_file) > 0) {
+          print line
+        }
+        close(block_file)
+      }
+      BEGIN {
+        in_block = 0
+        replaced = 0
+      }
+      $0 == start {
+        if (replaced == 0) {
+          print_block()
+          replaced = 1
+        }
+        in_block = 1
+        next
+      }
+      $0 == end {
+        in_block = 0
+        next
+      }
+      in_block == 0 {
+        print
+      }
+      END {
+        if (replaced == 0) {
+          if (NR > 0) {
+            print ""
+          }
+          print_block()
+        }
+      }
+    ' "${agents_file}" > "${tmp_file}" && mv "${tmp_file}" "${agents_file}"
+
+  rm -f "${block_file}"
+  echo_success "Updated ${agents_file} with dbFlow managed AGENTS block"
 }
 
 
@@ -1216,10 +1295,11 @@ function check_params_and_run_command() {
   force_option="NO"
   wizard_option="NO"
   apply_option="NO"
+  agents_option="NO"
   add_workspace_option="NO"
   add_schema_option="NO"
 
-  while getopts_long 'hg:p:s:ic:efwa help generate: add_workspace: add_schema: install copyto: envonly force wizard apply' OPTKEY "${@}"; do
+  while getopts_long 'hg:p:s:ic:efwa help generate: add_workspace: add_schema: install copyto: envonly force wizard apply agents' OPTKEY "${@}"; do
       case ${OPTKEY} in
           'h'|'help')
               help_option="YES"
@@ -1254,6 +1334,9 @@ function check_params_and_run_command() {
               ;;
           'a'|'apply')
               apply_option="YES"
+              ;;
+          'agents')
+              agents_option="YES"
               ;;
           '?')
               echo_error "INVALID OPTION -- ${OPTARG}" >&2
@@ -1336,6 +1419,11 @@ function check_params_and_run_command() {
 
   if [[ ${copy_config_option} == "YES" ]] && [[ ${#folder_argument} -gt 2 ]]; then
     copytopath ${folder_argument}
+    exit 0
+  fi
+
+  if [[ ${agents_option} == "YES" ]]; then
+    manage_agents_file
     exit 0
   fi
 
