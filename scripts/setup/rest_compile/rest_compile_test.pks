@@ -76,6 +76,9 @@ create or replace package rest_compile_test is
   --%test(collects create or replace unit terminated by slash line)
   procedure collects_cor_terminated_by_slash;
 
+  --%test(collects simple DDL terminated by slash line)
+  procedure collects_simple_ddl_terminated_by_slash;
+
   --%test(does not terminate on semicolons inside string literals)
   procedure ignores_semicolon_in_string;
 
@@ -102,6 +105,12 @@ create or replace package rest_compile_test is
 
   --%test(executes anonymous block with multiline comment markers as a single statement)
   procedure runs_anonymous_block_with_multiline_comment;
+
+  --%test(executes simple DDL with trailing semicolons)
+  procedure runs_simple_ddl_with_trailing_semicolons;
+
+  --%test(executes simple DDL with slash terminator)
+  procedure runs_simple_ddl_with_slash_terminator;
 
   --%test(processes plain blob payloads)
   procedure runs_plain_blob_payload;

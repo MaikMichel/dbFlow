@@ -1021,6 +1021,22 @@ end;
     ut.expect(dbms_lob.instr(l_stmts(1).stmt_text, chr(10) || '/' || chr(10), 1, 1)).to_equal(0);
   end;
 
+  procedure collects_simple_ddl_terminated_by_slash is
+    l_script clob;
+    l_stmts  rest_compile.t_statement_list;
+  begin
+    l_script :=
+      to_clob('create unique index rc_simple_ddl_slash_i1 on rc_simple_ddl_slash_t' || chr(10) ||
+              '  (id)' || chr(10) ||
+              '/' || chr(10));
+
+    l_stmts := rest_compile.split_into_statements(l_script);
+
+    ut.expect(l_stmts.count).to_equal(1);
+    ut.expect(dbms_lob.instr(l_stmts(1).stmt_text, 'create unique index rc_simple_ddl_slash_i1', 1, 1)).to_be_greater_than(0);
+    ut.expect(dbms_lob.instr(l_stmts(1).stmt_text, chr(10) || '/' || chr(10), 1, 1)).to_equal(0);
+  end;
+
 
   procedure ignores_semicolon_in_string is
     l_script clob;
@@ -1230,6 +1246,65 @@ end;
 
     ut.expect(l_result.get_number('total_statements')).to_equal(1);
     ut.expect(l_result.get_number('executed_count')).to_equal(1);
+  end;
+
+  procedure runs_simple_ddl_with_trailing_semicolons is
+    l_script clob;
+    l_result json_object_t;
+  begin
+    l_script :=
+      to_clob('begin' || chr(10) ||
+              '  execute immediate ''drop table rc_semicolon_ddl_t purge'';' || chr(10) ||
+              'exception' || chr(10) ||
+              '  when others then' || chr(10) ||
+              '    if sqlcode != -942 then' || chr(10) ||
+              '      raise;' || chr(10) ||
+              '    end if;' || chr(10) ||
+              'end;' || chr(10) ||
+              '/' || chr(10) ||
+              'create table rc_semicolon_ddl_t (' || chr(10) ||
+              '  id number not null' || chr(10) ||
+              ');' || chr(10) ||
+              'create unique index rc_semicolon_ddl_i1 on rc_semicolon_ddl_t' || chr(10) ||
+              '  (id)' || chr(10) ||
+              '  logging' || chr(10) ||
+              ';' || chr(10) ||
+              'drop table rc_semicolon_ddl_t purge;' || chr(10));
+
+    l_result := rest_compile.run_content(p_fname => 'simple_ddl_semicolon_test.sql',
+                                         p_script_content => l_script);
+
+    ut.expect(l_result.get_number('total_statements')).to_equal(4);
+    ut.expect(l_result.get_number('executed_count')).to_equal(4);
+  end;
+
+  procedure runs_simple_ddl_with_slash_terminator is
+    l_script clob;
+    l_result json_object_t;
+  begin
+    l_script :=
+      to_clob('begin' || chr(10) ||
+              '  execute immediate ''drop table rc_slash_ddl_t purge'';' || chr(10) ||
+              'exception' || chr(10) ||
+              '  when others then' || chr(10) ||
+              '    if sqlcode != -942 then' || chr(10) ||
+              '      raise;' || chr(10) ||
+              '    end if;' || chr(10) ||
+              'end;' || chr(10) ||
+              '/' || chr(10) ||
+              'create table rc_slash_ddl_t (' || chr(10) ||
+              '  id number not null' || chr(10) ||
+              ');' || chr(10) ||
+              'create unique index rc_slash_ddl_i1 on rc_slash_ddl_t' || chr(10) ||
+              '  (id)' || chr(10) ||
+              '/' || chr(10) ||
+              'drop table rc_slash_ddl_t purge;' || chr(10));
+
+    l_result := rest_compile.run_content(p_fname => 'simple_ddl_slash_test.sql',
+                                         p_script_content => l_script);
+
+    ut.expect(l_result.get_number('total_statements')).to_equal(4);
+    ut.expect(l_result.get_number('executed_count')).to_equal(4);
   end;
 
   procedure runs_plain_blob_payload is

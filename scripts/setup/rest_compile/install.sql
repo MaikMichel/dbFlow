@@ -1,6 +1,6 @@
 -- Auto-generated install script
 -- Source definition: db/_setup/rest_compile/install.def
--- Generated at: 2026-04-20 21:51:09 +0200
+-- Generated at: 2026-05-06 13:54:27 +0200
 
 set define off
 
@@ -541,6 +541,11 @@ create or replace package body rest_compile is
             return l_stack_top = 0;
         end;
 
+        function only_semicolon_pending return boolean is
+        begin
+            return l_stack_top = 1 and l_stack(1) = 'SEMICOLON';
+        end;
+
         procedure skip_leading_block_comments(p_line         in out nocopy varchar2,
                                               p_line_skipped out boolean) is
             l_close_pos pls_integer;
@@ -782,11 +787,16 @@ create or replace package body rest_compile is
                     continue;
                 end if;
 
-                -- If we are in CREATE OR REPLACE mode and stack empty, a slash line terminates the statement
+                -- Slash lines terminate CREATE OR REPLACE units and simple SQL/DDL
+                -- statements that are otherwise only waiting for their SQL*Plus
+                -- script terminator.
                 if l_is_slash_line and not l_in_squote and not l_in_line_comment and not l_in_block_comment then
-                    -- SQL*Plus/SQLcl delimiter: never part of the statement text
-                    -- If a statement is still open and we are in a create-unit, you may finalize here.
-                    if l_expect_slash_end and l_stmt.stmt_text is not null then
+                    -- SQL*Plus/SQLcl delimiter: never part of the statement text.
+                    -- For simple DDL we only accept slash when no grouping remains
+                    -- open and the pending stack entry is the synthetic SEMICOLON token.
+                    if l_stmt.stmt_text is not null
+                       and ((l_expect_slash_end and stack_empty)
+                         or (only_semicolon_pending and l_plsql_block_depth = 0)) then
                         finalize_statement;
                     end if;
                     continue;
@@ -948,11 +958,46 @@ create or replace package body rest_compile is
         return l_result;
     end split_into_statements;
 
+    function strip_trailing_sql_terminator(p_stmt_text in clob) return clob is
+        l_stmt clob;
+        l_len  pls_integer;
+        l_ch   varchar2(1 char);
+    begin
+        if p_stmt_text is null then
+            return null;
+        end if;
+
+        dbms_lob.createtemporary(l_stmt, true);
+        dbms_lob.append(l_stmt, p_stmt_text);
+
+        l_len := dbms_lob.getlength(l_stmt);
+        while l_len > 0 loop
+            l_ch := dbms_lob.substr(l_stmt, 1, l_len);
+            exit when l_ch not in (' ', chr(9), chr(10), chr(13));
+            l_len := l_len - 1;
+        end loop;
+
+        if l_len < dbms_lob.getlength(l_stmt) then
+            dbms_lob.trim(l_stmt, l_len);
+        end if;
+
+        if l_len > 0 and dbms_lob.substr(l_stmt, 1, l_len) = ';' then
+            dbms_lob.trim(l_stmt, l_len - 1);
+        end if;
+
+        return l_stmt;
+    end strip_trailing_sql_terminator;
+
     procedure execute_statement(p_fname in varchar2,
                                 p_stmt in r_statement) is
-        l_start number := dbms_utility.get_time;
+        l_start     number := dbms_utility.get_time;
+        l_stmt_text clob := p_stmt.stmt_text;
     begin
-        execute immediate p_stmt.stmt_text;
+        if p_stmt.stmt_type is null then
+            l_stmt_text := strip_trailing_sql_terminator(p_stmt.stmt_text);
+        end if;
+
+        execute immediate l_stmt_text;
         log_result(p_type => p_stmt.stmt_type,
                    p_status => 'SUCCESS',
                    p_msg => null,
