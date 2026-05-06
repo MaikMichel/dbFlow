@@ -131,9 +131,11 @@ function print2envsql() {
 
 function show_generate_summary() {
   local env_only=$2
+  local local_conn_mode
   # target environment
   [ ! -f ./build.env ] || source ./build.env
   [ ! -f ./apply.env ] || source ./apply.env
+  local_conn_mode=$(normalize_conn_mode "${CONN_MODE:-SQLNET}")
 
 
   log_file="readme.md"
@@ -198,7 +200,12 @@ function show_generate_summary() {
   echo "\`\`\`"
   echo
   if [[ ${env_only} == "NO" ]]; then
-  printf "To execute the installation just run: ${CYAN}\`.dbFlow/setup.sh --install\`${NC}\n"
+    if [[ ${local_conn_mode} == "SQLNET" ]]; then
+      printf "To execute the installation just run: ${CYAN}\`.dbFlow/setup.sh --install\`${NC}\n"
+    else
+      printf "This project is configured with ${BWHITE}CONN_MODE=REST${NC}. ${CYAN}\`.dbFlow/setup.sh --install\`${NC} is not available for REST targets.\n"
+      printf "You need to install rest_compile package and REST services. Just upload and run the file db/_setup/rest_compile/install.sql on your workspace\n"
+    fi
   else
   printf "This was an environment only generation. This is meant for environments you are\n"
   printf "not allowed to install your initial setup on your own. For example create users\n"
@@ -213,6 +220,10 @@ function show_generate_summary() {
   echo
   printf "To configure changelog settings, just modify corresponding parameters in \`${BWHITE}build.env${NC}\`\n"
   echo
+  if [[ ${local_conn_mode} == "REST" ]]; then
+    print_rest_manual_prepare_hint
+    echo
+  fi
   if [[ ${env_only} == "NO" ]]; then
     if [[ ${PROJECT_MODE} != "FLEX" ]]; then
       printf "${BORANGE}Keep in mind that the script to create the workspace **${BWHITE}$PROJECT${NC}${BORANGE}** will drop the one with the same name!${NC}\n"
@@ -236,12 +247,162 @@ function remove2envsql() {
   rm -f "${basepath}/${targetpath}/env.sql"
 }
 
+function normalize_conn_mode() {
+  local raw_mode=${1:-"${CONN_MODE:-SQLNET}"}
+
+  raw_mode=$(echo "${raw_mode}" | tr '[:lower:]' '[:upper:]')
+  raw_mode=${raw_mode:-"SQLNET"}
+
+  echo "${raw_mode}"
+}
+
+function normalize_project_mode() {
+  local raw_mode=${1:-"${PROJECT_MODE:-SINGLE}"}
+
+  raw_mode=$(echo "${raw_mode}" | tr '[:lower:]' '[:upper:]')
+
+  case "${raw_mode}" in
+    "S"|"SINGLE")
+      echo "SINGLE"
+      ;;
+    "M"|"MULTI")
+      echo "MULTI"
+      ;;
+    "F"|"FLEX")
+      echo "FLEX"
+      ;;
+    *)
+      echo "${raw_mode}"
+      ;;
+  esac
+}
+
+function normalize_yes_no() {
+  local raw_value=${1:-"NO"}
+
+  raw_value=$(echo "${raw_value}" | tr '[:lower:]' '[:upper:]')
+
+  case "${raw_value}" in
+    "Y"|"YES")
+      echo "YES"
+      ;;
+    *)
+      echo "NO"
+      ;;
+  esac
+}
+
+function join_by() {
+  local delimiter=$1
+  shift
+  local first="YES"
+  local item=""
+
+  for item in "$@"
+  do
+    if [[ ${first} == "YES" ]]; then
+      printf "%s" "${item}"
+      first="NO"
+    else
+      printf "%s%s" "${delimiter}" "${item}"
+    fi
+  done
+}
+
+function get_rest_app_id_map_from_apex_dirs() {
+  local apex_dir=""
+  local folder_name=""
+  local app_id=""
+  local mappings=()
+
+  while IFS= read -r apex_dir
+  do
+    folder_name=$(basename "${apex_dir}")
+    if [[ ${folder_name} =~ ^f([0-9]+)$ ]]; then
+      app_id="${BASH_REMATCH[1]}"
+      mappings+=( "${app_id}:${app_id}" )
+    fi
+  done < <(find apex -maxdepth 1 -mindepth 1 -type d -name 'f*' 2>/dev/null | sort)
+
+  if [[ ${#mappings[@]} -gt 0 ]]; then
+    join_by "," "${mappings[@]}"
+  fi
+}
+
+function get_rest_app_id_map_example() {
+  echo "1111:1111,2222:2222"
+}
+
+function resolve_rest_app_id_map_default() {
+  local discovered_map=""
+
+  discovered_map=$(get_rest_app_id_map_from_apex_dirs)
+  if [[ -n ${discovered_map} ]]; then
+    echo "${discovered_map}"
+  else
+    echo "${REST_APP_ID_MAP:-}"
+  fi
+}
+
+function resolve_rest_url_prefix_default() {
+  local workspace_name=$1
+  local sql_suffix=""
+
+  if [[ -n ${REST_SQL_URL:-} ]] && [[ -n ${workspace_name} ]]; then
+    sql_suffix="/${workspace_name}/dbflow/deploy"
+    if [[ "${REST_SQL_URL}" == *"${sql_suffix}" ]]; then
+      echo "${REST_SQL_URL%"${sql_suffix}"}"
+      return 0
+    fi
+  fi
+
+  if [[ -n ${REST_OAUTH_TOKEN_URL:-} ]] && [[ "${REST_OAUTH_TOKEN_URL}" == */oauth/token ]]; then
+    echo "${REST_OAUTH_TOKEN_URL%/oauth/token}"
+    return 0
+  fi
+
+  echo ""
+}
+
+function ensure_rest_single_mode() {
+  local effective_project_mode
+  effective_project_mode=$(normalize_project_mode "${1}")
+
+  if [[ $(normalize_conn_mode "${wiz_conn_mode:-${CONN_MODE:-SQLNET}}") == "REST" ]] && [[ ${effective_project_mode} != "SINGLE" ]]; then
+    echo_error "CONN_MODE=REST is only supported when PROJECT_MODE=SINGLE"
+    exit 1
+  fi
+}
+
+function copy_rest_compile_setup_files() {
+  local target_dir="${targetpath}/rest_compile"
+
+  mkdir -p "${target_dir}"
+  cp ".dbFlow/scripts/setup/rest_compile/install.sql" "${target_dir}/install.sql"
+  cp ".dbFlow/scripts/setup/rest_compile/readme.md" "${target_dir}/readme.md"
+}
+
+function print_rest_manual_prepare_hint() {
+  printf "${BORANGE}REST target preparation required:${NC}\n"
+  printf "  Manually install ${CYAN}db/_setup/rest_compile/install.sql${NC} in the target system.\n"
+  printf "  Additional information can be found in ${CYAN}db/_setup/rest_compile/readme.md${NC}.\n"
+}
+
 function install() {
   local yes=${1:-"NO"}
+  local install_conn_mode
+
+  install_conn_mode=$(normalize_conn_mode "${CONN_MODE:-SQLNET}")
 
   if [[ ! -d "${targetpath}" ]]; then
      echo_error "Project setup folder does not exist, so nothing to install. Run \"$0 --generate <project>\" at first!"
      exit 1
+  fi
+
+  if [[ ${install_conn_mode} == "REST" ]]; then
+    print_rest_manual_prepare_hint
+    echo_error "setup.sh --install only supports CONN_MODE=SQLNET"
+    exit 1
   fi
 
   if [[ $yes == "YES" ]]; then
@@ -376,8 +537,12 @@ function copytopath() {
   cd "${basepath}" || exit
 
   echo "After changing your database connection you just have to execute:"
-  printf "${YELLOW}.dbFlow/setup.sh install${NC}\n"
-  echo "to install your base dependencies"
+  if [[ $(normalize_conn_mode "${CONN_MODE:-SQLNET}") == "SQLNET" ]]; then
+    printf "${YELLOW}.dbFlow/setup.sh install${NC}\n"
+    echo "to install your base dependencies"
+  else
+    echo ".dbFlow/setup.sh --install is only available with CONN_MODE=SQLNET"
+  fi
 }
 
 function manage_agents_file() {
@@ -468,11 +633,25 @@ function wizard() {
     printf "Configure Project: ${BWHITE}${wiz_project_name}${NC} (${BGRAY}Environment only option${NC})\n"
   fi
 
+  local local_conn_mode
+  local_conn_mode=$(normalize_conn_mode "${CONN_MODE:-SQLNET}")
+  read -r -p "$(printf "Which connection mode should be used? ${BUNLINE}SQLNET${NC} or ${BUNLINE}REST${NC} [${BGRAY}${local_conn_mode}${NC}]: ")" wiz_conn_mode
+  wiz_conn_mode=$(normalize_conn_mode "${wiz_conn_mode:-${local_conn_mode}}")
+
+  if [[ ${wiz_conn_mode} != "SQLNET" ]] && [[ ${wiz_conn_mode} != "REST" ]]; then
+    echo_error "CONN_MODE must be SQLNET or REST"
+    exit 1
+  fi
 
   if [[ ${apply_only} == "NO" ]]; then
-    local local_project_mode=${PROJECT_MODE-"M"}
-    read -r -p "$(printf "Which dbFLow project type do you want to create? ${BUNLINE}S${NC}ingle, ${BUNLINE}M${NC}ulti or ${BUNLINE}F${NC}lex [${BGRAY}${local_project_mode:0:1}${NC}]: ")" wiz_project_mode
-    wiz_project_mode=${wiz_project_mode:-"${local_project_mode:0:1}"}
+    if [[ ${wiz_conn_mode} == "REST" ]]; then
+      wiz_project_mode="S"
+      printf "Project type is fixed to ${BWHITE}SINGLE${NC} because ${BWHITE}CONN_MODE=REST${NC}\n"
+    else
+      local local_project_mode=${PROJECT_MODE-"M"}
+      read -r -p "$(printf "Which dbFLow project type do you want to create? ${BUNLINE}S${NC}ingle, ${BUNLINE}M${NC}ulti or ${BUNLINE}F${NC}lex [${BGRAY}${local_project_mode:0:1}${NC}]: ")" wiz_project_mode
+      wiz_project_mode=${wiz_project_mode:-"${local_project_mode:0:1}"}
+    fi
 
     local local_build_branch=${BUILD_BRANCH-"build"}
     read -r -p "$(printf "When running release tests, what is your prefered branch name [${BGRAY}${local_build_branch}${NC}]: ")" wiz_build_branch
@@ -502,28 +681,70 @@ function wizard() {
     fi
   fi
 
-  local local_db_tns=${DB_TNS-"localhost:1521/freepdb1"}
-  read -r -p "$(printf "Enter database connections [${BGRAY}${local_db_tns}${NC}]: ")" wiz_db_tns
-  wiz_db_tns=${wiz_db_tns:-"${local_db_tns}"}
+  if [[ ${wiz_conn_mode} == "SQLNET" ]]; then
+    local local_db_tns=${DB_TNS-"localhost:1521/freepdb1"}
+    read -r -p "$(printf "Enter database connections [${BGRAY}${local_db_tns}${NC}]: ")" wiz_db_tns
+    wiz_db_tns=${wiz_db_tns:-"${local_db_tns}"}
 
-  local local_db_admin_user=${DB_ADMIN_USER-"sys"}
-  read -r -p "$(printf "Enter username of admin user (${BUNLINE}admin${NC}, ${BUNLINE}sys${NC}, ...) [${BGRAY}${local_db_admin_user}${NC}]: ")" wiz_db_admin_user
-  wiz_db_admin_user=${wiz_db_admin_user:-"${local_db_admin_user}"}
+    local local_db_admin_user=${DB_ADMIN_USER-"sys"}
+    read -r -p "$(printf "Enter username of admin user (${BUNLINE}admin${NC}, ${BUNLINE}sys${NC}, ...) [${BGRAY}${local_db_admin_user}${NC}]: ")" wiz_db_admin_user
+    wiz_db_admin_user=${wiz_db_admin_user:-"${local_db_admin_user}"}
 
-  ask4pwd "$(printf "Enter password for ${BUNLINE}${wiz_db_admin_user}${NC} [${BGRAY}leave blank and you will be asked for${NC}]: ")"
-  if [[ ${pass} != "" ]]; then
-    wiz_db_admin_pwd=`echo "${pass}"`
-  fi
+    ask4pwd "$(printf "Enter password for ${BUNLINE}${wiz_db_admin_user}${NC} [${BGRAY}leave blank and you will be asked for${NC}]: ")"
+    if [[ ${pass} != "" ]]; then
+      wiz_db_admin_pwd=`echo "${pass}"`
+    fi
 
-  if [[ $(toLowerCase "${wiz_project_mode}") != "s" ]]; then
-    wiz_db_app_user=${DB_APP_USER-"${wiz_project_name}_depl"}
-    ask4pwd "$(printf "Enter password for deployment_user (proxyuser: ${BUNLINE}${wiz_db_app_user}${NC}) [${BGRAY}leave blank and you will be asked for${NC}]: ")"
+    if [[ $(toLowerCase "${wiz_project_mode}") != "s" ]]; then
+      wiz_db_app_user=${DB_APP_USER-"${wiz_project_name}_depl"}
+      ask4pwd "$(printf "Enter password for deployment_user (proxyuser: ${BUNLINE}${wiz_db_app_user}${NC}) [${BGRAY}leave blank and you will be asked for${NC}]: ")"
+    else
+      wiz_db_app_user=${DB_APP_USER-"${wiz_project_name}"}
+      ask4pwd "$(printf "Enter password for user ${BUNLINE}${wiz_db_app_user}${NC} [${BGRAY}leave blank and you will be asked for${NC}]: ")"
+    fi
+    if [[ ${pass} != "" ]]; then
+      wiz_db_app_pwd=`echo "${pass}"`
+    fi
   else
-    wiz_db_app_user=${DB_APP_USER-"${wiz_project_name}"}
-    ask4pwd "$(printf "Enter password for user ${BUNLINE}${wiz_db_app_user}${NC} [${BGRAY}leave blank and you will be asked for${NC}]: ")"
-  fi
-  if [[ ${pass} != "" ]]; then
-    wiz_db_app_pwd=`echo "${pass}"`
+    if [[ ${apply_only} == "YES" ]]; then
+      ensure_rest_single_mode "${PROJECT_MODE}"
+    else
+      ensure_rest_single_mode "${wiz_project_mode}"
+    fi
+
+    local local_rest_workspace=${REST_WORKSPACE:-${WORKSPACE:-${wiz_project_name}}}
+    read -r -p "$(printf "Enter REST target workspace [${BGRAY}${local_rest_workspace}${NC}]: ")" wiz_rest_workspace
+    wiz_rest_workspace=${wiz_rest_workspace:-"${local_rest_workspace}"}
+
+    local local_rest_app_schema=${REST_APP_SCHEMA:-${APP_SCHEMA:-${wiz_project_name}}}
+    read -r -p "$(printf "Enter REST target app schema [${BGRAY}${local_rest_app_schema}${NC}]: ")" wiz_rest_app_schema
+    wiz_rest_app_schema=${wiz_rest_app_schema:-"${local_rest_app_schema}"}
+
+    local local_rest_url_prefix
+    local_rest_url_prefix=$(resolve_rest_url_prefix_default "${wiz_rest_workspace}")
+    read -r -p "$(printf "Enter REST URL prefix (example: https://oracleapex.com/ords/<WORKSPACE>/dbflow/deploy) [${BGRAY}${local_rest_url_prefix}${NC}]: ")" wiz_rest_url_prefix
+    wiz_rest_url_prefix=${wiz_rest_url_prefix:-"${local_rest_url_prefix}"}
+    wiz_rest_url_prefix=$(rem_trailing_slash "${wiz_rest_url_prefix}")
+    if [[ -n ${wiz_rest_url_prefix} ]]; then
+      wiz_rest_sql_url="${wiz_rest_url_prefix}/${wiz_rest_workspace}/dbflow/deploy"
+      wiz_rest_oauth_token_url="${wiz_rest_url_prefix}/oauth/token"
+    else
+      wiz_rest_sql_url=""
+      wiz_rest_oauth_token_url=""
+    fi
+
+    wiz_rest_app_id_map_default=$(resolve_rest_app_id_map_default)
+    if [[ -n ${wiz_rest_app_id_map_default} ]]; then
+      read -r -p "$(printf "Enter REST app id mapping source:target [,source:target] [${BGRAY}${wiz_rest_app_id_map_default}${NC}]: ")" wiz_rest_app_id_map
+      wiz_rest_app_id_map=${wiz_rest_app_id_map:-"${wiz_rest_app_id_map_default}"}
+    else
+      read -r -p "$(printf "Enter REST app id mapping source:target [,source:target] [${BGRAY}leave blank to write example comment${NC}]: ")" wiz_rest_app_id_map
+      wiz_rest_app_id_map=${wiz_rest_app_id_map:-""}
+    fi
+
+    local local_rest_oauth_basic_b64=${REST_OAUTH_BASIC_B64-""}
+    read -r -p "$(printf "Enter REST OAuth Basic B64 value [${BGRAY}${local_rest_oauth_basic_b64}${NC}]: ")" wiz_rest_oauth_basic_b64
+    wiz_rest_oauth_basic_b64=${wiz_rest_oauth_basic_b64:-"${local_rest_oauth_basic_b64}"}
   fi
 
   local local_depot_path=${DEPOT_PATH-"_depot"}
@@ -541,6 +762,10 @@ function wizard() {
   local local_logpath=${LOG_PATH-"_logs"}
   read -r -p "$(printf "Enter path to place logfiles and artifacts into after installation? [${BGRAY}${local_logpath}${NC}]: ")" wiz_logpath
   wiz_logpath=${wiz_logpath:-"${local_logpath}"}
+
+  local local_do_not_clear_schema_on_init=${DO_NOT_CLEAR_SCHEMA_ON_INIT-"NO"}
+  read -r -p "$(printf "Do not clear target schema on init deployment? [${BGRAY}${local_do_not_clear_schema_on_init}${NC}]: ")" wiz_do_not_clear_schema_on_init
+  wiz_do_not_clear_schema_on_init=$(normalize_yes_no "${wiz_do_not_clear_schema_on_init:-${local_do_not_clear_schema_on_init}}")
 
   if [[ ${apply_only} == "NO" ]]; then
 
@@ -565,40 +790,85 @@ function wizard() {
 }
 
 function write_apply() {
-  if [[ -z ${wiz_db_tns+x} ]] || \
-     [[ -z ${wiz_db_app_user+x} ]] || \
-     [[ -z ${wiz_db_admin_user+x} ]] || \
-     [[ -z ${wiz_depot_path+x} ]] ||\
-     [[ -z ${wiz_stage+x} ]] ||\
-     [[ -z ${wiz_sqlcli+x} ]]
-    then
+  local effective_conn_mode
+  local effective_project_mode
+  local effective_rest_app_id_map
+
+  effective_conn_mode=$(normalize_conn_mode "${wiz_conn_mode:-${CONN_MODE:-SQLNET}}")
+  effective_project_mode=$(normalize_project_mode "${wiz_project_mode:-${PROJECT_MODE:-SINGLE}}")
+  effective_rest_app_id_map=${wiz_rest_app_id_map:-$(resolve_rest_app_id_map_default)}
+
+  if [[ -z ${wiz_depot_path+x} ]] || \
+     [[ -z ${wiz_stage+x} ]] || \
+     [[ -z ${wiz_sqlcli+x} ]] || \
+     [[ -z ${wiz_logpath+x} ]] || \
+     [[ -z ${wiz_do_not_clear_schema_on_init+x} ]]; then
     echo_error "Not all vars set"
     exit 1
   fi
 
+  if [[ ${effective_conn_mode} == "REST" ]]; then
+    ensure_rest_single_mode "${effective_project_mode}"
+    if [[ -z ${wiz_rest_sql_url+x} ]] || \
+       [[ -z ${wiz_rest_app_schema+x} ]] || \
+       [[ -z ${wiz_rest_workspace+x} ]] || \
+       [[ -z ${wiz_rest_oauth_token_url+x} ]] || \
+       [[ -z ${wiz_rest_oauth_basic_b64+x} ]]; then
+      echo_error "Not all REST vars set"
+      exit 1
+    fi
+  else
+    if [[ -z ${wiz_db_tns+x} ]] || \
+       [[ -z ${wiz_db_app_user+x} ]] || \
+       [[ -z ${wiz_db_admin_user+x} ]]; then
+      echo_error "Not all SQLNET vars set"
+      exit 1
+    fi
+  fi
+
   # apply.env
   {
-    echo "# DB Connection"
-    echo "DB_TNS=${wiz_db_tns}"
+    echo "# Connection Mode"
+    echo "CONN_MODE=${effective_conn_mode}"
     echo ""
-    echo "# Deployment User"
-    echo "DB_APP_USER=${wiz_db_app_user}"
-    if [[ ${wiz_db_app_pwd} != "" ]]; then
-      wiz_db_app_pwd=`echo "${wiz_db_app_pwd}" | base64`
-      echo "DB_APP_PWD=\"!${wiz_db_app_pwd}\""
+
+    if [[ ${effective_conn_mode} == "REST" ]]; then
+      echo "# REST Connection"
+      echo "REST_SQL_URL=${wiz_rest_sql_url}"
+      echo "REST_APP_SCHEMA=${wiz_rest_app_schema}"
+      echo "REST_WORKSPACE=${wiz_rest_workspace}"
+      if [[ -n ${effective_rest_app_id_map} ]]; then
+        echo "REST_APP_ID_MAP=\"${effective_rest_app_id_map}\""
+      else
+        echo "# REST_APP_ID_MAP=\"$(get_rest_app_id_map_example)\""
+      fi
+      echo "REST_OAUTH_TOKEN_URL=${wiz_rest_oauth_token_url}"
+      echo "REST_OAUTH_BASIC_B64=${wiz_rest_oauth_basic_b64}"
+      echo ""
     else
-      echo "DB_APP_PWD="
+      echo "# DB Connection"
+      echo "DB_TNS=${wiz_db_tns}"
+      echo ""
+      echo "# Deployment User"
+      echo "DB_APP_USER=${wiz_db_app_user}"
+      if [[ ${wiz_db_app_pwd} != "" ]]; then
+        wiz_db_app_pwd=`echo "${wiz_db_app_pwd}" | base64`
+        echo "DB_APP_PWD=\"!${wiz_db_app_pwd}\""
+      else
+        echo "DB_APP_PWD="
+      fi
+      echo ""
+      echo "# SYS/ADMIN Pass"
+      echo "DB_ADMIN_USER=${wiz_db_admin_user}"
+      if [[ ${wiz_db_admin_pwd} != "" ]]; then
+        wiz_db_admin_pwd=`echo "${wiz_db_admin_pwd}" | base64`
+        echo "DB_ADMIN_PWD=\"!${wiz_db_admin_pwd}\""
+      else
+        echo "DB_ADMIN_PWD="
+      fi
+      echo ""
     fi
-    echo ""
-    echo "# SYS/ADMIN Pass"
-    echo "DB_ADMIN_USER=${wiz_db_admin_user}"
-    if [[ ${wiz_db_admin_pwd} != "" ]]; then
-      wiz_db_admin_pwd=`echo "${wiz_db_admin_pwd}" | base64`
-      echo "DB_ADMIN_PWD=\"!${wiz_db_admin_pwd}\""
-    else
-      echo "DB_ADMIN_PWD="
-    fi
-    echo ""
+
     echo "# Path to Depot"
     echo "DEPOT_PATH=${wiz_depot_path}"
     echo ""
@@ -613,6 +883,9 @@ function write_apply() {
     echo "# Scripts are executed with"
     echo "SQLCLI=${wiz_sqlcli}"
     echo ""
+    echo "# On init deployments skip clearing target schema(s)"
+    echo "DO_NOT_CLEAR_SCHEMA_ON_INIT=${wiz_do_not_clear_schema_on_init}"
+    echo ""
     echo "# TEAMS Channel to Post to on success"
     echo "TEAMS_WEBHOOK_URL="
     echo ""
@@ -626,19 +899,32 @@ function write_apply() {
 }
 
 function generate() {
+  local effective_conn_mode
+  effective_conn_mode=$(normalize_conn_mode "${wiz_conn_mode:-${CONN_MODE:-SQLNET}}")
+
   printf "${CYAN}Generating project with following options${NC}\n"
   printf "  Project:                          ${BWHITE}${wiz_project_name}${NC}\n"
   printf "  Mode:                             ${BWHITE}${wiz_project_mode}${NC}\n"
+  printf "  Connection Mode:                  ${BWHITE}${effective_conn_mode}${NC}\n"
   printf "  Build Branch:                     ${BWHITE}${wiz_build_branch}${NC}\n"
   printf "  Create Changelogs:                ${BWHITE}${wiz_create_changelogs}${NC}\n"
   printf "  Schema Changelog proccessed:      ${BWHITE}${wiz_chl_schema}${NC}\n"
-  printf "  Connection:                       ${BWHITE}${wiz_db_tns}${NC}\n"
-  printf "  Admin User:                       ${BWHITE}${wiz_db_admin_user}${NC}\n"
-  printf "  Deployment User:                  ${BWHITE}${wiz_db_app_user}${NC}\n"
+  if [[ ${effective_conn_mode} == "REST" ]]; then
+    printf "  REST SQL URL:                     ${BWHITE}${wiz_rest_sql_url}${NC}\n"
+    printf "  REST App Schema:                  ${BWHITE}${wiz_rest_app_schema}${NC}\n"
+    printf "  REST Workspace:                   ${BWHITE}${wiz_rest_workspace}${NC}\n"
+    printf "  REST App ID Map:                  ${BWHITE}${wiz_rest_app_id_map:-# $(get_rest_app_id_map_example)}${NC}\n"
+    printf "  REST OAuth URL:                   ${BWHITE}${wiz_rest_oauth_token_url}${NC}\n"
+  else
+    printf "  Connection:                       ${BWHITE}${wiz_db_tns}${NC}\n"
+    printf "  Admin User:                       ${BWHITE}${wiz_db_admin_user}${NC}\n"
+    printf "  Deployment User:                  ${BWHITE}${wiz_db_app_user}${NC}\n"
+  fi
   printf "  Location depot:                   ${BWHITE}${wiz_depot_path}${NC}\n"
   printf "  Location logs:                    ${BWHITE}${wiz_logpath}${NC}\n"
   printf "  Branch is mapped to Stage:        ${BWHITE}${wiz_stage}${NC}\n"
   printf "  SQl commandline:                  ${BWHITE}${wiz_sqlcli}${NC}\n"
+  printf "  Do not clear schema on init:      ${BWHITE}${wiz_do_not_clear_schema_on_init}${NC}\n"
   printf "  Install default tools:            ${BWHITE}${wiz_with_tools}${NC}\n"
   printf "  Configure with default apps:      ${BWHITE}${wiz_apex_ids}${NC}\n"
   printf "  Configure with default modules:   ${BWHITE}${wiz_rest_modules}${NC}\n"
@@ -650,15 +936,17 @@ function generate() {
      [[ -z ${wiz_project_mode+x} ]] || \
      [[ -z ${wiz_build_branch+x} ]] || \
      [[ -z ${wiz_create_changelogs+x} ]] || \
-     [[ -z ${wiz_db_tns+x} ]] || \
-     [[ -z ${wiz_db_app_user+x} ]] || \
-     [[ -z ${wiz_db_admin_user+x} ]] || \
+     [[ -z ${wiz_conn_mode+x} ]] || \
      [[ -z ${wiz_depot_path+x} ]] ||\
      [[ -z ${wiz_stage+x} ]] ||\
-     [[ -z ${wiz_sqlcli+x} ]]
-    then
+     [[ -z ${wiz_sqlcli+x} ]] || \
+     [[ -z ${wiz_do_not_clear_schema_on_init+x} ]]; then
     echo_error "Not all vars set"
     exit 1
+  fi
+
+  if [[ ${effective_conn_mode} == "REST" ]]; then
+    ensure_rest_single_mode "${wiz_project_mode}"
   fi
   printf "${BGRAY}... working ... ${NC}\n"
 
@@ -762,6 +1050,10 @@ function generate() {
   } > build.env
 
   write_apply
+
+  if [[ ${effective_conn_mode} == "REST" ]]; then
+    copy_rest_compile_setup_files
+  fi
 
   # write gitignore
   [[ -f .gitignore ]] || touch .gitignore

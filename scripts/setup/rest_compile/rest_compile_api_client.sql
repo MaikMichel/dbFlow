@@ -1,11 +1,10 @@
 declare
   C_CLIENT_NAME   varchar2(100) := 'DBFLOW_REST_COMPILE_API_CLIENT';
   l_client_row    user_ords_clients%rowtype;
-  
-  l_client_id     varchar2(200);
-  l_client_secret varchar2(200);
   l_exists        number;
-
+  l_workspace     varchar2(200);
+  l_basic_plain   varchar2(4000);
+  l_basic_b64     varchar2(4000);
 begin
   select count(*)
     into l_exists
@@ -15,10 +14,8 @@ begin
   if l_exists = 0 then 
     oauth.create_client(
       p_name            => C_CLIENT_NAME,
-      p_grant_type      => 'client_credentials',
-      p_owner           => 'Maik',
-      p_description     => 'Internal API client to use with dbFlow',
-      p_support_email   => 'maik.michel@oracle.com',
+      p_grant_type      => 'client_credentials',      
+      p_description     => 'Internal API client to use with dbFlow',      
       p_privilege_names => 'DBFLOW_REST_COMPILE_API_PRIV'
     );
 
@@ -35,15 +32,23 @@ begin
     from user_ords_clients 
    where name = C_CLIENT_NAME; 
 
-  dbms_output.put_line('# put the following lines into apply.env and modify URL accordingly');
-  dbms_output.put_line('REST_OAUTH_TOKEN_URL="<< HOST to ORDS (https://localhost:8080/ords/) >> '||lower(user)||'/oauth/token"');
-  dbms_output.put_line('REST_OAUTH_CLIENT_ID="'||l_client_row.client_id||'"');
-  dbms_output.put_line('REST_OAUTH_CLIENT_SECRET="'||l_client_row.client_secret||'"');
+  select workspace 
+    into l_workspace
+    from APEX_WORKSPACES 
+   where rownum = 1; 
+
+  l_basic_plain := l_client_row.client_id || ':' || l_client_row.client_secret;
+  l_basic_b64 := utl_raw.cast_to_varchar2(
+    utl_encode.base64_encode(
+      utl_i18n.string_to_raw(l_basic_plain, 'AL32UTF8')
+    )
+  );
+  l_basic_b64 := replace(replace(l_basic_b64, chr(10), ''), chr(13), '');
+
+  dbms_output.put_line('# put the following lines into apply.env and modify URL if needed');
+  dbms_output.put_line('REST_SQL_URL='||apex_mail.get_instance_url||lower(l_workspace)||'/dbflow/deploy"');
+  dbms_output.put_line('REST_OAUTH_TOKEN_URL='||apex_mail.get_instance_url||lower(l_workspace)||'/oauth/token"');
+  dbms_output.put_line('REST_OAUTH_BASIC_B64="'||l_basic_b64||'"');
 end;
 /
 
--- select client_id, client_secret
---   from   user_ords_clients
---  where name = 'DBFLOW_REST_COMPILE_API_CLIENT';
-
---  curl -i -k --user xIGpIqNAq6p6KVGnC92bJA..:IU5EFPWsi2mQbciHyd_fxg.. --data "grant_type=client_credentials" https://localhost:8006/ords/ati/oauth/token
