@@ -143,6 +143,7 @@ function execute_sql_file() {
   "${SQLCLI}" -S -L "$(get_connect_string "${targetschema}")" <<EOF
 whenever oserror exit failure rollback
 whenever sqlerror exit sql.sqlcode rollback
+set serveroutput on
 @"${sql_file}"
 exit success
 EOF
@@ -155,6 +156,7 @@ function execute_inline_sql() {
   "${SQLCLI}" -S -L "$(get_connect_string "${targetschema}")" <<EOF
 whenever oserror exit failure rollback
 whenever sqlerror exit sql.sqlcode rollback
+set serveroutput on
 ${sql_command}
 exit success
 EOF
