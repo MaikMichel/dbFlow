@@ -1142,113 +1142,6 @@ function write_install_rest() {
   fi
 }
 
-function gen_changelog() {
-  local current_tag=${1}
-  local previous_tag=${2}
-  local targetfile=${3}
-  timelog "Generating Changelog ${current_tag}...${previous_tag} to ${targetfile}" ${info}
-
-  # define log
-  changetime=`date "+%Y%m%d%H%M%S"`
-  logf=changelog_${changetime}.md
-  tag_date=$(git log -1 --pretty=format:'%ad' --date=short ${current_tag})
-
-  printf "# ${PROJECT} - Changelog\n\n" > ${logf}
-  printf "## ${current_tag} (${tag_date})\n\n" >> ${logf}
-
-  if [[ -n ${INTENT_PREFIXES} ]]; then
-    for intent in "${!INTENT_PREFIXES[@]}"; do
-
-      if [[ $(uname) == "Darwin" ]]; then
-        fixes=()
-        while IFS=$'\n' read -r line; do
-          fixes+=("$line")
-        done < <(git log ${log_args} --pretty="%s" --reverse | grep -v Merge | grep "^${INTENT_PREFIXES[$intent]}: *")
-      else
-        readarray -t fixes <<< "$(git log ${log_args} --pretty="%s" --reverse | grep -v Merge | grep "^${INTENT_PREFIXES[$intent]}: *")"
-      fi
-
-      IFS=$'\n' fixes=($(sort -u <<< "$(printf "%s\n" "${fixes[@]}")"))
-      unset IFS
-
-      if [[ ${#fixes[@]} -gt 0 ]] && [[ ${fixes[0]} != "" ]]; then
-        printf "### ${INTENT_NAMES[$intent]}\n\n" >> ${logf}
-
-        for fix in "${fixes[@]}"; do
-          fix_line=${fix/"${INTENT_PREFIXES[$intent]}: "/}
-          fix_issue=""
-
-          if [[ -n ${TICKET_MATCH} ]]; then
-            fix_issue=$(echo "${fix_line}" | grep -e "${TICKET_MATCH}" -o || true)
-          fi
-
-          echo_line=""
-          if [[ $fix_issue != "" ]] && [[ -n ${TICKET_URL} ]]; then
-            echo_line="* ${fix_line} [View]($(force_trailing_slash ${TICKET_URL})${fix_issue})" >> ${logf}
-          else
-            echo_line="* ${fix_line}" >> ${logf}
-          fi
-
-          grep -qxF "${echo_line}" ${logf} || echo "${echo_line}" >> ${logf}
-        done
-        printf "\n\n" >> ${logf}
-      fi;
-
-    done
-  fi
-
-  # when INTENT_ELSE is defined output goes here
-  if [[ -n ${INTENT_ELSE} ]]; then
-    intent_pipes="($(printf '%s|' "${INTENT_PREFIXES[@]}" | sed 's/|$//'))"
-
-    if [[ $(uname) == "Darwin" ]]; then
-      fixes=()
-      while IFS=$'\n' read -r line; do
-        fixes+=("$line")
-      done < <(git log ${log_args} --pretty="%s" --reverse | grep -v Merge | grep -Ev "^${intent_pipes}:")
-    else
-      readarray -t fixes <<< $(git log ${log_args} --pretty="%s" --reverse | grep -v Merge | grep -Ev "^${intent_pipes}:")
-    fi
-
-    IFS=$'\n' fixes=($(sort -u <<< "$(printf "%s\n" "${fixes[@]}")"))
-    unset IFS
-
-    if [[ ${#fixes[@]} -gt 0 ]] && [[ ${fixes[0]} != "" ]]; then
-      if [[ -n ${INTENT_PREFIXES} ]]; then
-        printf "### ${INTENT_ELSE}\n\n" >> ${logf}
-      fi
-
-      for fix in "${fixes[@]}"; do
-        fix_line=${fix}
-        fix_issue=$(echo "${fix_line}" | grep -e "${TICKET_MATCH}" -o || true)
-
-        if [[ $fix_issue != "" ]]; then
-          echo "* ${fix_line} [View]($(force_trailing_slash ${TICKET_URL})${fix_issue})" >> ${logf}
-        else
-          echo "* ${fix_line}" >> ${logf}
-        fi
-      done
-      printf "\n\n" >> ${logf}
-    fi;
-  fi
-
-  echo "---" >> ${logf}
-
-
-  if [[ -f ${targetfile} ]]; then
-    # remove first line
-    sed '1d' "${targetfile}" > "${targetfile}.tmp" && mv "${targetfile}.tmp" "${targetfile}"
-
-    # append to new output
-    cat ${targetfile} >> ${logf}
-    rm ${targetfile}
-  fi
-
-
-  mv ${logf} ${targetfile}
-  timelog "Changelog written to ${targetfile}" ${success}
-}
-
 function write_changelog() {
   if [[ ${diff_args} == "--cached" ]]; then
     timelog "No changelog cause installing from cache"
@@ -1263,22 +1156,26 @@ function write_changelog() {
         return
       fi
 
-      if [[ ${current_tag} == "HEAD" ]]; then
-        previous_tag=$(git describe --tags --abbrev=0 --always)
+      if [[ -n ${from_commit:-} ]]; then
+        previous_tag=${from_commit}
       else
-        previous_tag=$(git tag --sort=-creatordate | grep -A 1 "${current_tag}" | tail -n 1) || true
-      fi
+        if [[ ${current_tag} == "HEAD" ]]; then
+          previous_tag=$(git describe --tags --abbrev=0 --always)
+        else
+          previous_tag=$(git tag --sort=-creatordate | grep -A 1 "${current_tag}" | tail -n 1) || true
+        fi
 
-      # if start and end are the same at head, we put all into the change log
-      # otherwise we had to look for a previous commit: git log --format="%H" -n 2 | tail -1
-      if [[ ${current_tag} == "HEAD" ]]; then
-        current_commit=$(git rev-parse HEAD)
-        if [[ ${current_commit} == "${previous_tag}" ]]; then
-          previous_tag=$(git log --max-parents=0 HEAD --pretty=format:%H)
+        # if start and end are the same at head, we put all into the change log
+        # otherwise we had to look for a previous commit: git log --format="%H" -n 2 | tail -1
+        if [[ ${current_tag} == "HEAD" ]]; then
+          current_commit=$(git rev-parse HEAD)
+          if [[ ${current_commit} == "${previous_tag}" ]]; then
+            previous_tag=$(git log --max-parents=0 HEAD --pretty=format:%H)
+          fi
         fi
       fi
 
-      gen_changelog "${current_tag}" "${previous_tag}" "changelog_${mode}_${version}.md"
+      ./.dbFlow/genchlog.sh --end "${current_tag}" --start "${previous_tag}" --label "${version}" --file "changelog_${mode}_${version}.md" --append-existing
 
       timelog "ChangeLog generated: ${current_tag} -- ${previous_tag}"
     else
