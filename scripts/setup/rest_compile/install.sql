@@ -1,6 +1,6 @@
 -- Auto-generated install script
--- Source definition: install.def
--- Generated at: 2026-06-11 08:59:24 +0200
+-- Source definition: .dbFlow/scripts/setup/rest_compile/install.def
+-- Generated at: 2026-06-09 10:07:13 +0200
 
 set define off
 
@@ -3126,7 +3126,8 @@ begin
     oauth.create_client(
       p_name            => C_CLIENT_NAME,
       p_grant_type      => 'client_credentials',      
-      p_description     => 'Internal API client to use with dbFlow',      
+      p_description     => 'Internal API client to use with dbFlow',
+      p_support_email   => v('APP_USER'),        
       p_privilege_names => 'DBFLOW_REST_COMPILE_API_PRIV'
     );
 
@@ -3157,8 +3158,8 @@ begin
   l_basic_b64 := replace(replace(l_basic_b64, chr(10), ''), chr(13), '');
 
   dbms_output.put_line('# put the following lines into apply.env and modify URL if needed');
-  dbms_output.put_line('REST_SQL_URL='||apex_mail.get_instance_url||lower(l_workspace)||'/dbflow/deploy"');
-  dbms_output.put_line('REST_OAUTH_TOKEN_URL='||apex_mail.get_instance_url||lower(l_workspace)||'/oauth/token"');
+  dbms_output.put_line('REST_SQL_URL="'||apex_mail.get_instance_url||lower(l_workspace)||'/dbflow/deploy"');
+  dbms_output.put_line('REST_OAUTH_TOKEN_URL="'||apex_mail.get_instance_url||lower(l_workspace)||'/oauth/token"');
   dbms_output.put_line('REST_OAUTH_BASIC_B64="'||l_basic_b64||'"');
 end;
 /
