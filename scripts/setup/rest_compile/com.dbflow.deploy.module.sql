@@ -32,18 +32,10 @@ BEGIN
       p_items_per_page =>  0,
       p_mimes_allowed  => '',
       p_comments       => NULL,
-      p_source         => 
-'declare
-    l_response  json_object_t := json_object_t();
-begin
-    -- set Content-Type to JSON explicitly
-    owa_util.mime_header(''application/json'', false);
-    sys.htp.p(''Cache-Control: no-cache'');
-    owa_util.http_header_close;
-
-    l_response.put(''success'', true);
-
-    sys.htp.p(l_response.to_string);
+      p_source         =>
+'begin
+  -- health check including version/api_level for client capability detection
+  rest_compile.get_info_rest;
 end;'
       );
   ORDS.DEFINE_HANDLER(
@@ -127,9 +119,424 @@ end;'
       p_source_type        => 'HEADER',
       p_param_type         => 'STRING',
       p_access_method      => 'IN',
-      p_comments           => 'Name of the workspace to import the app to');      
+      p_comments           => 'Name of the workspace to import the app to');
+
+  -- ===================================================================
+  -- compileschema: recompile all/invalid objects of the schema
+  -- ===================================================================
+  ORDS.DEFINE_TEMPLATE(
+      p_module_name    => 'com.dbflow.deploy',
+      p_pattern        => 'compileschema',
+      p_priority       => 0,
+      p_etag_type      => 'HASH',
+      p_etag_query     => NULL,
+      p_comments       => NULL);
+  ORDS.DEFINE_HANDLER(
+      p_module_name    => 'com.dbflow.deploy',
+      p_pattern        => 'compileschema',
+      p_method         => 'POST',
+      p_source_type    => 'plsql/block',
+      p_items_per_page =>  0,
+      p_mimes_allowed  => '',
+      p_comments       => NULL,
+      p_source         =>
+'begin
+  rest_compile.compile_schema_rest(p_compile_all      => :compile_all,
+                                   p_db_folder        => :db_folder,
+                                   p_enable_warnings  => :enable_warnings,
+                                   p_warning_string   => :warning_string,
+                                   p_warning_excludes => :warning_excludes);
+end;'
+      );
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'compileschema',
+      p_method             => 'POST',
+      p_name               => 'compile_all',
+      p_bind_variable_name => 'compile_all',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'TRUE compiles all objects, FALSE only invalid ones');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'compileschema',
+      p_method             => 'POST',
+      p_name               => 'db_folder',
+      p_bind_variable_name => 'db_folder',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'name of the db folder inside the workspace (default db)');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'compileschema',
+      p_method             => 'POST',
+      p_name               => 'enable_warnings',
+      p_bind_variable_name => 'enable_warnings',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'optional ALTER SESSION SET PLSQL_WARNINGS statement');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'compileschema',
+      p_method             => 'POST',
+      p_name               => 'warning_string',
+      p_bind_variable_name => 'warning_string',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'WARNING to report warnings, NIX to report errors only');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'compileschema',
+      p_method             => 'POST',
+      p_name               => 'warning_excludes',
+      p_bind_variable_name => 'warning_excludes',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'comma separated list of warning message numbers to exclude');
+
+  -- ===================================================================
+  -- expapp: APEX application export (split), responds with a ZIP
+  -- ===================================================================
+  ORDS.DEFINE_TEMPLATE(
+      p_module_name    => 'com.dbflow.deploy',
+      p_pattern        => 'expapp',
+      p_priority       => 0,
+      p_etag_type      => 'HASH',
+      p_etag_query     => NULL,
+      p_comments       => NULL);
+  ORDS.DEFINE_HANDLER(
+      p_module_name    => 'com.dbflow.deploy',
+      p_pattern        => 'expapp',
+      p_method         => 'POST',
+      p_source_type    => 'plsql/block',
+      p_items_per_page =>  0,
+      p_mimes_allowed  => '',
+      p_comments       => NULL,
+      p_source         =>
+'begin
+  rest_compile.export_app_rest(p_app_id         => :app_id,
+                               p_export_options => :export_options);
+end;'
+      );
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'expapp',
+      p_method             => 'POST',
+      p_name               => 'app_id',
+      p_bind_variable_name => 'app_id',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'ID or alias of the application to export');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'expapp',
+      p_method             => 'POST',
+      p_name               => 'export_options',
+      p_bind_variable_name => 'export_options',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'SQLcl style export flags, e.g. -skipExportDate -expOriginalIds');
+
+  -- ===================================================================
+  -- expplugin: APEX plugin export (single component), responds with a ZIP
+  -- ===================================================================
+  ORDS.DEFINE_TEMPLATE(
+      p_module_name    => 'com.dbflow.deploy',
+      p_pattern        => 'expplugin',
+      p_priority       => 0,
+      p_etag_type      => 'HASH',
+      p_etag_query     => NULL,
+      p_comments       => NULL);
+  ORDS.DEFINE_HANDLER(
+      p_module_name    => 'com.dbflow.deploy',
+      p_pattern        => 'expplugin',
+      p_method         => 'POST',
+      p_source_type    => 'plsql/block',
+      p_items_per_page =>  0,
+      p_mimes_allowed  => '',
+      p_comments       => NULL,
+      p_source         =>
+'begin
+  rest_compile.export_plugin_rest(p_app_id      => :app_id,
+                                  p_plugin_name => :plugin_name);
+end;'
+      );
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'expplugin',
+      p_method             => 'POST',
+      p_name               => 'app_id',
+      p_bind_variable_name => 'app_id',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'ID or alias of the application');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'expplugin',
+      p_method             => 'POST',
+      p_name               => 'plugin_name',
+      p_bind_variable_name => 'plugin_name',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'name of the plugin, e.g. DE.COMPANY.MYPLUGIN');
+
+  -- ===================================================================
+  -- expstatics: APEX application static files, responds with a ZIP
+  -- ===================================================================
+  ORDS.DEFINE_TEMPLATE(
+      p_module_name    => 'com.dbflow.deploy',
+      p_pattern        => 'expstatics',
+      p_priority       => 0,
+      p_etag_type      => 'HASH',
+      p_etag_query     => NULL,
+      p_comments       => NULL);
+  ORDS.DEFINE_HANDLER(
+      p_module_name    => 'com.dbflow.deploy',
+      p_pattern        => 'expstatics',
+      p_method         => 'POST',
+      p_source_type    => 'plsql/block',
+      p_items_per_page =>  0,
+      p_mimes_allowed  => '',
+      p_comments       => NULL,
+      p_source         =>
+'begin
+  rest_compile.export_static_files_rest(p_app_id    => :app_id,
+                                        p_file_name => :file_name);
+end;'
+      );
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'expstatics',
+      p_method             => 'POST',
+      p_name               => 'app_id',
+      p_bind_variable_name => 'app_id',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'ID or alias of the application');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'expstatics',
+      p_method             => 'POST',
+      p_name               => 'file_name',
+      p_bind_variable_name => 'file_name',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'optional: export only this static file');
+
+  -- ===================================================================
+  -- exppluginfiles: APEX plugin files, responds with a ZIP
+  -- ===================================================================
+  ORDS.DEFINE_TEMPLATE(
+      p_module_name    => 'com.dbflow.deploy',
+      p_pattern        => 'exppluginfiles',
+      p_priority       => 0,
+      p_etag_type      => 'HASH',
+      p_etag_query     => NULL,
+      p_comments       => NULL);
+  ORDS.DEFINE_HANDLER(
+      p_module_name    => 'com.dbflow.deploy',
+      p_pattern        => 'exppluginfiles',
+      p_method         => 'POST',
+      p_source_type    => 'plsql/block',
+      p_items_per_page =>  0,
+      p_mimes_allowed  => '',
+      p_comments       => NULL,
+      p_source         =>
+'begin
+  rest_compile.export_plugin_files_rest(p_app_id      => :app_id,
+                                        p_plugin_name => :plugin_name,
+                                        p_file_name   => :file_name);
+end;'
+      );
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'exppluginfiles',
+      p_method             => 'POST',
+      p_name               => 'app_id',
+      p_bind_variable_name => 'app_id',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'ID or alias of the application');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'exppluginfiles',
+      p_method             => 'POST',
+      p_name               => 'plugin_name',
+      p_bind_variable_name => 'plugin_name',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'name of the plugin');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'exppluginfiles',
+      p_method             => 'POST',
+      p_name               => 'file_name',
+      p_bind_variable_name => 'file_name',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'optional: export only this plugin file');
+
+  -- ===================================================================
+  -- rmstaticfile: remove an APEX static file, responds with JSON
+  -- ===================================================================
+  ORDS.DEFINE_TEMPLATE(
+      p_module_name    => 'com.dbflow.deploy',
+      p_pattern        => 'rmstaticfile',
+      p_priority       => 0,
+      p_etag_type      => 'HASH',
+      p_etag_query     => NULL,
+      p_comments       => NULL);
+  ORDS.DEFINE_HANDLER(
+      p_module_name    => 'com.dbflow.deploy',
+      p_pattern        => 'rmstaticfile',
+      p_method         => 'POST',
+      p_source_type    => 'plsql/block',
+      p_items_per_page =>  0,
+      p_mimes_allowed  => '',
+      p_comments       => NULL,
+      p_source         =>
+'begin
+  rest_compile.remove_static_file_rest(p_app_id    => :app_id,
+                                       p_file_name => :file_name,
+                                       p_file_ext  => :file_ext);
+end;'
+      );
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'rmstaticfile',
+      p_method             => 'POST',
+      p_name               => 'app_id',
+      p_bind_variable_name => 'app_id',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'ID or alias of the application');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'rmstaticfile',
+      p_method             => 'POST',
+      p_name               => 'file_name',
+      p_bind_variable_name => 'file_name',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'name of the static file to remove');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'rmstaticfile',
+      p_method             => 'POST',
+      p_name               => 'file_ext',
+      p_bind_variable_name => 'file_ext',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'extension of the static file, e.g. js or css');
+
+  -- ===================================================================
+  -- expschema: schema/object DDL export (dbms_metadata), responds with a ZIP
+  -- ===================================================================
+  ORDS.DEFINE_TEMPLATE(
+      p_module_name    => 'com.dbflow.deploy',
+      p_pattern        => 'expschema',
+      p_priority       => 0,
+      p_etag_type      => 'HASH',
+      p_etag_query     => NULL,
+      p_comments       => NULL);
+  ORDS.DEFINE_HANDLER(
+      p_module_name    => 'com.dbflow.deploy',
+      p_pattern        => 'expschema',
+      p_method         => 'POST',
+      p_source_type    => 'plsql/block',
+      p_items_per_page =>  0,
+      p_mimes_allowed  => '',
+      p_comments       => NULL,
+      p_source         =>
+'begin
+  rest_compile.export_schema_rest(p_folder             => :folder,
+                                  p_file_name          => :file_name,
+                                  p_grants_with_object => :grants_with_object);
+end;'
+      );
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'expschema',
+      p_method             => 'POST',
+      p_name               => 'folder',
+      p_bind_variable_name => 'folder',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'optional: object type folder, e.g. tables or sources/packages');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'expschema',
+      p_method             => 'POST',
+      p_name               => 'file_name',
+      p_bind_variable_name => 'file_name',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'optional: object file name, e.g. my_table.sql');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'expschema',
+      p_method             => 'POST',
+      p_name               => 'grants_with_object',
+      p_bind_variable_name => 'grants_with_object',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'true to export grants next to views and sources');
+
+  -- ===================================================================
+  -- exprest: ORDS REST module export, responds with a ZIP
+  -- ===================================================================
+  ORDS.DEFINE_TEMPLATE(
+      p_module_name    => 'com.dbflow.deploy',
+      p_pattern        => 'exprest',
+      p_priority       => 0,
+      p_etag_type      => 'HASH',
+      p_etag_query     => NULL,
+      p_comments       => NULL);
+  ORDS.DEFINE_HANDLER(
+      p_module_name    => 'com.dbflow.deploy',
+      p_pattern        => 'exprest',
+      p_method         => 'POST',
+      p_source_type    => 'plsql/block',
+      p_items_per_page =>  0,
+      p_mimes_allowed  => '',
+      p_comments       => NULL,
+      p_source         =>
+'begin
+  rest_compile.export_rest_module_rest(p_module_name => :module_name);
+end;'
+      );
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'exprest',
+      p_method             => 'POST',
+      p_name               => 'module_name',
+      p_bind_variable_name => 'module_name',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'name of the ORDS module to export');
 
 
-  COMMIT; 
+  COMMIT;
 END;
 /

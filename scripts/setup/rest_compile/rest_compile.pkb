@@ -4,6 +4,11 @@ create or replace package body rest_compile is
     g_logs        t_array;
     g_log_entries json_array_t := json_array_t();
 
+    -- state for the schema DDL export helpers (see export_schema_rest)
+    c_exp_crlf          constant varchar2(10) := chr(13)||chr(10);
+    g_exp_objects_found boolean := false;
+    g_exp_files         t_array;
+
     /*
     * ANSI color codes for optional debug output.
     *
@@ -1110,6 +1115,1281 @@ create or replace package body rest_compile is
         when others then
             emit_json_response(build_error_response);
     end import_app_rest;
+
+    -- #####################################################################
+    -- API info / versioning
+    -- #####################################################################
+
+    function get_version return varchar2 is
+    begin
+        return c_version;
+    end get_version;
+
+    function get_api_level return number is
+    begin
+        return c_api_level;
+    end get_api_level;
+
+    procedure get_info_rest is
+        l_response json_object_t := json_object_t();
+    begin
+        owa_util.mime_header('application/json', false);
+        sys.htp.p('Cache-Control: no-cache');
+        owa_util.http_header_close;
+
+        l_response.put('success', true);
+        l_response.put('version', c_version);
+        l_response.put('api_level', c_api_level);
+        emit_json_response(l_response);
+    end get_info_rest;
+
+    -- #####################################################################
+    -- shared helpers for the export endpoints
+    -- #####################################################################
+
+    procedure emit_json_header is
+    begin
+        owa_util.mime_header('application/json', false);
+        sys.htp.p('Cache-Control: no-cache');
+        owa_util.http_header_close;
+    end emit_json_header;
+
+    -- exports compute their payload first; nothing is written to the
+    -- response before this point, so the error path can still emit JSON.
+    procedure emit_zip_response(p_zip       in blob,
+                                p_file_name in varchar2) is
+        -- wpg_docload.download_file requires an in out parameter
+        l_zip blob := p_zip;
+    begin
+        owa_util.mime_header('application/zip', false);
+        sys.htp.p('Content-Disposition: attachment; filename="' || p_file_name || '"');
+        sys.htp.p('Cache-Control: no-cache');
+        owa_util.http_header_close;
+        wpg_docload.download_file(l_zip);
+    end emit_zip_response;
+
+    procedure emit_json_error_response is
+        l_response json_object_t := build_error_response;
+    begin
+        emit_json_header;
+        emit_json_response(l_response);
+    end emit_json_error_response;
+
+    function clob_to_blob(p_clob in clob) return blob is
+        l_blob         blob;
+        l_lang_context integer := dbms_lob.default_lang_ctx;
+        l_warning      integer := dbms_lob.warn_inconvertible_char;
+        l_dest_offset  integer := 1;
+        l_src_offset   integer := 1;
+    begin
+        if p_clob is not null then
+            dbms_lob.createtemporary(l_blob, true);
+            dbms_lob.converttoblob(dest_lob     => l_blob,
+                                   src_clob     => p_clob,
+                                   amount       => dbms_lob.lobmaxsize,
+                                   dest_offset  => l_dest_offset,
+                                   src_offset   => l_src_offset,
+                                   blob_csid    => nls_charset_id('AL32UTF8'),
+                                   lang_context => l_lang_context,
+                                   warning      => l_warning);
+        end if;
+        return l_blob;
+    end clob_to_blob;
+
+    -- resolves the application (by id or alias) and sets the APEX security
+    -- group so that apex_export / wwv_flow_api work inside the ORDS call
+    procedure init_apex_context(p_app_id     in  varchar2,
+                                p_app_id_out out number) is
+        l_workspace_id apex_applications.workspace_id%type;
+    begin
+        select application_id, workspace_id
+          into p_app_id_out, l_workspace_id
+          from apex_applications
+         where to_char(application_id) = p_app_id
+            or upper(alias) = upper(p_app_id);
+
+        apex_util.set_security_group_id(p_security_group_id => l_workspace_id);
+    end init_apex_context;
+
+    -- #####################################################################
+    -- compile schema (port of dbFlux compile.sh)
+    -- #####################################################################
+
+    function get_schema_errors(p_db_folder        in varchar2,
+                               p_warning_string   in varchar2,
+                               p_warning_excludes in varchar2) return json_array_t is
+        l_return    json_array_t := json_array_t();
+        l_db_folder varchar2(255 char) := nvl(p_db_folder, 'db');
+    begin
+        for cur in (with excl as (select to_number(trim(column_value)) excl_no
+                                    from table(apex_string.split(nvl(p_warning_excludes, '-1'), ','))),
+                         errms as (select attribute, line||':'||position lpos, name, type,
+                                          replace(substr(text, 1, instr(text, ':', 1, 1) -1), ' ') errtype,
+                                          replace(substr(text, instr(text, ': ', 1, 1) + 2), chr(10), ' ') errtext,
+                                          case
+                                            when type = 'PACKAGE BODY' and exists(select 1 from user_source s where s.name = ue.name and s.type = 'PACKAGE' and instr(replace(lower(s.text), ' '), '--%suite') > 0) then l_db_folder||'/'||lower(user)||'/tests/packages/'||lower(name)||'.pkb'
+                                            when type = 'PACKAGE'      and exists(select 1 from user_source s where s.name = ue.name and s.type = 'PACKAGE' and instr(replace(lower(s.text), ' '), '--%suite') > 0) then l_db_folder||'/'||lower(user)||'/tests/packages/'||lower(name)||'.pks'
+                                            when type = 'PACKAGE BODY' then l_db_folder||'/'||lower(user)||'/sources/packages/'||lower(name)||'.pkb'
+                                            when type = 'PACKAGE'      then l_db_folder||'/'||lower(user)||'/sources/packages/'||lower(name)||'.pks'
+                                            when type = 'TYPE BODY'    then l_db_folder||'/'||lower(user)||'/sources/types/'||lower(name)||'.tpb'
+                                            when type = 'TYPE'         then l_db_folder||'/'||lower(user)||'/sources/types/'||lower(name)||'.tps'
+                                            when type = 'FUNCTION'     then l_db_folder||'/'||lower(user)||'/sources/functions/'||lower(name)||'.sql'
+                                            when type = 'PROCEDURE'    then l_db_folder||'/'||lower(user)||'/sources/procedures/'||lower(name)||'.sql'
+                                            when type = 'VIEW'         then l_db_folder||'/'||lower(user)||'/views/'||lower(name)||'.sql'
+                                            when type = 'TRIGGER'      then l_db_folder||'/'||lower(user)||'/sources/triggers/'||lower(name)||'.sql'
+                                          end wsfile
+                                     from user_errors ue
+                                    where attribute in ('ERROR', nvl(p_warning_string, 'NIX'))
+                                      and message_number not in (select excl_no from excl)
+                                      and name not like 'BIN$%' -- exclude trash
+                                      )
+                    select attribute, lpos, name, errtype, errtext, wsfile,
+                           max(length(errtype)) over () mlen, max(length(lpos)) over () mlpos
+                      from errms
+                     order by type, name, lpos)
+        loop
+            declare
+                l_finding json_object_t := json_object_t();
+            begin
+                l_finding.put('attribute', cur.attribute);
+                l_finding.put('typeid',    rpad(cur.errtype, cur.mlen, ' '));
+                l_finding.put('fileinfo',  cur.wsfile || ':' || rpad(cur.lpos, cur.mlpos, ' '));
+                l_finding.put('errtext',   cur.errtext);
+                l_return.append(l_finding);
+            end;
+        end loop;
+
+        return l_return;
+    end get_schema_errors;
+
+    procedure compile_schema_rest(p_compile_all      in varchar2,
+                                  p_db_folder        in varchar2,
+                                  p_enable_warnings  in varchar2,
+                                  p_warning_string   in varchar2,
+                                  p_warning_excludes in varchar2) is
+        l_response    json_object_t := json_object_t();
+        l_info        json_object_t := json_object_t();
+        l_errors      json_array_t;
+        l_compile_all boolean := upper(nvl(p_compile_all, 'FALSE')) = 'TRUE';
+        l_start       number  := dbms_utility.get_time;
+    begin
+        reset_logs;
+        emit_json_header;
+
+        if trim(p_enable_warnings) is not null then
+            execute immediate rtrim(trim(p_enable_warnings), ';');
+        end if;
+
+        dbms_utility.compile_schema(schema => user, compile_all => l_compile_all);
+        -- deferred until the call ends, so the JSON below is built safely
+        dbms_session.reset_package;
+
+        l_errors := get_schema_errors(p_db_folder        => p_db_folder,
+                                      p_warning_string   => p_warning_string,
+                                      p_warning_excludes => p_warning_excludes);
+
+        l_info.put('compile_all', l_compile_all);
+        l_info.put('error_count', l_errors.get_size);
+        l_info.put('duration_ms', (dbms_utility.get_time - l_start) * 10);
+
+        l_response.put('success', true);
+        l_response.put('schema', user);
+        l_response.put('errors', l_errors);
+        l_response.put('info', l_info);
+        append_runtime_logs(l_response);
+        emit_json_response(l_response);
+    exception
+        when others then
+            emit_json_response(build_error_response);
+    end compile_schema_rest;
+
+    -- #####################################################################
+    -- APEX application / plugin export (apex_export)
+    -- #####################################################################
+
+    function files_to_zip(p_files in apex_t_export_files) return blob is
+        l_zip blob;
+    begin
+        dbms_lob.createtemporary(l_zip, true);
+        for i in 1 .. p_files.count loop
+            apex_zip.add_file(p_zipped_blob => l_zip,
+                              p_file_name   => p_files(i).name,
+                              p_content     => clob_to_blob(p_files(i).contents));
+        end loop;
+
+        if p_files.count = 0 then
+            raise_application_error(-20002, 'Nothing found to export');
+        end if;
+
+        apex_zip.finish(p_zipped_blob => l_zip);
+        return l_zip;
+    end files_to_zip;
+
+    procedure export_app_rest(p_app_id         in varchar2,
+                              p_export_options in varchar2) is
+        l_app_id                  number;
+        l_files                   apex_t_export_files;
+        l_tokens                  apex_t_varchar2;
+        l_token                   varchar2(255 char);
+        l_idx                     pls_integer;
+        -- SQLcl "apex export" includes the export date unless -skipExportDate is set
+        l_with_date               boolean := true;
+        l_with_original_ids       boolean := false;
+        l_with_translations       boolean := false;
+        l_with_comments           boolean := false;
+        l_with_acl_assignments    boolean := false;
+        l_with_supporting_objects varchar2(1 char);
+    begin
+        reset_logs;
+        init_apex_context(p_app_id, l_app_id);
+
+        -- map SQLcl "apex export" flags onto apex_export parameters,
+        -- tolerating (and logging) unknown flags
+        l_tokens := apex_string.split(regexp_replace(trim(p_export_options), '[[:space:]]+', ' '), ' ');
+        l_idx := 1;
+        while l_idx <= l_tokens.count loop
+            l_token := lower(l_tokens(l_idx));
+            case
+                when l_token is null or l_token = '-split' then null;
+                when l_token = '-skipexportdate'       then l_with_date := false;
+                when l_token = '-exporiginalids'       then l_with_original_ids := true;
+                when l_token = '-exptranslations'      then l_with_translations := true;
+                when l_token = '-expcomments'          then l_with_comments := true;
+                when l_token = '-expaclassignments'    then l_with_acl_assignments := true;
+                when l_token = '-expsupportingobjects' then
+                    if l_idx < l_tokens.count then
+                        l_idx := l_idx + 1;
+                        l_with_supporting_objects := upper(substr(l_tokens(l_idx), 1, 1));
+                    end if;
+                else
+                    log('Ignoring unknown export option: ' || l_tokens(l_idx));
+            end case;
+            l_idx := l_idx + 1;
+        end loop;
+
+        l_files := apex_export.get_application(p_application_id          => l_app_id,
+                                               p_split                   => true,
+                                               p_with_date               => l_with_date,
+                                               p_with_original_ids       => l_with_original_ids,
+                                               p_with_translations       => l_with_translations,
+                                               p_with_comments           => l_with_comments,
+                                               p_with_acl_assignments    => l_with_acl_assignments,
+                                               p_with_supporting_objects => l_with_supporting_objects);
+
+        emit_zip_response(files_to_zip(l_files), 'f' || l_app_id || '.zip');
+    exception
+        when others then
+            emit_json_error_response;
+    end export_app_rest;
+
+    procedure export_plugin_rest(p_app_id      in varchar2,
+                                 p_plugin_name in varchar2) is
+        l_app_id    number;
+        l_plugin_id apex_appl_plugins.plugin_id%type;
+        l_files     apex_t_export_files;
+    begin
+        reset_logs;
+        init_apex_context(p_app_id, l_app_id);
+
+        begin
+            select plugin_id
+              into l_plugin_id
+              from apex_appl_plugins
+             where application_id = l_app_id
+               and name = p_plugin_name;
+        exception
+            when no_data_found then
+                raise_application_error(-20002, 'Plugin not found (' || p_app_id || '/' || p_plugin_name || ')');
+        end;
+
+        l_files := apex_export.get_application(p_application_id => l_app_id,
+                                               p_split          => false,
+                                               p_components     => apex_t_varchar2('PLUGIN:' || l_plugin_id));
+
+        emit_zip_response(files_to_zip(l_files), 'f' || l_app_id || '.zip');
+    exception
+        when others then
+            emit_json_error_response;
+    end export_plugin_rest;
+
+    -- #####################################################################
+    -- APEX static / plugin files (port of dbFlux export_app_static_function.sql)
+    -- #####################################################################
+
+    procedure export_static_files_rest(p_app_id    in varchar2,
+                                       p_file_name in varchar2) is
+        l_app_id number;
+        l_zip    blob;
+        l_found  boolean := false;
+    begin
+        reset_logs;
+        init_apex_context(p_app_id, l_app_id);
+
+        dbms_lob.createtemporary(l_zip, true);
+        for cur in (select file_name, file_content
+                      from apex_application_static_files
+                     where application_id = l_app_id
+                       and (file_name = p_file_name or p_file_name is null)
+                       and file_name not like '%.min.css'
+                       and file_name not like '%.min.js'
+                       and file_name not like '%.js.map')
+        loop
+            l_found := true;
+            apex_zip.add_file(p_zipped_blob => l_zip,
+                              p_file_name   => cur.file_name,
+                              p_content     => cur.file_content);
+        end loop;
+
+        if not l_found then
+            raise_application_error(-20002, 'Nothing found to export (' || p_app_id || '/' || p_file_name || ')');
+        end if;
+
+        apex_zip.finish(p_zipped_blob => l_zip);
+        emit_zip_response(l_zip, 'f' || l_app_id || '_static.zip');
+    exception
+        when others then
+            emit_json_error_response;
+    end export_static_files_rest;
+
+    procedure export_plugin_files_rest(p_app_id      in varchar2,
+                                       p_plugin_name in varchar2,
+                                       p_file_name   in varchar2) is
+        l_app_id number;
+        l_zip    blob;
+        l_found  boolean := false;
+    begin
+        reset_logs;
+        init_apex_context(p_app_id, l_app_id);
+
+        dbms_lob.createtemporary(l_zip, true);
+        for cur in (select file_name, file_content
+                      from apex_appl_plugin_files
+                     where application_id = l_app_id
+                       and plugin_name = upper(p_plugin_name)
+                       and (file_name = p_file_name or p_file_name is null)
+                       and file_name not like '%.min.css'
+                       and file_name not like '%.min.js'
+                       and file_name not like '%.js.map')
+        loop
+            l_found := true;
+            apex_zip.add_file(p_zipped_blob => l_zip,
+                              p_file_name   => cur.file_name,
+                              p_content     => cur.file_content);
+        end loop;
+
+        if not l_found then
+            raise_application_error(-20002, 'Nothing found to export (' || p_app_id || '/' || p_plugin_name || '/' || p_file_name || ')');
+        end if;
+
+        apex_zip.finish(p_zipped_blob => l_zip);
+        emit_zip_response(l_zip, 'f' || l_app_id || '_plugin.zip');
+    exception
+        when others then
+            emit_json_error_response;
+    end export_plugin_files_rest;
+
+    procedure remove_static_file_rest(p_app_id    in varchar2,
+                                      p_file_name in varchar2,
+                                      p_file_ext  in varchar2) is
+        l_response    json_object_t := json_object_t();
+        l_removed     json_array_t  := json_array_t();
+        l_app_id      number;
+        l_found       boolean := false;
+        -- ORDS pools sessions: current_schema must be restored in any case
+        l_prev_schema varchar2(128 char) := sys_context('userenv', 'current_schema');
+
+        procedure restore_schema is
+        begin
+            execute immediate 'alter session set current_schema = '
+                || sys.dbms_assert.enquote_name(l_prev_schema, false);
+        exception
+            when others then
+                null;
+        end restore_schema;
+    begin
+        reset_logs;
+        emit_json_header;
+
+        init_apex_context(p_app_id, l_app_id);
+
+        execute immediate 'alter session set current_schema = '
+            || sys.dbms_assert.enquote_name(apex_application.g_flow_schema_owner, false);
+
+        for cur in (select application_file_id, application_id, file_name
+                      from apex_application_static_files
+                     where application_id = l_app_id
+                       and replace(file_name, replace(p_file_name, '.' || p_file_ext))
+                           in ('.' || p_file_ext, '.' || p_file_ext || '.map', '.min.' || p_file_ext))
+        loop
+            l_found := true;
+            wwv_flow_api.remove_app_static_file(p_id => cur.application_file_id, p_flow_id => cur.application_id);
+            l_removed.append(cur.file_name);
+        end loop;
+
+        restore_schema;
+
+        l_response.put('success', true);
+        l_response.put('found', l_found);
+        l_response.put('removed', l_removed);
+        append_runtime_logs(l_response);
+        emit_json_response(l_response);
+    exception
+        when others then
+            declare
+                l_error json_object_t := build_error_response;
+            begin
+                restore_schema;
+                emit_json_response(l_error);
+            end;
+    end remove_static_file_rest;
+
+    -- #####################################################################
+    -- schema / object DDL export
+    -- (port of dbFlux export_anonymous_function.sql, zip writing on apex_zip)
+    -- #####################################################################
+
+    procedure exp_zip_add_file(p_zipped_blob in out nocopy blob,
+                               p_name        in varchar2,
+                               p_content     in blob) is
+    begin
+        g_exp_objects_found := true;
+        apex_zip.add_file(p_zipped_blob => p_zipped_blob,
+                          p_file_name   => p_name,
+                          p_content     => p_content);
+        g_exp_files(g_exp_files.count + 1) := p_name;
+    end exp_zip_add_file;
+
+    -- inspired and copyright by https://github.com/connormcd/misc-scripts/blob/master/ddl_cleanup.sql
+    function to_lowercase(p_content in clob) return clob is
+        l_in_double   boolean := false;
+        l_in_string   boolean := false;
+        l_need_quotes boolean := false;
+
+        l_res         clob;
+        l_content     clob := regexp_replace(p_content,'"([A-Z0-9_$#]+)"','\1');
+        l_idx         int := 0;
+        l_thischar    varchar2(1 char);
+        l_prevchar    varchar2(1 char);
+        l_nextchar    varchar2(1 char);
+        l_sqt         varchar2(1 char) := '''';
+        l_dqt         varchar2(1 char) := '"';
+        l_last_l_dqt  int;
+
+        procedure append is
+        begin
+            if not l_need_quotes and not l_in_string and not l_in_double then
+                l_res := l_res || lower(l_thischar);
+            else
+                l_res := l_res || l_thischar;
+            end if;
+        end;
+    begin
+        dbms_lob.createtemporary(l_res, true);
+
+        loop
+            l_idx := l_idx + 1;
+            if l_idx > 1 then
+                l_prevchar := l_thischar;
+            end if;
+            l_thischar := substr(l_content, l_idx, 1);
+            exit when l_thischar is null;
+            l_nextchar := substr(l_content, l_idx+1, 1);
+
+            if l_thischar not in (l_dqt,l_sqt) then
+                append;
+                if l_in_double then
+                    if l_thischar not between 'A' and 'Z' and l_thischar not between '0' and '9' and l_thischar not in ('$','#','_') or
+                    ( l_prevchar = l_dqt  and ( l_thischar in ('$','#','_') or l_thischar between '0' and '9' ) )
+                    then
+                        l_need_quotes := true;
+                    end if;
+                end if;
+            elsif l_thischar = l_dqt and not l_in_double and not l_in_string then
+                append;
+                l_in_double := true;
+                l_need_quotes := false;
+            elsif l_thischar = l_dqt and l_in_double and not l_in_string then
+                l_last_l_dqt := instr(l_res,l_dqt,-1);
+                if l_last_l_dqt = 0 then
+                    raise_application_error(-20000,'l_last_l_dqt died');
+                else
+                    if not l_need_quotes then
+                        l_res := substr(l_res,1,l_last_l_dqt-1)||lower(substr(l_res,l_last_l_dqt+1));
+                    else
+                        append;
+                    end if;
+                    l_need_quotes := false;
+                end if;
+                l_in_double := false;
+            elsif l_thischar = l_sqt then
+                append;
+                if not l_in_double then
+                    if not l_in_string then
+                        l_in_string := true;
+                    else
+                        if l_nextchar = l_sqt then
+                            l_in_string := true;
+                            l_res := l_res ||  l_nextchar;
+                            l_idx := l_idx + 1;
+                        else
+                            l_in_string := false;
+                        end if;
+                    end if;
+                end if;
+            else
+                append;
+            end if;
+
+        end loop;
+        return l_res;
+    end to_lowercase;
+
+    function get_lowercase_ddl(p_type varchar2,
+                               p_name varchar2) return clob is
+    begin
+        return to_lowercase('-- Exported with dbms_metadata.get_ddl' || chr(10) || ltrim(dbms_metadata.get_ddl(p_type, p_name), c_exp_crlf||' '));
+    end get_lowercase_ddl;
+
+    function get_grants(p_object_name in varchar2) return clob is
+        l_content clob;
+    begin
+        l_content := 'Prompt Revoke all grants found in user_tab_privs_made of object: '||p_object_name||chr(10)
+                || 'begin'||chr(10)
+                || '  for revoke_rec in (select privilege, table_name, grantee'||chr(10)
+                || '                       from user_tab_privs_made'||chr(10)
+                || '                      where table_name = '''||upper(p_object_name)||'''  )'||chr(10)
+                || '  loop'||chr(10)
+                || '    execute immediate ''revoke '' || revoke_rec.privilege || '' on '' || revoke_rec.table_name || '' from '' || revoke_rec.grantee;'||chr(10)
+                || '  end loop;'||chr(10)
+                || 'end;'||chr(10)
+                || '/'||chr(10)
+                || ''||chr(10)
+                || ''||chr(10)
+                || 'Prompt Grants to object: '||p_object_name;
+
+        for cur in (select 'grant ' || privilege || ' on ' || table_name || ' to ' || grantee ||
+                        case when grantable = 'YES' then ' with grant option;' else ';' end as grant_script
+                    from user_tab_privs_made
+                    where table_name = p_object_name
+                    order by grantee)
+        loop
+            l_content := concat(l_content, chr(10) || cur.grant_script);
+        end loop;
+        l_content := concat(l_content, chr(10)||chr(10));
+        return l_content;
+    end get_grants;
+
+    function get_table(p_table_name     in varchar,
+                       p_include_flinks in boolean default false) return clob is
+        l_script    clob;
+        l_comments  clob;
+    begin
+        l_script := get_lowercase_ddl('TABLE', upper(p_table_name));
+
+        -- all we need is before the first ";"
+        l_script := substr(l_script, 1, instr(l_script, ';', 1, 1));
+
+        -- replace double_quotes
+        l_script := replace(l_script, '"', '');
+
+        -- additionally get comments
+        begin
+            l_comments := to_lowercase(dbms_metadata.get_dependent_ddl( 'COMMENT', upper(p_table_name)));
+
+            -- replace schema name and double_quotes
+            l_comments := replace(l_comments, '"', '');
+
+            dbms_lob.append(l_script, chr(10)||chr(10)||l_comments);
+        exception
+            when others then
+                null; -- ORA-31608: specified object of type COMMENT not found
+        end;
+
+        if p_include_flinks and g_exp_files.count > 0 then
+            dbms_lob.append(l_script, chr(10)||chr(10));
+            for i in 1 .. g_exp_files.count loop
+                dbms_lob.append(l_script, '-- File: '||g_exp_files(i)||chr(10));
+            end loop;
+        end if;
+        return l_script;
+    end get_table;
+
+    procedure add_tables(p_zip_file in out nocopy blob,
+                         p_table_name varchar2 default null) is
+    begin
+        for cur in (select table_name, 'tables/'||lower(table_name)||'.sql' filename
+                      from user_tables
+                     where p_table_name is null or upper(table_name) = upper(p_table_name))
+        loop
+            exp_zip_add_file(p_zipped_blob => p_zip_file
+                            ,p_name        => cur.filename
+                            ,p_content     => clob_to_blob(get_table(p_table_name     => cur.table_name,
+                                                                     p_include_flinks => (p_table_name is not null))));
+        end loop;
+    end add_tables;
+
+    function get_constraint(p_constraint_name   in varchar,
+                            p_constraint_type   in varchar2) return clob is
+        l_script clob;
+    begin
+        l_script := get_lowercase_ddl(case
+                                        when p_constraint_type = 'R' then
+                                            'REF_CONSTRAINT'
+                                        else
+                                            'CONSTRAINT'
+                                      end,
+                                      upper(p_constraint_name)
+                                      );
+
+        -- all we need is before the first ";"
+        l_script := substr(l_script, 1, instr(l_script, ';', 1, 1));
+
+        return l_script;
+    end get_constraint;
+
+    procedure add_constraints(p_zip_file     in out nocopy blob,
+                              p_object_name  in            varchar2 default null,
+                              p_object_type  in            varchar2 default null) is
+    begin
+        for cur in (select constraint_name, 'constraints/' ||
+                           case
+                             when constraint_type = 'P' then 'primaries'
+                             when constraint_type = 'U' then 'uniques'
+                             when constraint_type = 'R' then 'foreigns'
+                             when constraint_type = 'C' then 'checks'
+                           end || '/' ||lower(constraint_name)||'.sql' filename,
+                           constraint_type
+                      from user_constraints
+                     where generated != 'GENERATED NAME'
+                       and constraint_name not like 'BIN$%'
+                       and (   p_object_name     is null
+                            or upper(constraint_name) = upper(p_object_name)
+                            or upper(table_name||'_'||constraint_name) = upper(p_object_name)
+                            or upper(table_name)      = upper(p_object_name)
+                           )
+                       and (
+                                p_object_type is null
+                             or p_object_type = 'TABLES'
+                             or 'constraints/' || case
+                                                    when constraint_type = 'P' then 'primaries'
+                                                    when constraint_type = 'U' then 'uniques'
+                                                    when constraint_type = 'R' then 'foreigns'
+                                                    when constraint_type = 'C' then 'checks'
+                                                  end = lower(p_object_type)
+                             )
+                    order by case
+                                when constraint_type = 'P' then 'aaa'
+                                when constraint_type = 'U' then 'bbb'
+                                when constraint_type = 'R' then 'ccc'
+                                when constraint_type = 'C' then 'ddd'
+                              end, constraint_name
+                    )
+        loop
+            exp_zip_add_file(p_zipped_blob => p_zip_file
+                            ,p_name        => cur.filename
+                            ,p_content     => clob_to_blob(get_constraint(cur.constraint_name, cur.constraint_type)));
+        end loop;
+    end add_constraints;
+
+    function get_index(p_index_name   in varchar) return clob is
+        l_script clob;
+    begin
+        l_script := get_lowercase_ddl('INDEX', upper(p_index_name));
+
+        -- only to the first occurence of ;
+        l_script := substr(l_script, 1, instr(l_script, ';', 1, 1));
+
+        return l_script;
+    end get_index;
+
+    procedure add_indexes(p_zip_file     in out nocopy blob,
+                          p_object_name  in            varchar2 default null,
+                          p_object_type  in            varchar2 default null) is
+    begin
+        for cur in (select i.index_name index_name, 'indexes/'||
+                           case
+                             when c.constraint_type = 'P' then 'primaries'
+                             when i.uniqueness = 'UNIQUE' then 'uniques'
+                             else 'defaults'
+                           end ||'/' ||lower(i.index_name)||'.sql' filename
+                      from user_indexes i left join user_constraints c on i.index_name = c.index_name
+                     where index_type != 'LOB'
+                       and (   p_object_name    is null
+                            or upper(i.index_name)  = upper(p_object_name)
+                            or upper(i.table_name||'_'||i.index_name)  = upper(p_object_name)
+                            or upper(i.table_name)  = upper(p_object_name)
+                           )
+                       and (
+                                p_object_type is null
+                             or p_object_type in ('TABLES')
+                             or 'indexes/' || case
+                                                    when constraint_type = 'P' then 'primaries'
+                                                    when i.uniqueness = 'UNIQUE' then 'uniques'
+                                                    else 'defaults'
+                                                  end = lower(p_object_type)
+                             )
+                    order by case
+                               when constraint_type = 'P' then 'aaa'
+                               when i.uniqueness = 'UNIQUE' then 'bbb'
+                               else 'ccc'
+                             end, i.index_name
+                    )
+        loop
+            exp_zip_add_file(p_zipped_blob => p_zip_file
+                            ,p_name        => cur.filename
+                            ,p_content     => clob_to_blob(get_index(p_index_name   => cur.index_name)));
+        end loop;
+    end add_indexes;
+
+    function get_source(p_source_name        in varchar2,
+                        p_source_type        in varchar2,
+                        p_grant_with_object  in boolean  default false)
+                        return clob is
+        l_script clob;
+    begin
+        -- add target version to ddl to ommit "editionable" clause
+        l_script := ltrim(dbms_metadata.get_ddl(p_source_type, upper(p_source_name), user, '11.2.0'), c_exp_crlf||' ');
+
+        -- remove double quotes
+        l_script := replace(l_script, '"'||upper(p_source_name)||'"', lower(p_source_name));
+
+        -- change the first line of the content to lowercase
+        l_script := lower(substr(l_script, 1, instr(l_script, chr(10)) - 1)) || substr(l_script, instr(l_script, chr(10)));
+
+        if p_grant_with_object and p_source_type not in ('PACKAGE_BODY', 'TYPE_BODY', 'TRIGGER') then
+            l_script := concat(l_script, chr(10) || get_grants(p_source_name));
+        end if;
+
+        return l_script;
+    end get_source;
+
+    procedure add_sources(p_zip_file           in out nocopy blob,
+                          p_object_name        in            varchar2 default null,
+                          p_object_type        in            varchar2 default null,
+                          p_grant_with_object  in            boolean  default false) is
+    begin
+        for cur in (select object_name,
+                            case
+                              when object_type = 'PACKAGE BODY' then 'PACKAGE_BODY'
+                              when object_type = 'PACKAGE' then 'PACKAGE_SPEC'
+                              when object_type = 'TYPE BODY' then 'TYPE_BODY'
+                              when object_type = 'TYPE' then 'TYPE_SPEC'
+                              else object_type
+                            end source_type,
+                            'sources/'||
+                            case
+                              when object_type in ('PACKAGE', 'PACKAGE BODY') then 'packages'
+                              when object_type in ('TYPE', 'TYPE BODY') then 'types'
+                              else lower(object_type)||'s' -- plural
+                            end||'/'||lower(object_name)||'.'||
+                            case
+                              when object_type = 'PACKAGE BODY' then 'pkb'
+                              when object_type = 'PACKAGE' then 'pks'
+                              when object_type = 'TYPE BODY' then 'tpb'
+                              when object_type = 'TYPE' then 'tps'
+                              else 'sql'
+                            end filename
+                      from user_objects
+                     where object_type in ('TYPE', 'TYPE BODY', 'PACKAGE BODY', 'PACKAGE', 'FUNCTION', 'PROCEDURE', 'TRIGGER')
+                       and object_name not in (select name
+                                                 from user_source
+                                                where name = object_name
+                                                  and type = 'PACKAGE'
+                                                  and instr(replace(lower(text), ' '), '--%suite(') > 0) -- exclude test suites
+                       and object_name not like 'SYS\_PLSQL\_%' escape '\'
+                       and (    p_object_name is null
+                             or (    upper(object_name) = upper(p_object_name)
+                                 and object_type like case lower(p_object_type)
+                                                              when 'sources/packages'   then 'PACKAGE%'
+                                                              when 'sources/types'      then 'TYPE%'
+                                                              when 'sources/procedures' then 'PROCEDURE%'
+                                                              when 'sources/functions'  then 'FUNCTION%'
+                                                              when 'sources/triggers'   then 'TRIGGER%'
+                                                       end
+                                )
+                           )
+                    )
+        loop
+            exp_zip_add_file(p_zipped_blob => p_zip_file
+                            ,p_name        => cur.filename
+                            ,p_content     => clob_to_blob(get_source(p_source_name       => cur.object_name,
+                                                                      p_source_type       => cur.source_type,
+                                                                      p_grant_with_object => p_grant_with_object)));
+        end loop;
+    end add_sources;
+
+    /* just like source but another folder and names start with TEST_*/
+    procedure add_tests(p_zip_file     in out nocopy blob,
+                        p_object_name  in            varchar2 default null,
+                        p_object_type  in            varchar2 default null) is
+    begin
+        for cur in (select object_name,
+                            case
+                              when object_type = 'PACKAGE BODY' then 'PACKAGE_BODY'
+                              when object_type = 'PACKAGE' then 'PACKAGE_SPEC'
+                              when object_type = 'TYPE BODY' then 'TYPE_BODY'
+                              when object_type = 'TYPE' then 'TYPE_SPEC'
+                              else object_type
+                            end source_type,
+                            'tests/'||
+                            case
+                              when object_type in ('PACKAGE', 'PACKAGE BODY') then 'packages'
+                              when object_type in ('TYPE', 'TYPE BODY') then 'types'
+                              else lower(object_type)||'s' -- plural
+                            end||'/'||lower(object_name)||'.'||
+                            case
+                              when object_type = 'PACKAGE BODY' then 'pkb'
+                              when object_type = 'PACKAGE' then 'pks'
+                              when object_type = 'TYPE BODY' then 'tpb'
+                              when object_type = 'TYPE' then 'tps'
+                              else 'sql'
+                            end filename
+                      from user_objects
+                     where object_type in ('TYPE', 'TYPE BODY', 'PACKAGE BODY', 'PACKAGE', 'FUNCTION', 'PROCEDURE')
+                       and object_name in (select name
+                                              from user_source
+                                             where name = object_name
+                                               and type = 'PACKAGE'
+                                               and instr(replace(lower(text), ' '), '--%suite(') > 0) -- include test suites
+                       and (    p_object_name is null
+                             or (    upper(object_name) = upper(p_object_name)
+                                 and object_type like case lower(p_object_type)
+                                                              when 'tests/packages'   then 'PACKAGE%'
+                                                              when 'tests/types'      then 'TYPE%'
+                                                              when 'tests/procedures' then 'PROCEDURE%'
+                                                              when 'tests/functions'  then 'FUNCTION%'
+                                                       end
+                                )
+                           )
+                    )
+        loop
+            exp_zip_add_file(p_zipped_blob => p_zip_file
+                            ,p_name        => cur.filename
+                            ,p_content     => clob_to_blob(get_source(p_source_name => cur.object_name,
+                                                                      p_source_type => cur.source_type)));
+        end loop;
+    end add_tests;
+
+    function get_sequence(p_sequence_name in varchar2)
+                        return clob is
+        l_script clob;
+    begin
+        l_script := get_lowercase_ddl('SEQUENCE', upper(p_sequence_name));
+
+        -- remove double quotes
+        l_script := replace(l_script, '"'||upper(p_sequence_name)||'"', lower(p_sequence_name));
+
+        return l_script;
+    end get_sequence;
+
+    procedure add_sequences(p_zip_file     in out nocopy blob,
+                            p_object_name  in            varchar2 default null,
+                            p_object_type  in            varchar2 default null)  is
+    begin
+        for cur in (select sequence_name, 'sequences/'||lower(sequence_name)||'.sql' filename
+                      from user_sequences
+                     where sequence_name not like 'ISEQ%'
+                       and (    p_object_name is null
+                             or (    upper(sequence_name) = upper(p_object_name)
+                                 and p_object_type = 'SEQUENCES')) )
+        loop
+            exp_zip_add_file(p_zipped_blob => p_zip_file
+                            ,p_name        => cur.filename
+                            ,p_content     => clob_to_blob(get_sequence(p_sequence_name   => cur.sequence_name)));
+        end loop;
+    end add_sequences;
+
+    function get_view(p_view_name         in varchar2,
+                      p_grant_with_object in boolean  default false)
+                        return clob is
+        l_script clob;
+    begin
+        -- special workaround to be able to grant on invalid views
+        if p_grant_with_object then
+            -- first create a dummy view
+            l_script := 'create or replace force view '||lower(p_view_name)||' as '||chr(10)||
+                        'select * from json_table(''{dummy:"a"}'', ''$'' columns(dummy varchar2(10) path ''$.dummy''));'||chr(10)||chr(10);
+
+            -- gen grants
+            l_script := concat(l_script, get_grants(upper(p_view_name)));
+
+            -- grants will be kept when underlying object is recreated ...
+        end if;
+
+        l_script := concat(l_script, get_lowercase_ddl('VIEW', upper(p_view_name)));
+
+        return l_script;
+    end get_view;
+
+    procedure add_views(p_zip_file           in out nocopy blob,
+                        p_object_name        in            varchar2 default null,
+                        p_object_type        in            varchar2 default null,
+                        p_grant_with_object  in            boolean  default false) is
+    begin
+        for cur in (select view_name, 'views/'||lower(view_name)||'.sql' filename
+                      from user_views
+                     where (   p_object_name is null
+                            or (     upper(view_name) = upper(p_object_name)
+                                 and p_object_type = 'VIEWS')))
+        loop
+            exp_zip_add_file(p_zipped_blob => p_zip_file
+                            ,p_name        => cur.filename
+                            ,p_content     => clob_to_blob(get_view(p_view_name         => cur.view_name,
+                                                                    p_grant_with_object => p_grant_with_object)));
+        end loop;
+    end add_views;
+
+    function get_mview(p_mview_name in varchar2)
+                        return clob is
+        l_script clob;
+    begin
+        l_script := get_lowercase_ddl('MATERIALIZED_VIEW', upper(p_mview_name));
+
+        return l_script;
+    end get_mview;
+
+    procedure add_mviews(p_zip_file     in out nocopy blob,
+                         p_object_name  in            varchar2 default null,
+                         p_object_type  in            varchar2 default null) is
+    begin
+        for cur in (select mview_name, 'mviews/'||lower(mview_name)||'.sql' filename
+                      from user_mviews
+                     where (   p_object_name is null
+                            or (     upper(mview_name) = upper(p_object_name)
+                                 and p_object_type = 'MVIEWS')))
+        loop
+            exp_zip_add_file(p_zipped_blob => p_zip_file
+                            ,p_name        => cur.filename
+                            ,p_content     => clob_to_blob(get_mview(p_mview_name   => cur.mview_name)));
+        end loop;
+    end add_mviews;
+
+    function get_job(p_job_name in varchar2)
+                        return clob is
+        l_script clob;
+    begin
+        l_script := ltrim(dbms_metadata.get_ddl('PROCOBJ', upper(p_job_name)), c_exp_crlf||' ');
+
+        return l_script;
+    end get_job;
+
+    procedure add_jobs(p_zip_file     in out nocopy blob,
+                       p_object_name  in            varchar2 default null,
+                       p_object_type  in            varchar2 default null) is
+    begin
+        for cur in (select job_name, 'jobs/'||lower(job_name)||'.sql' filename
+                      from user_scheduler_jobs
+                      where (   p_object_name is null
+                            or (     upper(job_name) = upper(p_object_name)
+                                 and p_object_type = 'JOBS')))
+        loop
+            exp_zip_add_file(p_zipped_blob => p_zip_file
+                            ,p_name        => cur.filename
+                            ,p_content     => clob_to_blob(get_job(p_job_name   => cur.job_name)));
+        end loop;
+    end add_jobs;
+
+    function get_synonym(p_synonym_name in varchar2,
+                         p_owner        in varchar2)
+                        return clob is
+        l_script clob;
+    begin
+        l_script := to_lowercase('-- Exported with dbms_metadata.get_ddl' || chr(10) ||  ltrim(dbms_metadata.get_ddl('SYNONYM', upper(p_synonym_name), p_owner), c_exp_crlf||' '));
+
+        return l_script;
+    end get_synonym;
+
+    procedure add_synonyms(p_zip_file     in out nocopy blob,
+                           p_object_name  in            varchar2 default null,
+                           p_object_type  in            varchar2 default null) is
+    begin
+        for cur in (select synonym_name,  owner, 'synonyms/public/'||lower(synonym_name)||'.sql' filename
+                      from all_synonyms
+                     where owner in 'public'
+                       and table_owner = user
+                       and (   p_object_name is null
+                            or (     synonym_name = upper(p_object_name)
+                                 and p_object_type = 'SYNONYMS'))
+                    union
+                    select synonym_name,  user, 'synonyms/private/'||lower(synonym_name)||'.sql' filename
+                      from user_synonyms
+                    where (   p_object_name is null
+                            or (     synonym_name = upper(p_object_name)
+                                 and p_object_type = 'SYNONYMS')) )
+        loop
+            exp_zip_add_file(p_zipped_blob => p_zip_file
+                            ,p_name        => cur.filename
+                            ,p_content     => clob_to_blob(get_synonym(p_synonym_name   => cur.synonym_name,
+                                                                       p_owner => cur.owner)));
+        end loop;
+    end add_synonyms;
+
+    function get_policy(p_object_name in varchar2)
+                        return clob is
+        l_script clob;
+    begin
+        l_script := to_lowercase('-- Exported with dbms_metadata.get_dependent_ddl' || chr(10) ||  ltrim(dbms_metadata.get_dependent_ddl('RLS_POLICY', upper(p_object_name), user), c_exp_crlf||' '));
+
+        return l_script;
+    end get_policy;
+
+    procedure add_policies(p_zip_file     in out nocopy blob,
+                           p_object_name  in            varchar2 default null,
+                           p_object_type  in            varchar2 default null) is
+    begin
+        for cur in (select policy_name, object_name, 'policies/'||lower(object_name)||'.sql' filename
+                      from user_policies
+                    where (   p_object_name is null
+                            or (     object_name = upper(p_object_name)
+                                 and p_object_type = 'POLICIES')))
+        loop
+            exp_zip_add_file(p_zipped_blob => p_zip_file
+                            ,p_name        => cur.filename
+                            ,p_content     => clob_to_blob(get_policy(p_object_name   => cur.object_name)));
+        end loop;
+    end add_policies;
+
+    function get_context(p_namespace in varchar2)
+                        return clob is
+        l_script clob;
+    begin
+        l_script := to_lowercase('-- Exported with dbms_metadata.get_ddl' || chr(10) ||  ltrim(dbms_metadata.get_ddl('CONTEXT', upper(p_namespace)), c_exp_crlf||' '));
+
+        return l_script;
+    end get_context;
+
+    procedure add_contexts(p_zip_file     in out nocopy blob,
+                           p_object_name  in            varchar2 default null,
+                           p_object_type  in            varchar2 default null) is
+    begin
+        for cur in (select namespace, 'contexts/'||lower(namespace)||'.sql' filename
+                      from all_context
+                     where schema = user
+                       and (   p_object_name is null
+                            or (     namespace = upper(p_object_name)
+                                 and p_object_type = 'CONTEXTS'))
+                     union
+                    select p_object_name, 'contexts/'||lower(p_object_name)||'.sql' filename
+                      from dual
+                     where p_object_name is not null
+                       and p_object_type = 'CONTEXTS')
+        loop
+            exp_zip_add_file(p_zipped_blob => p_zip_file
+                            ,p_name        => cur.filename
+                            ,p_content     => clob_to_blob(get_context(p_namespace  => cur.namespace)));
+        end loop;
+    end add_contexts;
+
+    procedure add_grants(p_zip_file           in out nocopy blob,
+                         p_grant_with_object  in            boolean  default false) is
+        l_content clob;
+        l_grant_with_object varchar(1) := case when p_grant_with_object then 'Y' else 'N' end;
+    begin
+        l_content := 'Prompt Revoke all grants found in user_tab_privs_made'||chr(10)
+                || 'begin'||chr(10)
+                || '  for revoke_rec in (select privilege, table_name, grantee'||chr(10)
+                || '                       from user_tab_privs_made'||chr(10)
+                || '                      where ('''||l_grant_with_object||''' = ''N'' or type not in (''VIEW'', ''PACKAGE''))'||chr(10)
+                || '                        and table_name != user -- not INHERIT PRIVILEGES'||chr(10)
+                || '                      )'||chr(10)
+                || '  loop'||chr(10)
+                || '    dbms_output.put_line(''revoke '' || revoke_rec.privilege || '' on '' || revoke_rec.table_name || '' from '' || revoke_rec.grantee);'||chr(10)
+                || '    execute immediate ''revoke '' || revoke_rec.privilege || '' on '' || revoke_rec.table_name || '' from '' || revoke_rec.grantee;'||chr(10)
+                || '  end loop;'||chr(10)
+                || 'end;'||chr(10)
+                || '/'||chr(10)
+                || ''||chr(10)
+                || ''||chr(10)
+                || 'Prompt Grants to all known objects';
+
+        for cur in (select 'grant ' || privilege || ' on ' || table_name || ' to ' || grantee ||
+                        case when grantable = 'YES' then ' with grant option;' else ';' end as grant_script
+                      from user_tab_privs_made
+                    where not exists (select 1 from user_recyclebin where object_name = table_name )
+                      and table_name != user -- not INHERIT PRIVILEGES
+                      and (l_grant_with_object = 'N' or type not in ('VIEW', 'PACKAGE'))
+                    order by grantee, table_name)
+        loop
+            l_content := concat(l_content, chr(10) || cur.grant_script);
+        end loop;
+        l_content := concat(l_content, chr(10));
+
+
+        exp_zip_add_file(p_zipped_blob => p_zip_file
+                        ,p_name        => 'ddl/base/010_grants.sql'
+                        ,p_content     => clob_to_blob(l_content));
+    end add_grants;
+
+    function get_schema_zip(p_folder             in varchar2 default null,
+                            p_file_name          in varchar2 default null,
+                            p_grant_with_object  in boolean default false)
+                            return blob is
+        l_zip_file    blob;
+        l_object_name varchar2(250) := upper(substr(p_file_name, 1, instr(p_file_name, '.')-1));
+        l_object_type varchar2(250) := upper(p_folder);
+    begin
+
+        -- init boolean to validate, that something was exported, later
+        g_exp_objects_found := false;
+
+        -- init global files array
+        g_exp_files.delete;
+
+
+        dbms_lob.createtemporary(l_zip_file, true);
+
+        --
+        if (l_object_type is null or l_object_type in ('TABLES', 'INDEXES/PRIMARIES', 'INDEXES/UNIQUES', 'INDEXES/DEFAULTS')) then
+            add_indexes(p_zip_file     => l_zip_file,
+                        p_object_name  => l_object_name,
+                        p_object_type  => l_object_type);
+        end if;
+
+        if (l_object_type is null or l_object_type in ('TABLES', 'CONSTRAINTS/PRIMARIES', 'CONSTRAINTS/FOREIGNS', 'CONSTRAINTS/CHECKS', 'CONSTRAINTS/UNIQUES')) then
+            add_constraints(p_zip_file     => l_zip_file,
+                            p_object_name  => l_object_name,
+                            p_object_type  => l_object_type);
+        end if;
+
+        if (l_object_type is null or l_object_type = 'TABLES') then
+            add_tables(p_zip_file   => l_zip_file,
+                       p_table_name => l_object_name);
+        end if;
+
+        if (l_object_type is null or l_object_type in ('SOURCES/PACKAGES', 'SOURCES/TYPES', 'SOURCES/FUNCTIONS', 'SOURCES/PROCEDURES', 'SOURCES/TRIGGERS')) then
+            add_sources(p_zip_file          => l_zip_file,
+                        p_object_name       => l_object_name,
+                        p_object_type       => l_object_type,
+                        p_grant_with_object => p_grant_with_object);
+        end if;
+
+        if (l_object_type is null or l_object_type in ('TESTS/PACKAGES', 'TESTS/TYPES', 'TESTS/FUNCTIONS', 'TESTS/PROCEDURES')) then
+            add_tests(p_zip_file      => l_zip_file,
+                      p_object_name   => l_object_name,
+                      p_object_type   => l_object_type);
+        end if;
+
+        if (l_object_type is null or l_object_type in ('SEQUENCES')) then
+            add_sequences(p_zip_file      => l_zip_file,
+                          p_object_name   => l_object_name,
+                          p_object_type   => l_object_type);
+        end if;
+
+        if (l_object_type is null or l_object_type in ('VIEWS')) then
+            add_views(p_zip_file          => l_zip_file,
+                      p_object_name       => l_object_name,
+                      p_object_type       => l_object_type,
+                      p_grant_with_object => p_grant_with_object);
+        end if;
+
+        if (l_object_type is null or l_object_type in ('MVIEWS')) then
+            add_mviews(p_zip_file      => l_zip_file,
+                       p_object_name   => l_object_name,
+                       p_object_type   => l_object_type);
+        end if;
+
+        if (l_object_type is null or l_object_type in ('JOBS')) then
+            add_jobs(p_zip_file      => l_zip_file,
+                     p_object_name   => l_object_name,
+                     p_object_type   => l_object_type);
+        end if;
+
+        if (l_object_type is null or l_object_type in ('SYNONYMS/PUBLIC', 'SYNONYMS/PRIVATE')) then
+            add_synonyms(p_zip_file      => l_zip_file,
+                         p_object_name   => l_object_name,
+                         p_object_type   => l_object_type);
+        end if;
+
+        if (l_object_type is null or l_object_type in ('POLICIES')) then
+            add_policies(p_zip_file      => l_zip_file,
+                         p_object_name   => l_object_name,
+                         p_object_type   => l_object_type);
+        end if;
+
+        if (l_object_type is null or l_object_type in ('CONTEXTS')) then
+            add_contexts(p_zip_file      => l_zip_file,
+                         p_object_name   => l_object_name,
+                         p_object_type   => l_object_type);
+        end if;
+
+        if (l_object_type is null) then
+            add_grants(p_zip_file           => l_zip_file,
+                       p_grant_with_object  => p_grant_with_object);
+        end if;
+
+        if not g_exp_objects_found then
+            raise_application_error(-20002, 'Nothing found to export');
+        end if;
+
+        apex_zip.finish(p_zipped_blob => l_zip_file);
+        return l_zip_file;
+    end get_schema_zip;
+
+    procedure export_schema_rest(p_folder             in varchar2,
+                                 p_file_name          in varchar2,
+                                 p_grants_with_object in varchar2) is
+        l_zip blob;
+    begin
+        reset_logs;
+
+        dbms_metadata.set_transform_param(dbms_metadata.session_transform, 'SQLTERMINATOR',        true);
+        dbms_metadata.set_transform_param(dbms_metadata.session_transform, 'PRETTY',               true);
+        dbms_metadata.set_transform_param(dbms_metadata.session_transform, 'STORAGE',              false);
+        dbms_metadata.set_transform_param(dbms_metadata.session_transform, 'SEGMENT_ATTRIBUTES',   false);
+        dbms_metadata.set_transform_param(dbms_metadata.session_transform, 'CONSTRAINTS',          true);
+        dbms_metadata.set_transform_param(dbms_metadata.session_transform, 'REF_CONSTRAINTS',      true);
+        dbms_metadata.set_transform_param(dbms_metadata.session_transform, 'CONSTRAINTS_AS_ALTER', true);
+        dbms_metadata.set_transform_param(dbms_metadata.session_transform, 'EMIT_SCHEMA',          false);
+
+        l_zip := get_schema_zip(p_folder            => p_folder,
+                                p_file_name         => p_file_name,
+                                p_grant_with_object => lower(nvl(p_grants_with_object, 'false')) = 'true');
+
+        emit_zip_response(l_zip, lower(user) || '.zip');
+    exception
+        when others then
+            emit_json_error_response;
+    end export_schema_rest;
+
+    -- #####################################################################
+    -- ORDS REST module export
+    -- #####################################################################
+
+    procedure export_rest_module_rest(p_module_name in varchar2) is
+        l_zip    blob;
+        l_export clob;
+    begin
+        reset_logs;
+
+        -- dynamic call: ORDS_EXPORT availability differs between installations
+        -- and a static reference would break package compilation
+        begin
+            execute immediate 'begin :l := ords_export.export_module(p_module_name => :m); end;'
+                using out l_export, in p_module_name;
+        exception
+            when others then
+                raise_application_error(-20004,
+                    'ORDS module export failed or ORDS_EXPORT is not available for this schema: ' || sqlerrm);
+        end;
+
+        if l_export is null or dbms_lob.getlength(l_export) = 0 then
+            raise_application_error(-20002, 'Nothing found to export (' || p_module_name || ')');
+        end if;
+
+        -- matches "prompt /" appended by the SQLNET based export
+        l_export := l_export || chr(10) || '/' || chr(10);
+
+        dbms_lob.createtemporary(l_zip, true);
+        apex_zip.add_file(p_zipped_blob => l_zip,
+                          p_file_name   => lower(p_module_name) || '.module.sql',
+                          p_content     => clob_to_blob(l_export));
+        apex_zip.finish(p_zipped_blob => l_zip);
+
+        emit_zip_response(l_zip, lower(p_module_name) || '.zip');
+    exception
+        when others then
+            emit_json_error_response;
+    end export_rest_module_rest;
 
 end;
 /

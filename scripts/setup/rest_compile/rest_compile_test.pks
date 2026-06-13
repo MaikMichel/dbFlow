@@ -130,5 +130,9 @@ create or replace package rest_compile_test is
 
   --%test(keep multiline comment slash in place)
   procedure test_multiline_comment_slashs;
+
+  ----
+  --%test(reports version and api level)
+  procedure reports_version_info;
 end;
 /

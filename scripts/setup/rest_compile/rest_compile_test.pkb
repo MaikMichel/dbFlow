@@ -1413,5 +1413,14 @@ end;
     ut.expect(dbms_lob.instr(l_stmts(1).stmt_text, '/*', 1, 1)).to_be_greater_than(0);
   end;
 
+  ------
+
+  procedure reports_version_info is
+  begin
+    ut.expect(rest_compile.get_version).to_equal(rest_compile.c_version);
+    ut.expect(rest_compile.get_api_level).to_equal(rest_compile.c_api_level);
+    ut.expect(rest_compile.get_api_level).to_be_greater_or_equal(1);
+  end;
+
 end;
 /

@@ -38,5 +38,33 @@ create or replace package rest_compile is
                                 p_to_workspace       in varchar2,
                                 p_to_schema          in varchar2,
                                 p_application_id     in number);
+
+    -- API versioning: api_level is increased whenever new endpoints are added.
+    -- Clients (dbFlux/dbFlow) read it via GET /compile and refuse to call
+    -- endpoints the installed package does not provide yet.
+    c_version   constant varchar2(20) := '1.1.0';
+    c_api_level constant pls_integer  := 1;
+
+    function get_version return varchar2;
+    function get_api_level return number;
+    procedure get_info_rest;
+
+    -- schema compilation (response: JSON with errors in user_errors shape)
+    procedure compile_schema_rest(p_compile_all      in varchar2,
+                                  p_db_folder        in varchar2,
+                                  p_enable_warnings  in varchar2,
+                                  p_warning_string   in varchar2,
+                                  p_warning_excludes in varchar2);
+
+    -- exports: respond with application/zip on success, error JSON otherwise
+    procedure export_app_rest         (p_app_id in varchar2, p_export_options in varchar2);
+    procedure export_plugin_rest      (p_app_id in varchar2, p_plugin_name in varchar2);
+    procedure export_static_files_rest(p_app_id in varchar2, p_file_name in varchar2);
+    procedure export_plugin_files_rest(p_app_id in varchar2, p_plugin_name in varchar2, p_file_name in varchar2);
+    procedure export_schema_rest      (p_folder in varchar2, p_file_name in varchar2, p_grants_with_object in varchar2);
+    procedure export_rest_module_rest (p_module_name in varchar2);
+
+    -- remove an APEX static file (response: JSON {success, found, removed[]})
+    procedure remove_static_file_rest (p_app_id in varchar2, p_file_name in varchar2, p_file_ext in varchar2);
 end;
 /
