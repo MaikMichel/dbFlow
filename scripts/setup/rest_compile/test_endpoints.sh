@@ -34,18 +34,19 @@ set -u
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # --- auto-source apply.env if REST_SQL_URL is not already in the environment --
+# Walk up from CWD (like git does for .git) so the script works from any
+# subdirectory of the project, regardless of where dbFlow sources live.
 if [[ -z "${REST_SQL_URL:-}" ]]; then
-  for _candidate in \
-      "./apply.env" \
-      "${SCRIPT_DIR}/../../../apply.env" \
-      "${SCRIPT_DIR}/../../../../apply.env"; do
-    if [[ -f "${_candidate}" ]]; then
+  _search_dir="$(pwd)"
+  while [[ "${_search_dir}" != "/" ]]; do
+    if [[ -f "${_search_dir}/apply.env" ]]; then
       # shellcheck source=/dev/null
-      source "${_candidate}"
+      source "${_search_dir}/apply.env"
       break
     fi
+    _search_dir="$(dirname "${_search_dir}")"
   done
-  unset _candidate
+  unset _search_dir
 fi
 
 # --- configuration ---------------------------------------------------------
