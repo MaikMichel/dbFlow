@@ -23,12 +23,30 @@
 #   TEST_TABLE_NAME    existing table name for a targeted DDL export
 #
 # Usage:
-#   source apply.env && ./test_endpoints.sh
+#   ./test_endpoints.sh                       (auto-detects apply.env)
+#   source apply.env && ./test_endpoints.sh   (explicit)
 #
 # All tests are non-destructive: nothing is imported, removed or changed
 # except a "begin null; end;" payload executed by POST /compile.
 
 set -u
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# --- auto-source apply.env if REST_SQL_URL is not already in the environment --
+if [[ -z "${REST_SQL_URL:-}" ]]; then
+  for _candidate in \
+      "./apply.env" \
+      "${SCRIPT_DIR}/../../../apply.env" \
+      "${SCRIPT_DIR}/../../../../apply.env"; do
+    if [[ -f "${_candidate}" ]]; then
+      # shellcheck source=/dev/null
+      source "${_candidate}"
+      break
+    fi
+  done
+  unset _candidate
+fi
 
 # --- configuration ---------------------------------------------------------
 
@@ -47,7 +65,8 @@ done
 REST_USES_OAUTH="${REST_USES_OAUTH:-TRUE}"
 
 if [[ -z "${REST_SQL_URL:-}" ]]; then
-  echo "FATAL: REST_SQL_URL is not set (source your apply.env or export it)" >&2
+  echo "FATAL: REST_SQL_URL is not set — place an apply.env in your project root" >&2
+  echo "       or run: source apply.env && $0" >&2
   exit 2
 fi
 
