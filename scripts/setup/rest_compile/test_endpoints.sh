@@ -9,6 +9,10 @@
 #
 # Required environment (as printed by rest_compile_api_client.sql):
 #   REST_SQL_URL          .../<workspace>/dbflow/deploy
+#   REST_CLIENT_TOKEN     SHA-256 token printed by rest_compile_api_client.sql
+#   REST_USES_OAUTH       TRUE (default) or FALSE
+#
+# OAuth mode (REST_USES_OAUTH=TRUE, default):
 #   REST_OAUTH_TOKEN_URL  .../<workspace>/oauth/token
 #   REST_OAUTH_BASIC_B64  base64(client_id:client_secret)
 #
@@ -40,13 +44,22 @@ for cmd in curl jq unzip; do
   fi
 done
 
-for var in REST_SQL_URL REST_OAUTH_TOKEN_URL REST_OAUTH_BASIC_B64; do
-  if [[ -z "${!var:-}" ]]; then
-    echo "FATAL: ${var} is not set (source your apply.env or export it)" >&2
-    echo "       see rest_compile_api_client.sql output for the values" >&2
-    exit 2
-  fi
-done
+REST_USES_OAUTH="${REST_USES_OAUTH:-TRUE}"
+
+if [[ -z "${REST_SQL_URL:-}" ]]; then
+  echo "FATAL: REST_SQL_URL is not set (source your apply.env or export it)" >&2
+  exit 2
+fi
+
+if [[ "${REST_USES_OAUTH}" == "TRUE" ]]; then
+  for var in REST_OAUTH_TOKEN_URL REST_OAUTH_BASIC_B64; do
+    if [[ -z "${!var:-}" ]]; then
+      echo "FATAL: ${var} is not set (required when REST_USES_OAUTH=TRUE)" >&2
+      echo "       see rest_compile_api_client.sql output for the values" >&2
+      exit 2
+    fi
+  done
+fi
 
 REST_SQL_URL="${REST_SQL_URL%/}"
 
@@ -90,7 +103,7 @@ RESP_CONTENT_TYPE=""
 RESP_BODY_FILE="${WORK_DIR}/body"
 
 # call_endpoint <max-time> <endpoint> [curl args ...]
-# POSTs to ${REST_SQL_URL}/<endpoint> with the Bearer token and stores
+# POSTs to ${REST_SQL_URL}/<endpoint> with auth headers and stores
 # http status / content type / body for the assertions below.
 function call_endpoint() {
   local max_time="$1"
@@ -100,6 +113,14 @@ function call_endpoint() {
   local headers_file="${WORK_DIR}/headers"
   : > "${RESP_BODY_FILE}"
 
+  local -a auth_args=()
+  if [[ "${REST_USES_OAUTH}" == "TRUE" ]] && [[ -n "${ACCESS_TOKEN:-}" ]]; then
+    auth_args+=( --header "Authorization: Bearer ${ACCESS_TOKEN}" )
+  fi
+  if [[ -n "${REST_CLIENT_TOKEN:-}" ]]; then
+    auth_args+=( --header "x-dbflow-token: ${REST_CLIENT_TOKEN}" )
+  fi
+
   RESP_STATUS=$(curl -sS \
     --connect-timeout "${TEST_CONNECT_TIMEOUT}" \
     --max-time "${max_time}" \
@@ -107,7 +128,7 @@ function call_endpoint() {
     -D "${headers_file}" \
     -o "${RESP_BODY_FILE}" \
     -w '%{http_code}' \
-    --header "Authorization: Bearer ${ACCESS_TOKEN}" \
+    "${auth_args[@]}" \
     "$@" \
     "${REST_SQL_URL}/${endpoint}")
   local rc=$?
@@ -157,24 +178,28 @@ function expect_json_error() {
 echo "# rest_compile endpoint smoke tests against ${REST_SQL_URL}"
 echo
 
-token_response=$(curl -sS \
-  --connect-timeout "${TEST_CONNECT_TIMEOUT}" \
-  --max-time "${TEST_TOKEN_MAX_TIME}" \
-  --header "Authorization: Basic ${REST_OAUTH_BASIC_B64}" \
-  --data "grant_type=client_credentials" \
-  "${REST_OAUTH_TOKEN_URL}")
+if [[ "${REST_USES_OAUTH}" == "TRUE" ]]; then
+  token_response=$(curl -sS \
+    --connect-timeout "${TEST_CONNECT_TIMEOUT}" \
+    --max-time "${TEST_TOKEN_MAX_TIME}" \
+    --header "Authorization: Basic ${REST_OAUTH_BASIC_B64}" \
+    --data "grant_type=client_credentials" \
+    "${REST_OAUTH_TOKEN_URL}")
 
-ACCESS_TOKEN=$(jq -r '.access_token // empty' <<< "${token_response}" 2>/dev/null)
-if [[ -n "${ACCESS_TOKEN}" ]]; then
-  t_ok "OAuth token endpoint returns access_token"
+  ACCESS_TOKEN=$(jq -r '.access_token // empty' <<< "${token_response}" 2>/dev/null)
+  if [[ -n "${ACCESS_TOKEN}" ]]; then
+    t_ok "OAuth token endpoint returns access_token"
+  else
+    t_fail "OAuth token endpoint returns access_token" "${token_response}"
+    echo
+    echo "FATAL: cannot continue without an access token" >&2
+    exit 1
+  fi
 else
-  t_fail "OAuth token endpoint returns access_token" "${token_response}"
-  echo
-  echo "FATAL: cannot continue without an access token" >&2
-  exit 1
+  t_skip "OAuth token endpoint returns access_token" "REST_USES_OAUTH=FALSE"
 fi
 
-# --- 2: privilege protection -----------------------------------------------
+# --- 2: protection check ---------------------------------------------------
 
 status_no_auth=$(curl -sS -o /dev/null -w '%{http_code}' \
   --connect-timeout "${TEST_CONNECT_TIMEOUT}" \
@@ -182,30 +207,38 @@ status_no_auth=$(curl -sS -o /dev/null -w '%{http_code}' \
   "${REST_SQL_URL}/compile")
 
 if [[ "${status_no_auth}" == "401" ]] || [[ "${status_no_auth}" == "403" ]]; then
-  t_ok "GET compile without token is rejected (HTTP ${status_no_auth})"
+  t_ok "GET compile without any auth is rejected (HTTP ${status_no_auth})"
 else
-  t_fail "GET compile without token is rejected" "got HTTP ${status_no_auth} - endpoint may be unprotected!"
+  t_fail "GET compile without any auth is rejected" "got HTTP ${status_no_auth} - endpoint may be unprotected!"
 fi
 
 # --- 3: version / api_level contract ---------------------------------------
 
+info_auth_args=()
+if [[ "${REST_USES_OAUTH}" == "TRUE" ]] && [[ -n "${ACCESS_TOKEN:-}" ]]; then
+  info_auth_args+=( --header "Authorization: Bearer ${ACCESS_TOKEN}" )
+fi
+if [[ -n "${REST_CLIENT_TOKEN:-}" ]]; then
+  info_auth_args+=( --header "x-dbflow-token: ${REST_CLIENT_TOKEN}" )
+fi
+
 info_response=$(curl -sS \
   --connect-timeout "${TEST_CONNECT_TIMEOUT}" \
   --max-time "${TEST_TOKEN_MAX_TIME}" \
-  --header "Authorization: Bearer ${ACCESS_TOKEN}" \
+  "${info_auth_args[@]}" \
   "${REST_SQL_URL}/compile")
 
 info_success=$(jq -r '.success // false' <<< "${info_response}" 2>/dev/null)
 info_version=$(jq -r '.version // empty' <<< "${info_response}" 2>/dev/null)
 info_api_level=$(jq -r '.api_level // 0' <<< "${info_response}" 2>/dev/null)
 
-if [[ "${info_success}" == "true" ]] && [[ "${info_version}" =~ ^1\. ]] && [[ "${info_api_level}" -ge 1 ]]; then
+if [[ "${info_success}" == "true" ]] && [[ "${info_version}" =~ ^1\. ]] && [[ "${info_api_level}" -ge 2 ]]; then
   t_ok "GET compile reports version ${info_version}, api_level ${info_api_level}"
 else
-  t_fail "GET compile reports version and api_level >= 1" "${info_response}"
+  t_fail "GET compile reports version and api_level >= 2" "${info_response}"
   echo
   echo "FATAL: server reports api_level ${info_api_level} - the installed rest_compile" >&2
-  echo "       package is older than 1.1.0; re-run install.sql and try again" >&2
+  echo "       package is older than 1.2.0; re-run install.sql and try again" >&2
   exit 1
 fi
 

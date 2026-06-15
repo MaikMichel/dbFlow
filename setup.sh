@@ -745,6 +745,12 @@ function wizard() {
     local local_rest_oauth_basic_b64=${REST_OAUTH_BASIC_B64-""}
     read -r -p "$(printf "Enter REST OAuth Basic B64 value [${BGRAY}${local_rest_oauth_basic_b64}${NC}]: ")" wiz_rest_oauth_basic_b64
     wiz_rest_oauth_basic_b64=${wiz_rest_oauth_basic_b64:-"${local_rest_oauth_basic_b64}"}
+
+    local local_rest_uses_oauth=${REST_USES_OAUTH:-"TRUE"}
+    read -r -p "$(printf "Use OAuth for REST authentication? (TRUE/FALSE) [${BGRAY}${local_rest_uses_oauth}${NC}]: ")" wiz_rest_uses_oauth
+    wiz_rest_uses_oauth=${wiz_rest_uses_oauth:-"${local_rest_uses_oauth}"}
+    wiz_rest_uses_oauth=$(echo "${wiz_rest_uses_oauth}" | tr '[:lower:]' '[:upper:]')
+    [[ "${wiz_rest_uses_oauth}" == "FALSE" ]] || wiz_rest_uses_oauth="TRUE"
   fi
 
   local local_depot_path=${DEPOT_PATH-"_depot"}
@@ -844,6 +850,8 @@ function write_apply() {
       fi
       echo "REST_OAUTH_TOKEN_URL=${wiz_rest_oauth_token_url}"
       echo "REST_OAUTH_BASIC_B64=${wiz_rest_oauth_basic_b64}"
+      echo "REST_USES_OAUTH=${wiz_rest_uses_oauth:-TRUE}"
+      echo "# REST_CLIENT_TOKEN=  # set to the value printed by rest_compile_api_client.sql"
       echo ""
     else
       echo "# DB Connection"

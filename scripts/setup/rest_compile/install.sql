@@ -1,6 +1,6 @@
 -- Auto-generated install script
--- Source definition: .dbFlow/scripts/setup/rest_compile/install.def
--- Generated at: 2026-06-09 10:07:13 +0200
+-- Source definition: install.def
+-- Generated at: 2026-06-15 17:47:04 +0200
 
 set define off
 
@@ -69,11 +69,17 @@ create or replace package rest_compile is
                                 p_to_schema          in varchar2,
                                 p_application_id     in number);
 
+    -- Security token: SHA-256 hash of instance_url|schema|workspace, computed at
+    -- package initialisation. Every _rest endpoint validates the x-dbflow-token
+    -- request header against this value when it is not null.
+    g_client_token varchar2(64);
+    procedure check_client_token;
+
     -- API versioning: api_level is increased whenever new endpoints are added.
     -- Clients (dbFlux/dbFlow) read it via GET /compile and refuse to call
     -- endpoints the installed package does not provide yet.
-    c_version   constant varchar2(20) := '1.1.0';
-    c_api_level constant pls_integer  := 1;
+    c_version   constant varchar2(20) := '1.2.0';
+    c_api_level constant pls_integer  := 2;
 
     function get_version return varchar2;
     function get_api_level return number;
@@ -141,6 +147,21 @@ create or replace package body rest_compile is
         g_logs.delete;
         g_log_entries := json_array_t();
     end reset_logs;
+
+    procedure check_client_token is
+        l_token varchar2(64);
+    begin
+        if g_client_token is not null then
+            l_token := lower(trim(owa_util.get_cgi_env('HTTP_X_DBFLOW_TOKEN')));
+            if l_token is null or l_token <> g_client_token then
+                owa_util.status_line(401, 'Unauthorized', false);
+                owa_util.mime_header('application/json', false);
+                owa_util.http_header_close;
+                sys.htp.p('{"success":false,"error":"Unauthorized","message":"Invalid or missing x-dbflow-token header"}');
+                apex_application.stop_apex_engine;
+            end if;
+        end if;
+    end check_client_token;
 
     /*
     * Append one line to the in-memory log buffer.
@@ -1136,6 +1157,7 @@ create or replace package body rest_compile is
                                p_content_type in varchar2) is
         l_response json_object_t;
     begin
+        check_client_token;
         owa_util.mime_header('application/json', false);
         sys.htp.p('Cache-Control: no-cache');
         owa_util.http_header_close;
@@ -1151,6 +1173,7 @@ create or replace package body rest_compile is
         l_response json_object_t := json_object_t();
         l_info     json_object_t;
     begin
+        check_client_token;
         owa_util.mime_header('application/json', false);
         sys.htp.p('Cache-Control: no-cache');
         owa_util.http_header_close;
@@ -1207,6 +1230,7 @@ create or replace package body rest_compile is
                                 p_application_id     in number) is
         l_response json_object_t := json_object_t();
     begin
+        check_client_token;
         reset_logs;
 
         owa_util.mime_header('application/json', false);
@@ -1243,6 +1267,7 @@ create or replace package body rest_compile is
     procedure get_info_rest is
         l_response json_object_t := json_object_t();
     begin
+        check_client_token;
         owa_util.mime_header('application/json', false);
         sys.htp.p('Cache-Control: no-cache');
         owa_util.http_header_close;
@@ -1383,6 +1408,7 @@ create or replace package body rest_compile is
         l_compile_all boolean := upper(nvl(p_compile_all, 'FALSE')) = 'TRUE';
         l_start       number  := dbms_utility.get_time;
     begin
+        check_client_token;
         reset_logs;
         emit_json_header;
 
@@ -1450,6 +1476,7 @@ create or replace package body rest_compile is
         l_with_acl_assignments    boolean := false;
         l_with_supporting_objects varchar2(1 char);
     begin
+        check_client_token;
         reset_logs;
         init_apex_context(p_app_id, l_app_id);
 
@@ -1498,6 +1525,7 @@ create or replace package body rest_compile is
         l_plugin_id apex_appl_plugins.plugin_id%type;
         l_files     apex_t_export_files;
     begin
+        check_client_token;
         reset_logs;
         init_apex_context(p_app_id, l_app_id);
 
@@ -1532,6 +1560,7 @@ create or replace package body rest_compile is
         l_zip    blob;
         l_found  boolean := false;
     begin
+        check_client_token;
         reset_logs;
         init_apex_context(p_app_id, l_app_id);
 
@@ -1568,6 +1597,7 @@ create or replace package body rest_compile is
         l_zip    blob;
         l_found  boolean := false;
     begin
+        check_client_token;
         reset_logs;
         init_apex_context(p_app_id, l_app_id);
 
@@ -1617,6 +1647,7 @@ create or replace package body rest_compile is
                 null;
         end restore_schema;
     begin
+        check_client_token;
         reset_logs;
         emit_json_header;
 
@@ -2440,6 +2471,7 @@ create or replace package body rest_compile is
                                  p_grants_with_object in varchar2) is
         l_zip blob;
     begin
+        check_client_token;
         reset_logs;
 
         dbms_metadata.set_transform_param(dbms_metadata.session_transform, 'SQLTERMINATOR',        true);
@@ -2469,6 +2501,7 @@ create or replace package body rest_compile is
         l_zip    blob;
         l_export clob;
     begin
+        check_client_token;
         reset_logs;
 
         -- dynamic call: ORDS_EXPORT availability differs between installations
@@ -2501,6 +2534,27 @@ create or replace package body rest_compile is
             emit_json_error_response;
     end export_rest_module_rest;
 
+begin
+    -- Compute the security token once at package load time.
+    -- The same formula is used in rest_compile_api_client.sql to generate the
+    -- REST_CLIENT_TOKEN value that callers must send in the x-dbflow-token header.
+    begin
+        select lower(rawtohex(
+                   standard_hash(
+                       nvl(apex_mail.get_instance_url(), '') ||
+                       '|' ||
+                       sys_context('USERENV', 'SESSION_USER') ||
+                       '|' ||
+                       (select workspace from apex_workspaces where rownum = 1),
+                       'SHA256'
+                   )
+               ))
+          into g_client_token
+          from dual;
+    exception
+        when others then
+            g_client_token := null;
+    end;
 end;
 /
 
@@ -3116,6 +3170,7 @@ declare
   l_workspace     varchar2(200);
   l_basic_plain   varchar2(4000);
   l_basic_b64     varchar2(4000);
+  l_client_token  varchar2(64);
 begin
   select count(*)
     into l_exists
@@ -3157,10 +3212,27 @@ begin
   );
   l_basic_b64 := replace(replace(l_basic_b64, chr(10), ''), chr(13), '');
 
+  -- Compute client token using the same formula as the package body initialisation.
+  -- This value must be set as REST_CLIENT_TOKEN in apply.env.
+  select lower(rawtohex(
+             standard_hash(
+                 nvl(apex_mail.get_instance_url(), '') ||
+                 '|' ||
+                 sys_context('USERENV', 'SESSION_USER') ||
+                 '|' ||
+                 l_workspace,
+                 'SHA256'
+             )
+         ))
+    into l_client_token
+    from dual;
+
   dbms_output.put_line('# put the following lines into apply.env and modify URL if needed');
   dbms_output.put_line('REST_SQL_URL="'||apex_mail.get_instance_url||lower(l_workspace)||'/dbflow/deploy"');
   dbms_output.put_line('REST_OAUTH_TOKEN_URL="'||apex_mail.get_instance_url||lower(l_workspace)||'/oauth/token"');
   dbms_output.put_line('REST_OAUTH_BASIC_B64="'||l_basic_b64||'"');
+  dbms_output.put_line('REST_CLIENT_TOKEN="'||l_client_token||'"');
+  dbms_output.put_line('REST_USES_OAUTH=TRUE');
 end;
 /
 

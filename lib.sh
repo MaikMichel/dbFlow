@@ -290,36 +290,46 @@ EOF
 
 function check_connection() {
   if [[ "${CONN_MODE}" == "REST" ]] && [[ -n "${REST_SQL_URL}" ]]; then
-    if ! command -v jq >/dev/null 2>&1; then
-      echo_fatal "REST OAuth requires jq to parse token response"
-      exit 2
+    local -a rest_curl_args=( -sS -X GET )
+
+    if [[ "${REST_USES_OAUTH:-TRUE}" == "TRUE" ]]; then
+      if ! command -v jq >/dev/null 2>&1; then
+        echo_fatal "REST OAuth requires jq to parse token response"
+        exit 2
+      fi
+
+      if [[ -z "${REST_OAUTH_TOKEN_URL:-}" ]] || [[ -z "${REST_OAUTH_BASIC_B64:-}" ]]; then
+        echo_fatal "Missing REST OAuth config (REST_OAUTH_TOKEN_URL, REST_OAUTH_BASIC_B64)"
+        exit 2
+      fi
+
+      token_response=$(curl -sS \
+        --header "Authorization: Basic ${REST_OAUTH_BASIC_B64}" \
+        --data "grant_type=client_credentials" \
+        "${REST_OAUTH_TOKEN_URL}")
+      token_rc=$?
+
+      if [[ ${token_rc} -ne 0 ]]; then
+        echo_fatal "Error getting OAuth token from ${REST_OAUTH_TOKEN_URL}"
+        echo_error "${token_response}"
+        exit 2
+      fi
+
+      access_token=$(jq -r '.access_token // empty' <<< "${token_response}" 2>/dev/null)
+      if [[ -z "${access_token}" ]]; then
+        echo_fatal "OAuth token response does not contain access_token"
+        echo_error "${token_response}"
+        exit 2
+      fi
+
+      rest_curl_args+=( --header "Authorization: Bearer ${access_token}" )
     fi
 
-    if [[ -z "${REST_OAUTH_TOKEN_URL:-}" ]] || [[ -z "${REST_OAUTH_BASIC_B64:-}" ]]; then
-      echo_fatal "Missing REST OAuth config (REST_OAUTH_TOKEN_URL, REST_OAUTH_BASIC_B64)"
-      exit 2
+    if [[ -n "${REST_CLIENT_TOKEN:-}" ]]; then
+      rest_curl_args+=( --header "x-dbflow-token: ${REST_CLIENT_TOKEN}" )
     fi
 
-    token_response=$(curl -sS \
-      --header "Authorization: Basic ${REST_OAUTH_BASIC_B64}" \
-      --data "grant_type=client_credentials" \
-      "${REST_OAUTH_TOKEN_URL}")
-    token_rc=$?
-
-    if [[ ${token_rc} -ne 0 ]]; then
-      echo_fatal "Error getting OAuth token from ${REST_OAUTH_TOKEN_URL}"
-      echo_error "${token_response}"
-      exit 2
-    fi
-
-    access_token=$(jq -r '.access_token // empty' <<< "${token_response}" 2>/dev/null)
-    if [[ -z "${access_token}" ]]; then
-      echo_fatal "OAuth token response does not contain access_token"
-      echo_error "${token_response}"
-      exit 2
-    fi
-
-    rest_output=$(curl -sS -X GET --header "Authorization: Bearer ${access_token}" "${REST_SQL_URL}/compile")
+    rest_output=$(curl "${rest_curl_args[@]}" "${REST_SQL_URL}/compile")
 
     if echo "${rest_output}" | grep -q '"success"\s*:\s*true'; then
       timelog "REST connection to ${REST_SQL_URL} is working" ${success}

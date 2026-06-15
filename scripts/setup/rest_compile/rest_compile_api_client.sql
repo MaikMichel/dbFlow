@@ -5,6 +5,7 @@ declare
   l_workspace     varchar2(200);
   l_basic_plain   varchar2(4000);
   l_basic_b64     varchar2(4000);
+  l_client_token  varchar2(64);
 begin
   select count(*)
     into l_exists
@@ -46,10 +47,27 @@ begin
   );
   l_basic_b64 := replace(replace(l_basic_b64, chr(10), ''), chr(13), '');
 
+  -- Compute client token using the same formula as the package body initialisation.
+  -- This value must be set as REST_CLIENT_TOKEN in apply.env.
+  select lower(rawtohex(
+             standard_hash(
+                 nvl(apex_mail.get_instance_url(), '') ||
+                 '|' ||
+                 sys_context('USERENV', 'SESSION_USER') ||
+                 '|' ||
+                 l_workspace,
+                 'SHA256'
+             )
+         ))
+    into l_client_token
+    from dual;
+
   dbms_output.put_line('# put the following lines into apply.env and modify URL if needed');
   dbms_output.put_line('REST_SQL_URL="'||apex_mail.get_instance_url||lower(l_workspace)||'/dbflow/deploy"');
   dbms_output.put_line('REST_OAUTH_TOKEN_URL="'||apex_mail.get_instance_url||lower(l_workspace)||'/oauth/token"');
   dbms_output.put_line('REST_OAUTH_BASIC_B64="'||l_basic_b64||'"');
+  dbms_output.put_line('REST_CLIENT_TOKEN="'||l_client_token||'"');
+  dbms_output.put_line('REST_USES_OAUTH=TRUE');
 end;
 /
 

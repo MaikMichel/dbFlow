@@ -1,0 +1,11 @@
+-- Installscript for rest_compile (without OAuth)
+-- Use this when REST_USES_OAUTH=FALSE (e.g. apex.oracle.com / oracleapex.com).
+-- No ORDS role, no ORDS privilege, no OAuth client are created.
+-- Run disable_oauth_protection.sql first if you previously ran the full install.sql.
+----------------------------------------------------------------------------------
+
+-- File: rest_compile_logs.sql
+-- File: rest_compile.pks
+-- File: rest_compile.pkb
+-- File: com.dbflow.deploy.module.sql
+-- File: rest_compile_api_token_only.sql

@@ -62,6 +62,7 @@ CONN_MODE=${CONN_MODE:-SQLNET}
 REST_ACCESS_TOKEN=""
 REST_ACCESS_TOKEN_EXPIRES_AT=0
 REST_TOKEN_EXPIRY_SAFETY_SECONDS=30
+REST_USES_OAUTH="${REST_USES_OAUTH:-TRUE}"
 
 basepath=$(pwd)
 
@@ -320,12 +321,18 @@ function run_sql_file_rest() {
     fi
   done < <(compgen -A variable REST_HEADER_ | sort)
 
-  ensure_rest_access_token
-  if [[ $? -ne 0 ]]; then
-    rm -rf "${payload_dir}"
-    return 1
+  if [[ "${REST_USES_OAUTH}" == "TRUE" ]]; then
+    ensure_rest_access_token
+    if [[ $? -ne 0 ]]; then
+      rm -rf "${payload_dir}"
+      return 1
+    fi
+    curl_args+=( --header "Authorization: Bearer ${REST_ACCESS_TOKEN}" )
   fi
-  curl_args+=( --header "Authorization: Bearer ${REST_ACCESS_TOKEN}" )
+
+  if [[ -n "${REST_CLIENT_TOKEN:-}" ]]; then
+    curl_args+=( --header "x-dbflow-token: ${REST_CLIENT_TOKEN}" )
+  fi
 
   local curl_response
   curl_response=$(curl "${curl_args[@]}" --data-binary @"${payload_file}" "${REST_SQL_URL}/compile")
@@ -454,11 +461,17 @@ function run_app_import_rest() {
     fi
   done < <(compgen -A variable REST_HEADER_ | sort)
 
-  ensure_rest_access_token
-  if [[ $? -ne 0 ]]; then
-    return 1
+  if [[ "${REST_USES_OAUTH}" == "TRUE" ]]; then
+    ensure_rest_access_token
+    if [[ $? -ne 0 ]]; then
+      return 1
+    fi
+    curl_args+=( --header "Authorization: Bearer ${REST_ACCESS_TOKEN}" )
   fi
-  curl_args+=( --header "Authorization: Bearer ${REST_ACCESS_TOKEN}" )
+
+  if [[ -n "${REST_CLIENT_TOKEN:-}" ]]; then
+    curl_args+=( --header "x-dbflow-token: ${REST_CLIENT_TOKEN}" )
+  fi
 
   local curl_response
 

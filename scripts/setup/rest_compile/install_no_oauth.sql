@@ -1,3 +1,119 @@
+-- Auto-generated install script
+-- Source definition: install_no_oauth.def
+-- Generated at: 2026-06-15 17:47:04 +0200
+
+set define off
+
+
+prompt >> Executing rest_compile_logs.sql
+-- =====================================================================
+-- Begin File: rest_compile_logs.sql
+-- =====================================================================
+drop table if exists rest_compile_logs;
+create table rest_compile_logs (
+    rcl_id         number generated always as identity,
+    rcl_fname      varchar2(4000 char),
+    rcl_content    clob,
+    rcl_payload    blob,
+    rcl_content_type varchar2(255 char),
+    rcl_is_zip     varchar2(1 char)
+);
+
+-- =====================================================================
+-- End File: rest_compile_logs.sql
+-- =====================================================================
+
+
+prompt >> Executing rest_compile.pks
+-- =====================================================================
+-- Begin File: rest_compile.pks
+-- =====================================================================
+create or replace package rest_compile is
+    type r_statement is record (
+        stmt_type      varchar2(30),
+        stmt_text      clob
+    );
+
+    type t_array is table of varchar2(32767) index by binary_integer;
+    type t_statement_list is table of r_statement index by binary_integer;
+    type t_file_list is table of varchar2(32767) index by binary_integer;
+
+
+    function run_payload(p_request_name in varchar2,
+                         p_payload      in blob,
+                         p_content_type in varchar2) return json_object_t;
+    procedure run_payload_rest(p_request_name in varchar2,
+                               p_payload      in blob,
+                               p_content_type in varchar2);
+    procedure run_content_rest(p_fname          in varchar2,
+                               p_script_content in clob);
+
+    function normalize_input(p_script in clob) return clob;
+    function clob_to_lines(p_clob in clob) return t_array;
+    function is_sqlplus_command(p_line in varchar2) return boolean;
+    procedure clob_append_line(p_target in out nocopy clob, p_line in varchar2);
+
+    function split_into_statements(p_script in clob)
+        return t_statement_list;
+
+
+    -- function split_script(p_script in clob) return t_statement_list;
+    -- function classify_statement(p_text in clob) return varchar2;
+    procedure execute_statement(p_fname in varchar2,
+                                p_stmt in r_statement);
+    function run_content(p_fname          in varchar2,
+                         p_script_content in clob) return json_object_t;
+
+    procedure import_app_rest( p_app_file_content   in clob,
+                                p_to_workspace       in varchar2,
+                                p_to_schema          in varchar2,
+                                p_application_id     in number);
+
+    -- Security token: SHA-256 hash of instance_url|schema|workspace, computed at
+    -- package initialisation. Every _rest endpoint validates the x-dbflow-token
+    -- request header against this value when it is not null.
+    g_client_token varchar2(64);
+    procedure check_client_token;
+
+    -- API versioning: api_level is increased whenever new endpoints are added.
+    -- Clients (dbFlux/dbFlow) read it via GET /compile and refuse to call
+    -- endpoints the installed package does not provide yet.
+    c_version   constant varchar2(20) := '1.2.0';
+    c_api_level constant pls_integer  := 2;
+
+    function get_version return varchar2;
+    function get_api_level return number;
+    procedure get_info_rest;
+
+    -- schema compilation (response: JSON with errors in user_errors shape)
+    procedure compile_schema_rest(p_compile_all      in varchar2,
+                                  p_db_folder        in varchar2,
+                                  p_enable_warnings  in varchar2,
+                                  p_warning_string   in varchar2,
+                                  p_warning_excludes in varchar2);
+
+    -- exports: respond with application/zip on success, error JSON otherwise
+    procedure export_app_rest         (p_app_id in varchar2, p_export_options in varchar2);
+    procedure export_plugin_rest      (p_app_id in varchar2, p_plugin_name in varchar2);
+    procedure export_static_files_rest(p_app_id in varchar2, p_file_name in varchar2);
+    procedure export_plugin_files_rest(p_app_id in varchar2, p_plugin_name in varchar2, p_file_name in varchar2);
+    procedure export_schema_rest      (p_folder in varchar2, p_file_name in varchar2, p_grants_with_object in varchar2);
+    procedure export_rest_module_rest (p_module_name in varchar2);
+
+    -- remove an APEX static file (response: JSON {success, found, removed[]})
+    procedure remove_static_file_rest (p_app_id in varchar2, p_file_name in varchar2, p_file_ext in varchar2);
+end;
+/
+
+-- =====================================================================
+-- End File: rest_compile.pks
+-- =====================================================================
+
+
+prompt >> Executing rest_compile.pkb
+-- =====================================================================
+-- Begin File: rest_compile.pkb
+-- =====================================================================
 create or replace package body rest_compile is
 
 
@@ -2441,3 +2557,604 @@ begin
     end;
 end;
 /
+
+-- =====================================================================
+-- End File: rest_compile.pkb
+-- =====================================================================
+
+
+prompt >> Executing com.dbflow.deploy.module.sql
+-- =====================================================================
+-- Begin File: com.dbflow.deploy.module.sql
+-- =====================================================================
+
+-- Generated by SQLcl REST Data Services 24.4.4.0
+-- Exported REST Definitions from ORDS Schema Version 25.3.1.r2891312
+-- Schema: ATI   Date: Mon Mar 16 10:22:04 CET 2026
+--
+BEGIN
+--   ORDS.ENABLE_SCHEMA(
+--       p_enabled             => TRUE,
+--       p_schema              => 'ATI',
+--       p_url_mapping_type    => 'BASE_PATH',
+--       p_url_mapping_pattern => 'ati',
+--       p_auto_rest_auth      => FALSE);    
+
+  ORDS.DEFINE_MODULE(
+      p_module_name    => 'com.dbflow.deploy',
+      p_base_path      => '/dbflow/deploy/',
+      p_items_per_page =>  25,
+      p_status         => 'PUBLISHED',
+      p_comments       => NULL);      
+  ORDS.DEFINE_TEMPLATE(
+      p_module_name    => 'com.dbflow.deploy',
+      p_pattern        => 'compile',
+      p_priority       => 0,
+      p_etag_type      => 'HASH',
+      p_etag_query     => NULL,
+      p_comments       => NULL);
+  ORDS.DEFINE_HANDLER(
+      p_module_name    => 'com.dbflow.deploy',
+      p_pattern        => 'compile',
+      p_method         => 'GET',
+      p_source_type    => 'plsql/block',
+      p_items_per_page =>  0,
+      p_mimes_allowed  => '',
+      p_comments       => NULL,
+      p_source         =>
+'begin
+  -- health check including version/api_level for client capability detection
+  rest_compile.get_info_rest;
+end;'
+      );
+  ORDS.DEFINE_HANDLER(
+      p_module_name    => 'com.dbflow.deploy',
+      p_pattern        => 'compile',
+      p_method         => 'POST',
+      p_source_type    => 'plsql/block',
+      p_items_per_page =>  0,
+      p_mimes_allowed  => '',
+      p_comments       => NULL,
+      p_source         => 
+'declare
+    l_body_blob blob := :body;
+    l_content_type varchar2(255) := :content_type;
+    l_fname varchar2(4000) := :fname;
+begin
+  rest_compile.run_payload_rest(p_request_name => l_fname,
+                                p_payload      => l_body_blob,
+                                p_content_type => l_content_type);
+end;  '
+      );
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'compile',
+      p_method             => 'POST',
+      p_name               => 'file_name',
+      p_bind_variable_name => 'fname',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'reletive filename');      
+  ORDS.DEFINE_TEMPLATE(
+      p_module_name    => 'com.dbflow.deploy',
+      p_pattern        => 'impapp',
+      p_priority       => 0,
+      p_etag_type      => 'HASH',
+      p_etag_query     => NULL,
+      p_comments       => NULL);
+  ORDS.DEFINE_HANDLER(
+      p_module_name    => 'com.dbflow.deploy',
+      p_pattern        => 'impapp',
+      p_method         => 'POST',
+      p_source_type    => 'plsql/block',
+      p_items_per_page =>  0,
+      p_mimes_allowed  => '',
+      p_comments       => NULL,
+      p_source         => 
+'begin
+  rest_compile.import_app_rest( p_app_file_content   => :body_text,
+                                p_to_workspace       => :target_workspace,
+                                p_to_schema          => :target_schema,
+                                p_application_id     => :target_app_id);
+end;'
+      );
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'impapp',
+      p_method             => 'POST',
+      p_name               => 'target_app_id',
+      p_bind_variable_name => 'target_app_id',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'ID of the new APP');      
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'impapp',
+      p_method             => 'POST',
+      p_name               => 'target_schema',
+      p_bind_variable_name => 'target_schema',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'Name of the assigne schema the app should use');      
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'impapp',
+      p_method             => 'POST',
+      p_name               => 'target_workspace',
+      p_bind_variable_name => 'target_workspace',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'Name of the workspace to import the app to');
+
+  -- ===================================================================
+  -- compileschema: recompile all/invalid objects of the schema
+  -- ===================================================================
+  ORDS.DEFINE_TEMPLATE(
+      p_module_name    => 'com.dbflow.deploy',
+      p_pattern        => 'compileschema',
+      p_priority       => 0,
+      p_etag_type      => 'HASH',
+      p_etag_query     => NULL,
+      p_comments       => NULL);
+  ORDS.DEFINE_HANDLER(
+      p_module_name    => 'com.dbflow.deploy',
+      p_pattern        => 'compileschema',
+      p_method         => 'POST',
+      p_source_type    => 'plsql/block',
+      p_items_per_page =>  0,
+      p_mimes_allowed  => '',
+      p_comments       => NULL,
+      p_source         =>
+'begin
+  rest_compile.compile_schema_rest(p_compile_all      => :compile_all,
+                                   p_db_folder        => :db_folder,
+                                   p_enable_warnings  => :enable_warnings,
+                                   p_warning_string   => :warning_string,
+                                   p_warning_excludes => :warning_excludes);
+end;'
+      );
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'compileschema',
+      p_method             => 'POST',
+      p_name               => 'compile_all',
+      p_bind_variable_name => 'compile_all',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'TRUE compiles all objects, FALSE only invalid ones');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'compileschema',
+      p_method             => 'POST',
+      p_name               => 'db_folder',
+      p_bind_variable_name => 'db_folder',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'name of the db folder inside the workspace (default db)');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'compileschema',
+      p_method             => 'POST',
+      p_name               => 'enable_warnings',
+      p_bind_variable_name => 'enable_warnings',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'optional ALTER SESSION SET PLSQL_WARNINGS statement');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'compileschema',
+      p_method             => 'POST',
+      p_name               => 'warning_string',
+      p_bind_variable_name => 'warning_string',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'WARNING to report warnings, NIX to report errors only');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'compileschema',
+      p_method             => 'POST',
+      p_name               => 'warning_excludes',
+      p_bind_variable_name => 'warning_excludes',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'comma separated list of warning message numbers to exclude');
+
+  -- ===================================================================
+  -- expapp: APEX application export (split), responds with a ZIP
+  -- ===================================================================
+  ORDS.DEFINE_TEMPLATE(
+      p_module_name    => 'com.dbflow.deploy',
+      p_pattern        => 'expapp',
+      p_priority       => 0,
+      p_etag_type      => 'HASH',
+      p_etag_query     => NULL,
+      p_comments       => NULL);
+  ORDS.DEFINE_HANDLER(
+      p_module_name    => 'com.dbflow.deploy',
+      p_pattern        => 'expapp',
+      p_method         => 'POST',
+      p_source_type    => 'plsql/block',
+      p_items_per_page =>  0,
+      p_mimes_allowed  => '',
+      p_comments       => NULL,
+      p_source         =>
+'begin
+  rest_compile.export_app_rest(p_app_id         => :app_id,
+                               p_export_options => :export_options);
+end;'
+      );
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'expapp',
+      p_method             => 'POST',
+      p_name               => 'app_id',
+      p_bind_variable_name => 'app_id',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'ID or alias of the application to export');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'expapp',
+      p_method             => 'POST',
+      p_name               => 'export_options',
+      p_bind_variable_name => 'export_options',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'SQLcl style export flags, e.g. -skipExportDate -expOriginalIds');
+
+  -- ===================================================================
+  -- expplugin: APEX plugin export (single component), responds with a ZIP
+  -- ===================================================================
+  ORDS.DEFINE_TEMPLATE(
+      p_module_name    => 'com.dbflow.deploy',
+      p_pattern        => 'expplugin',
+      p_priority       => 0,
+      p_etag_type      => 'HASH',
+      p_etag_query     => NULL,
+      p_comments       => NULL);
+  ORDS.DEFINE_HANDLER(
+      p_module_name    => 'com.dbflow.deploy',
+      p_pattern        => 'expplugin',
+      p_method         => 'POST',
+      p_source_type    => 'plsql/block',
+      p_items_per_page =>  0,
+      p_mimes_allowed  => '',
+      p_comments       => NULL,
+      p_source         =>
+'begin
+  rest_compile.export_plugin_rest(p_app_id      => :app_id,
+                                  p_plugin_name => :plugin_name);
+end;'
+      );
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'expplugin',
+      p_method             => 'POST',
+      p_name               => 'app_id',
+      p_bind_variable_name => 'app_id',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'ID or alias of the application');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'expplugin',
+      p_method             => 'POST',
+      p_name               => 'plugin_name',
+      p_bind_variable_name => 'plugin_name',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'name of the plugin, e.g. DE.COMPANY.MYPLUGIN');
+
+  -- ===================================================================
+  -- expstatics: APEX application static files, responds with a ZIP
+  -- ===================================================================
+  ORDS.DEFINE_TEMPLATE(
+      p_module_name    => 'com.dbflow.deploy',
+      p_pattern        => 'expstatics',
+      p_priority       => 0,
+      p_etag_type      => 'HASH',
+      p_etag_query     => NULL,
+      p_comments       => NULL);
+  ORDS.DEFINE_HANDLER(
+      p_module_name    => 'com.dbflow.deploy',
+      p_pattern        => 'expstatics',
+      p_method         => 'POST',
+      p_source_type    => 'plsql/block',
+      p_items_per_page =>  0,
+      p_mimes_allowed  => '',
+      p_comments       => NULL,
+      p_source         =>
+'begin
+  rest_compile.export_static_files_rest(p_app_id    => :app_id,
+                                        p_file_name => :file_name);
+end;'
+      );
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'expstatics',
+      p_method             => 'POST',
+      p_name               => 'app_id',
+      p_bind_variable_name => 'app_id',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'ID or alias of the application');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'expstatics',
+      p_method             => 'POST',
+      p_name               => 'file_name',
+      p_bind_variable_name => 'file_name',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'optional: export only this static file');
+
+  -- ===================================================================
+  -- exppluginfiles: APEX plugin files, responds with a ZIP
+  -- ===================================================================
+  ORDS.DEFINE_TEMPLATE(
+      p_module_name    => 'com.dbflow.deploy',
+      p_pattern        => 'exppluginfiles',
+      p_priority       => 0,
+      p_etag_type      => 'HASH',
+      p_etag_query     => NULL,
+      p_comments       => NULL);
+  ORDS.DEFINE_HANDLER(
+      p_module_name    => 'com.dbflow.deploy',
+      p_pattern        => 'exppluginfiles',
+      p_method         => 'POST',
+      p_source_type    => 'plsql/block',
+      p_items_per_page =>  0,
+      p_mimes_allowed  => '',
+      p_comments       => NULL,
+      p_source         =>
+'begin
+  rest_compile.export_plugin_files_rest(p_app_id      => :app_id,
+                                        p_plugin_name => :plugin_name,
+                                        p_file_name   => :file_name);
+end;'
+      );
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'exppluginfiles',
+      p_method             => 'POST',
+      p_name               => 'app_id',
+      p_bind_variable_name => 'app_id',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'ID or alias of the application');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'exppluginfiles',
+      p_method             => 'POST',
+      p_name               => 'plugin_name',
+      p_bind_variable_name => 'plugin_name',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'name of the plugin');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'exppluginfiles',
+      p_method             => 'POST',
+      p_name               => 'file_name',
+      p_bind_variable_name => 'file_name',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'optional: export only this plugin file');
+
+  -- ===================================================================
+  -- rmstaticfile: remove an APEX static file, responds with JSON
+  -- ===================================================================
+  ORDS.DEFINE_TEMPLATE(
+      p_module_name    => 'com.dbflow.deploy',
+      p_pattern        => 'rmstaticfile',
+      p_priority       => 0,
+      p_etag_type      => 'HASH',
+      p_etag_query     => NULL,
+      p_comments       => NULL);
+  ORDS.DEFINE_HANDLER(
+      p_module_name    => 'com.dbflow.deploy',
+      p_pattern        => 'rmstaticfile',
+      p_method         => 'POST',
+      p_source_type    => 'plsql/block',
+      p_items_per_page =>  0,
+      p_mimes_allowed  => '',
+      p_comments       => NULL,
+      p_source         =>
+'begin
+  rest_compile.remove_static_file_rest(p_app_id    => :app_id,
+                                       p_file_name => :file_name,
+                                       p_file_ext  => :file_ext);
+end;'
+      );
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'rmstaticfile',
+      p_method             => 'POST',
+      p_name               => 'app_id',
+      p_bind_variable_name => 'app_id',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'ID or alias of the application');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'rmstaticfile',
+      p_method             => 'POST',
+      p_name               => 'file_name',
+      p_bind_variable_name => 'file_name',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'name of the static file to remove');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'rmstaticfile',
+      p_method             => 'POST',
+      p_name               => 'file_ext',
+      p_bind_variable_name => 'file_ext',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'extension of the static file, e.g. js or css');
+
+  -- ===================================================================
+  -- expschema: schema/object DDL export (dbms_metadata), responds with a ZIP
+  -- ===================================================================
+  ORDS.DEFINE_TEMPLATE(
+      p_module_name    => 'com.dbflow.deploy',
+      p_pattern        => 'expschema',
+      p_priority       => 0,
+      p_etag_type      => 'HASH',
+      p_etag_query     => NULL,
+      p_comments       => NULL);
+  ORDS.DEFINE_HANDLER(
+      p_module_name    => 'com.dbflow.deploy',
+      p_pattern        => 'expschema',
+      p_method         => 'POST',
+      p_source_type    => 'plsql/block',
+      p_items_per_page =>  0,
+      p_mimes_allowed  => '',
+      p_comments       => NULL,
+      p_source         =>
+'begin
+  rest_compile.export_schema_rest(p_folder             => :folder,
+                                  p_file_name          => :file_name,
+                                  p_grants_with_object => :grants_with_object);
+end;'
+      );
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'expschema',
+      p_method             => 'POST',
+      p_name               => 'folder',
+      p_bind_variable_name => 'folder',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'optional: object type folder, e.g. tables or sources/packages');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'expschema',
+      p_method             => 'POST',
+      p_name               => 'file_name',
+      p_bind_variable_name => 'file_name',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'optional: object file name, e.g. my_table.sql');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'expschema',
+      p_method             => 'POST',
+      p_name               => 'grants_with_object',
+      p_bind_variable_name => 'grants_with_object',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'true to export grants next to views and sources');
+
+  -- ===================================================================
+  -- exprest: ORDS REST module export, responds with a ZIP
+  -- ===================================================================
+  ORDS.DEFINE_TEMPLATE(
+      p_module_name    => 'com.dbflow.deploy',
+      p_pattern        => 'exprest',
+      p_priority       => 0,
+      p_etag_type      => 'HASH',
+      p_etag_query     => NULL,
+      p_comments       => NULL);
+  ORDS.DEFINE_HANDLER(
+      p_module_name    => 'com.dbflow.deploy',
+      p_pattern        => 'exprest',
+      p_method         => 'POST',
+      p_source_type    => 'plsql/block',
+      p_items_per_page =>  0,
+      p_mimes_allowed  => '',
+      p_comments       => NULL,
+      p_source         =>
+'begin
+  rest_compile.export_rest_module_rest(p_module_name => :module_name);
+end;'
+      );
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'exprest',
+      p_method             => 'POST',
+      p_name               => 'module_name',
+      p_bind_variable_name => 'module_name',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'name of the ORDS module to export');
+
+
+  COMMIT;
+END;
+/
+
+-- =====================================================================
+-- End File: com.dbflow.deploy.module.sql
+-- =====================================================================
+
+
+prompt >> Executing rest_compile_api_token_only.sql
+-- =====================================================================
+-- Begin File: rest_compile_api_token_only.sql
+-- =====================================================================
+-- rest_compile_api_token_only.sql
+-- Run this instead of rest_compile_api_client.sql when you do NOT want OAuth.
+-- No role, no privilege, no OAuth client is created.
+-- Copy the printed REST_CLIENT_TOKEN value into apply.env and set REST_USES_OAUTH=FALSE.
+-- To remove an existing ORDS privilege that would otherwise block requests, run
+-- disable_oauth_protection.sql beforehand.
+declare
+  l_workspace    varchar2(200);
+  l_client_token varchar2(64);
+begin
+  select workspace
+    into l_workspace
+    from apex_workspaces
+   where rownum = 1;
+
+  select lower(rawtohex(
+             standard_hash(
+                 nvl(apex_mail.get_instance_url(), '') ||
+                 '|' ||
+                 sys_context('USERENV', 'SESSION_USER') ||
+                 '|' ||
+                 l_workspace,
+                 'SHA256'
+             )
+         ))
+    into l_client_token
+    from dual;
+
+  dbms_output.put_line('# put the following lines into apply.env and modify URL if needed');
+  dbms_output.put_line('REST_SQL_URL="'||apex_mail.get_instance_url||lower(l_workspace)||'/dbflow/deploy"');
+  dbms_output.put_line('REST_CLIENT_TOKEN="'||l_client_token||'"');
+  dbms_output.put_line('REST_USES_OAUTH=FALSE');
+end;
+/
+
+-- =====================================================================
+-- End File: rest_compile_api_token_only.sql
+-- =====================================================================
+

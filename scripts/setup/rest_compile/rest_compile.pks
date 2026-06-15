@@ -39,11 +39,17 @@ create or replace package rest_compile is
                                 p_to_schema          in varchar2,
                                 p_application_id     in number);
 
+    -- Security token: SHA-256 hash of instance_url|schema|workspace, computed at
+    -- package initialisation. Every _rest endpoint validates the x-dbflow-token
+    -- request header against this value when it is not null.
+    g_client_token varchar2(64);
+    procedure check_client_token;
+
     -- API versioning: api_level is increased whenever new endpoints are added.
     -- Clients (dbFlux/dbFlow) read it via GET /compile and refuse to call
     -- endpoints the installed package does not provide yet.
-    c_version   constant varchar2(20) := '1.1.0';
-    c_api_level constant pls_integer  := 1;
+    c_version   constant varchar2(20) := '1.2.0';
+    c_api_level constant pls_integer  := 2;
 
     function get_version return varchar2;
     function get_api_level return number;
