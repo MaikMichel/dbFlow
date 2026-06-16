@@ -290,12 +290,20 @@ EOF
 
 function rest_curl() {
   local -a proxy_args=()
+  local -a browser_args=(
+    --header "user-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"
+    --header "accept-language: en-US,en;q=0.9"
+    --header "sec-fetch-dest: document"
+    --header "sec-fetch-mode: navigate"
+    --header "sec-fetch-site: none"
+    --header "sec-fetch-user: ?1"
+  )
 
   if [[ -n "${REST_PROXY:-}" ]]; then
     proxy_args=( --proxy "${REST_PROXY}" )
   fi
 
-  curl "${proxy_args[@]}" "$@"
+  curl "${proxy_args[@]}" "${browser_args[@]}" "$@"
 }
 
 function check_connection() {
