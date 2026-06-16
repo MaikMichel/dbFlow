@@ -129,7 +129,7 @@ function check_params() {
   onefile_option="NO"
 
   # echo "check_params: ${@}"
-    while getopts_long 'hipv:s:e:cktlaf o help init patch version: start: end: cached keepfolder transferall listfiles apply onefile forceddl' OPTKEY "${@}"; do
+    while getopts_long 'hipv:s:e:cktlafo help init patch version: start: end: cached keepfolder transferall listfiles apply onefile forceddl' OPTKEY "${@}"; do
       case ${OPTKEY} in
           'h'|'help')
               help_option="YES"

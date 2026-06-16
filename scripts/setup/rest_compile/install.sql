@@ -1,6 +1,6 @@
 -- Auto-generated install script
--- Source definition: install.def
--- Generated at: 2026-06-15 17:47:04 +0200
+-- Source definition: scripts/setup/rest_compile/install.def
+-- Generated at: 2026-06-16 12:27:19 +0200
 
 set define off
 
@@ -73,7 +73,7 @@ create or replace package rest_compile is
     -- package initialisation. Every _rest endpoint validates the x-dbflow-token
     -- request header against this value when it is not null.
     g_client_token varchar2(64);
-    procedure check_client_token;
+    function check_client_token return boolean;
 
     -- API versioning: api_level is increased whenever new endpoints are added.
     -- Clients (dbFlux/dbFlow) read it via GET /compile and refuse to call
@@ -148,7 +148,7 @@ create or replace package body rest_compile is
         g_log_entries := json_array_t();
     end reset_logs;
 
-    procedure check_client_token is
+    function check_client_token return boolean is
         l_token varchar2(64);
     begin
         if g_client_token is not null then
@@ -158,9 +158,10 @@ create or replace package body rest_compile is
                 owa_util.mime_header('application/json', false);
                 owa_util.http_header_close;
                 sys.htp.p('{"success":false,"error":"Unauthorized","message":"Invalid or missing x-dbflow-token header"}');
-                apex_application.stop_apex_engine;
+                return false;
             end if;
         end if;
+        return true;
     end check_client_token;
 
     /*
@@ -1157,7 +1158,9 @@ create or replace package body rest_compile is
                                p_content_type in varchar2) is
         l_response json_object_t;
     begin
-        check_client_token;
+        if not check_client_token then
+            return;
+        end if;
         owa_util.mime_header('application/json', false);
         sys.htp.p('Cache-Control: no-cache');
         owa_util.http_header_close;
@@ -1173,7 +1176,9 @@ create or replace package body rest_compile is
         l_response json_object_t := json_object_t();
         l_info     json_object_t;
     begin
-        check_client_token;
+        if not check_client_token then
+            return;
+        end if;
         owa_util.mime_header('application/json', false);
         sys.htp.p('Cache-Control: no-cache');
         owa_util.http_header_close;
@@ -1230,7 +1235,9 @@ create or replace package body rest_compile is
                                 p_application_id     in number) is
         l_response json_object_t := json_object_t();
     begin
-        check_client_token;
+        if not check_client_token then
+            return;
+        end if;
         reset_logs;
 
         owa_util.mime_header('application/json', false);
@@ -1267,7 +1274,9 @@ create or replace package body rest_compile is
     procedure get_info_rest is
         l_response json_object_t := json_object_t();
     begin
-        check_client_token;
+        if not check_client_token then
+            return;
+        end if;
         owa_util.mime_header('application/json', false);
         sys.htp.p('Cache-Control: no-cache');
         owa_util.http_header_close;
@@ -1408,7 +1417,9 @@ create or replace package body rest_compile is
         l_compile_all boolean := upper(nvl(p_compile_all, 'FALSE')) = 'TRUE';
         l_start       number  := dbms_utility.get_time;
     begin
-        check_client_token;
+        if not check_client_token then
+            return;
+        end if;
         reset_logs;
         emit_json_header;
 
@@ -1476,7 +1487,9 @@ create or replace package body rest_compile is
         l_with_acl_assignments    boolean := false;
         l_with_supporting_objects varchar2(1 char);
     begin
-        check_client_token;
+        if not check_client_token then
+            return;
+        end if;
         reset_logs;
         init_apex_context(p_app_id, l_app_id);
 
@@ -1525,7 +1538,9 @@ create or replace package body rest_compile is
         l_plugin_id apex_appl_plugins.plugin_id%type;
         l_files     apex_t_export_files;
     begin
-        check_client_token;
+        if not check_client_token then
+            return;
+        end if;
         reset_logs;
         init_apex_context(p_app_id, l_app_id);
 
@@ -1560,7 +1575,9 @@ create or replace package body rest_compile is
         l_zip    blob;
         l_found  boolean := false;
     begin
-        check_client_token;
+        if not check_client_token then
+            return;
+        end if;
         reset_logs;
         init_apex_context(p_app_id, l_app_id);
 
@@ -1597,7 +1614,9 @@ create or replace package body rest_compile is
         l_zip    blob;
         l_found  boolean := false;
     begin
-        check_client_token;
+        if not check_client_token then
+            return;
+        end if;
         reset_logs;
         init_apex_context(p_app_id, l_app_id);
 
@@ -1647,7 +1666,9 @@ create or replace package body rest_compile is
                 null;
         end restore_schema;
     begin
-        check_client_token;
+        if not check_client_token then
+            return;
+        end if;
         reset_logs;
         emit_json_header;
 
@@ -2471,7 +2492,9 @@ create or replace package body rest_compile is
                                  p_grants_with_object in varchar2) is
         l_zip blob;
     begin
-        check_client_token;
+        if not check_client_token then
+            return;
+        end if;
         reset_logs;
 
         dbms_metadata.set_transform_param(dbms_metadata.session_transform, 'SQLTERMINATOR',        true);
@@ -2501,7 +2524,9 @@ create or replace package body rest_compile is
         l_zip    blob;
         l_export clob;
     begin
-        check_client_token;
+        if not check_client_token then
+            return;
+        end if;
         reset_logs;
 
         -- dynamic call: ORDS_EXPORT availability differs between installations

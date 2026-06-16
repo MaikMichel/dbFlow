@@ -194,7 +194,7 @@ function ensure_rest_access_token() {
   fi
 
   local token_response
-  token_response=$(curl -sS \
+  token_response=$(rest_curl -sS \
     --header "Authorization: Basic ${REST_OAUTH_BASIC_B64}" \
     --data "grant_type=client_credentials" \
     "${REST_OAUTH_TOKEN_URL}")
@@ -335,7 +335,7 @@ function run_sql_file_rest() {
   fi
 
   local curl_response
-  curl_response=$(curl "${curl_args[@]}" --data-binary @"${payload_file}" "${REST_SQL_URL}/compile")
+  curl_response=$(rest_curl "${curl_args[@]}" --data-binary @"${payload_file}" "${REST_SQL_URL}/compile")
   local curl_rc=$?
 
   rm -rf "${payload_dir}"
@@ -367,7 +367,7 @@ function run_app_import_rest() {
 
 
   local expanded_tmp_sql
-  expanded_tmp_sql=="$(mktemp -u ${log_file}.XXXXXX).imp.sql"
+  expanded_tmp_sql="$(mktemp -u "${log_file}.XXXXXX").imp.sql"
 
   # Build expanded content from referenced @@ files only.
   # Non-include lines in ${tmp_sql} are ignored by design for app imports.
@@ -475,7 +475,7 @@ function run_app_import_rest() {
 
   local curl_response
 
-  curl_response=$(curl "${curl_args[@]}" --data-binary @"${expanded_tmp_sql}" "${REST_SQL_URL}/impapp")
+  curl_response=$(rest_curl "${curl_args[@]}" --data-binary @"${expanded_tmp_sql}" "${REST_SQL_URL}/impapp")
   local curl_rc=$?
 
   if [[ ${curl_rc} -ne 0 ]]; then
@@ -605,13 +605,13 @@ function check_vars() {
     do_exit="YES"
   fi
 
-  if [[ "${CONN_MODE}" == "REST" ]] && [[ -z ${REST_OAUTH_TOKEN_URL:-} ]]; then
-    echo_error "REST_OAUTH_TOKEN_URL not defined (required when CONN_MODE=REST)"
+  if [[ "${CONN_MODE}" == "REST" ]] && [[ "${REST_USES_OAUTH:-TRUE}" == "TRUE" ]] && [[ -z ${REST_OAUTH_TOKEN_URL:-} ]]; then
+    echo_error "REST_OAUTH_TOKEN_URL not defined (required when REST_USES_OAUTH=TRUE)"
     do_exit="YES"
   fi
 
-  if [[ "${CONN_MODE}" == "REST" ]] && [[ -z ${REST_OAUTH_BASIC_B64:-} ]]; then
-    echo_error "REST_OAUTH_BASIC_B64 not defined (required when CONN_MODE=REST)"
+  if [[ "${CONN_MODE}" == "REST" ]] && [[ "${REST_USES_OAUTH:-TRUE}" == "TRUE" ]] && [[ -z ${REST_OAUTH_BASIC_B64:-} ]]; then
+    echo_error "REST_OAUTH_BASIC_B64 not defined (required when REST_USES_OAUTH=TRUE)"
     do_exit="YES"
   fi
 
@@ -1359,7 +1359,7 @@ End;
 
 EOF
 )
-      run_sql_block "${appschema}" "${sql_block}"
+      run_sql_block "${l_appschema}" "${sql_block}"
 
     done
   else
@@ -1403,7 +1403,7 @@ function set_apps_available() {
       if grep -q "\b${l_app_name}\b" "${app_install_file}"; then
         timelog "App ${l_app_id} not enabled; included in deployment. Publish translated apps manually using hooks."
       else
-        timelog "enabling APEX-App ${l_app_id} in workspace ${l_workspace} for schema ${appschema}..."
+        timelog "enabling APEX-App ${l_app_id} in workspace ${l_workspace} for schema ${l_appschema}..."
         local sql_block
         sql_block=$(cat <<EOF
 set serveroutput on;
@@ -1471,7 +1471,7 @@ End;
 /
 EOF
 )
-        run_sql_block "${appschema}" "${sql_block}"
+        run_sql_block "${l_appschema}" "${sql_block}"
       fi # grep
     done
 

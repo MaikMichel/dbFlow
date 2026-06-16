@@ -43,7 +43,7 @@ create or replace package rest_compile is
     -- package initialisation. Every _rest endpoint validates the x-dbflow-token
     -- request header against this value when it is not null.
     g_client_token varchar2(64);
-    procedure check_client_token;
+    function check_client_token return boolean;
 
     -- API versioning: api_level is increased whenever new endpoints are added.
     -- Clients (dbFlux/dbFlow) read it via GET /compile and refuse to call

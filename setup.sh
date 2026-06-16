@@ -851,6 +851,7 @@ function write_apply() {
       echo "REST_OAUTH_TOKEN_URL=${wiz_rest_oauth_token_url}"
       echo "REST_OAUTH_BASIC_B64=${wiz_rest_oauth_basic_b64}"
       echo "REST_USES_OAUTH=${wiz_rest_uses_oauth:-TRUE}"
+      echo "REST_PROXY="
       echo "# REST_CLIENT_TOKEN=  # set to the value printed by rest_compile_api_client.sql"
       echo ""
     else

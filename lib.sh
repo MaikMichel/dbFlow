@@ -288,6 +288,16 @@ EOF
   fi
 }
 
+function rest_curl() {
+  local -a proxy_args=()
+
+  if [[ -n "${REST_PROXY:-}" ]]; then
+    proxy_args=( --proxy "${REST_PROXY}" )
+  fi
+
+  curl "${proxy_args[@]}" "$@"
+}
+
 function check_connection() {
   if [[ "${CONN_MODE}" == "REST" ]] && [[ -n "${REST_SQL_URL}" ]]; then
     local -a rest_curl_args=( -sS -X GET )
@@ -303,7 +313,7 @@ function check_connection() {
         exit 2
       fi
 
-      token_response=$(curl -sS \
+      token_response=$(rest_curl -sS \
         --header "Authorization: Basic ${REST_OAUTH_BASIC_B64}" \
         --data "grant_type=client_credentials" \
         "${REST_OAUTH_TOKEN_URL}")
@@ -329,7 +339,7 @@ function check_connection() {
       rest_curl_args+=( --header "x-dbflow-token: ${REST_CLIENT_TOKEN}" )
     fi
 
-    rest_output=$(curl "${rest_curl_args[@]}" "${REST_SQL_URL}/compile")
+    rest_output=$(rest_curl "${rest_curl_args[@]}" "${REST_SQL_URL}/compile")
 
     if echo "${rest_output}" | grep -q '"success"\s*:\s*true'; then
       timelog "REST connection to ${REST_SQL_URL} is working" ${success}
