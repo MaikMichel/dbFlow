@@ -13,7 +13,7 @@ function usage() {
   echo -e "  -h | --help             - Show this screen"
   echo -e ""
   echo -e "  -i | --init             - Flag to install a full installable artifact "
-  echo -e "                            this will delete all objects in target schemas upon install"
+  echo -e "                            schema clearing requires CLEAR_SCHEMA_ON_INIT=YES"
   echo -e "  -p | --patch            - Flag to install an update/patch as artifact "
   echo -e "                            This will apply on top of the target schemas and consists"
   echo -e "                            of the difference defined during build"
@@ -905,10 +905,10 @@ function validate_dbflow_version() {
 }
 
 function validate_init_mode() {
-  # init mode is a kind of dangerous, cause everything is removed from schemas beforehand
+  # init mode installs a full artifact; schema clearing is guarded separately.
   if [[ "${mode}" == "init" ]]; then
     if [[ -z ${DBFLOW_JENKINS:-} ]] && [[ "${version}" != "install" ]]; then
-      timelog "You are using init mode. All content will be dropped from schemas included in this artifact" "${warning}"
+      timelog "You are using init mode. Schema clearing is disabled unless CLEAR_SCHEMA_ON_INIT=YES is set" "${warning}"
       timelog "If you are running dbFLow inside CI/CD you can place DBFLOW_JENKINS as environment var with any value" "${warning}"
       read -r -p "$(echo -e "${RED}CI/CD not set${NC} - Do you want to proceed? (y/n)" ) " -n 1
       echo    # (optional) move to a new line
@@ -1109,9 +1109,9 @@ EOF
 
 function clear_db_schemas_on_init() {
   if [[ "${mode}" == "init" ]]; then
-    if [[ "${DO_NOT_CLEAR_SCHEMA_ON_INIT:-}" != "YES" ]]; then
+    if [[ "${CLEAR_SCHEMA_ON_INIT:-}" == "YES" ]]; then
       [[ ${stepwise_option} == "NO" ]] || ask_step "${RED}INIT! > clear schemas${NC}"
-      timelog "INIT - Mode, Schemas will be cleared"
+      timelog "INIT - Mode, Schemas will be cleared because CLEAR_SCHEMA_ON_INIT=YES"
       # loop through schemas reverse
       for (( idx=${#SCHEMAS[@]}-1 ; idx>=0 ; idx-- )) ; do
         local schema=${SCHEMAS[idx]}
@@ -1120,7 +1120,7 @@ function clear_db_schemas_on_init() {
         run_sql_file "${schema}" ".dbFlow/lib/drop_all.sql" false "${full_log_file}" "${version}" "${mode}"
       done
     else
-      timelog "INIT - Mode, But Schemas will not be touched as DO_NOT_CLEAR_SCHEMA_ON_INIT set to ${DO_NOT_CLEAR_SCHEMA_ON_INIT}" "info"
+      timelog "INIT - Mode, Schemas will not be cleared because CLEAR_SCHEMA_ON_INIT is not set to YES" "info"
     fi
   fi
 }
@@ -2008,8 +2008,7 @@ remove_dropped_files
 set_apps_unavailable
 set_rest_publish_state "NOT_PUBLISHED"
 
-# when in init mode, ALL schema objects will be
-# dropped
+# when in init mode, schema objects are only dropped when explicitly allowed
 clear_db_schemas_on_init
 
 [[ ${stepwise_option} == "NO" ]] || ask_step "exec global PRE hooks"
