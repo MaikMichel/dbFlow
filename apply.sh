@@ -310,7 +310,7 @@ function run_sql_file_rest() {
     -sS
     -X POST
     --header "Content-Type:application/zip"
-    --header "file_name:${rel_file}"
+    --header "file-name:${rel_file}"
   )
 
   local header_var
@@ -446,10 +446,10 @@ function run_app_import_rest() {
     -sS
     -X POST
     --header "Content-Type:text/plain"
-    --header "target_app_id:${targetappid}"
-    --header "target_schema:${targetschema}"
-    --header "target_workspace:${targetworkspace}"
-    --header "original_app_id:${orginalappid}"
+    --header "target-app-id:${targetappid}"
+    --header "target-schema:${targetschema}"
+    --header "target-workspace:${targetworkspace}"
+    --header "original-app-id:${orginalappid}"
 
   )
 
