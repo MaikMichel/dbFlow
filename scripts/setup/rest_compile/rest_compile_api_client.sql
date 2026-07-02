@@ -51,9 +51,7 @@ begin
   -- This value must be set as REST_CLIENT_TOKEN in apply.env.
   select lower(rawtohex(
              standard_hash(
-                 nvl(apex_mail.get_instance_url(), '') ||
-                 '|' ||
-                 sys_context('USERENV', 'SESSION_USER') ||
+                 sys_context('USERENV', 'CURRENT_USER') ||
                  '|' ||
                  l_workspace,
                  'SHA256'

@@ -4,6 +4,10 @@ create or replace package body rest_compile is
     g_logs        t_array;
     g_log_entries json_array_t := json_array_t();
 
+    -- client security token of the current request, set by each ORDS handler
+    -- from the bound x-dbflow-token header (see set_request_token)
+    g_request_token varchar2(64);
+
     -- state for the schema DDL export helpers (see export_schema_rest)
     c_exp_crlf          constant varchar2(10) := chr(13)||chr(10);
     g_exp_objects_found boolean := false;
@@ -32,11 +36,16 @@ create or replace package body rest_compile is
         g_log_entries := json_array_t();
     end reset_logs;
 
+    procedure set_request_token(p_token in varchar2) is
+    begin
+        g_request_token := lower(trim(p_token));
+    end set_request_token;
+
     function check_client_token return boolean is
         l_token varchar2(64);
     begin
         if g_client_token is not null then
-            l_token := lower(trim(owa_util.get_cgi_env('HTTP_X_DBFLOW_TOKEN')));
+            l_token := g_request_token;
             if l_token is null or l_token <> g_client_token then
                 owa_util.status_line(401, 'Unauthorized', false);
                 owa_util.mime_header('application/json', false);
@@ -1311,9 +1320,13 @@ create or replace package body rest_compile is
             execute immediate rtrim(trim(p_enable_warnings), ';');
         end if;
 
+        -- Never call dbms_session.reset_package here: its deferred reset fires
+        -- when the ORDS handler call ends and wipes ALL package state of the
+        -- pooled session — including the htp/OWA page buffer holding the JSON
+        -- response — before ORDS fetches it (client sees HTTP 555). Stale state
+        -- of recompiled packages is handled by Oracle itself: the next call
+        -- raises ORA-04068 once and reinitializes automatically.
         dbms_utility.compile_schema(schema => user, compile_all => l_compile_all);
-        -- deferred until the call ends, so the JSON below is built safely
-        dbms_session.reset_package;
 
         l_errors := get_schema_errors(p_db_folder        => p_db_folder,
                                       p_warning_string   => p_warning_string,
@@ -2450,9 +2463,7 @@ begin
     begin
         select lower(rawtohex(
                    standard_hash(
-                       nvl(apex_mail.get_instance_url(), '') ||
-                       '|' ||
-                       sys_context('USERENV', 'SESSION_USER') ||
+                       sys_context('USERENV', 'CURRENT_USER') ||
                        '|' ||
                        (select workspace from apex_workspaces where rownum = 1),
                        'SHA256'

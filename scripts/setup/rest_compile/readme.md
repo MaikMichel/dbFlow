@@ -52,9 +52,15 @@ All endpoints live under the module base path `/dbflow/deploy/` and are protecte
 
 Export endpoints respond with `Content-Type: application/zip` on success and with the regular JSON error structure (`success: false`, `code`, `message`, `stackTrace`) on failure, so clients discriminate on the response content type.
 
+### Request headers
+
+Endpoint parameters are passed as HTTP request headers. Since version 1.3.0 every parameter is accepted under two names: a **hyphen form** (`app-id`, `file-name`, `export-options`, `plugin-name`, `file-ext`, `folder`, `grants-with-object`, `module-name`, `compile-all`, `db-folder`, `enable-warnings`, `warning-string`, `warning-excludes`, `target-app-id`, `target-schema`, `target-workspace`) and the legacy **underscore form** (`app_id`, `file_name`, ...).
+
+Clients should always send the hyphen form: reverse proxies and CDNs in front of ORDS (Akamai, nginx with its default `underscores_in_headers off`, ...) silently drop request headers whose names contain underscores, which makes the parameter arrive as `NULL` on the server. The underscore form is kept only for older clients on installations that are reached without such a proxy.
+
 ## Versioning and upgrades
 
-`GET /dbflow/deploy/compile` returns the installed package version and an `api_level`. Clients such as dbFlux check this level before calling the newer endpoints and ask the user to upgrade when the installed package is too old. Installations created before version 1.1.0 return neither field, which clients treat as `api_level 0` (compile/impapp only).
+`GET /dbflow/deploy/compile` returns the installed package version and an `api_level`. Clients such as dbFlux check this level before calling the newer endpoints and ask the user to upgrade when the installed package is too old. Installations created before version 1.1.0 return neither field, which clients treat as `api_level 0` (compile/impapp only). `api_level 3` (version 1.3.0) marks the availability of the hyphen header names described above.
 
 Upgrading is done by re-running `install.sql` in the target schema (all objects are created with `create or replace`, the ORDS module definition is re-applied). Note that re-running the install script drops and recreates the `rest_compile_logs` table, so previously logged payloads are lost.
 
@@ -76,7 +82,7 @@ TEST_APP_ID=123 TEST_PLUGIN_NAME=DE.MYCOMPANY.REGION \
 TEST_MODULE_NAME=api TEST_TABLE_NAME=EMPLOYEES ./test_endpoints.sh
 ```
 
-Nothing is imported, removed, or changed in the target schema; the only executed payload is a `begin null; end;` block sent to `POST compile`. The script exits with the number of failed tests (`0` = all green). Against an installation older than 1.1.0 it stops at the version check with a hint to re-run `install.sql`.
+Nothing is imported, removed, or changed in the target schema; the only executed payload is a `begin null; end;` block sent to `POST compile`. The script exits with the number of failed tests (`0` = all green). Against an installation older than 1.3.0 it stops at the version check with a hint to re-run `install.sql`, because the test suite sends the hyphen header names introduced with `api_level 3`.
 
 ## Scope and intended use
 

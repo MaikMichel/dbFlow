@@ -45,11 +45,20 @@ create or replace package rest_compile is
     g_client_token varchar2(64);
     function check_client_token return boolean;
 
-    -- API versioning: api_level is increased whenever new endpoints are added.
-    -- Clients (dbFlux/dbFlow) read it via GET /compile and refuse to call
-    -- endpoints the installed package does not provide yet.
-    c_version   constant varchar2(20) := '1.2.0';
-    c_api_level constant pls_integer  := 2;
+    -- Set the client token for the current request. Each ORDS handler binds the
+    -- x-dbflow-token request header to a parameter and passes it here, because an
+    -- undeclared custom header is not exposed via owa_util.get_cgi_env.
+    procedure set_request_token(p_token in varchar2);
+
+    -- API versioning: api_level is increased whenever new endpoints are added
+    -- or the request contract changes. Clients (dbFlux/dbFlow) read it via
+    -- GET /compile and refuse to call endpoints the installed package does
+    -- not provide yet.
+    -- Level 3: header parameters are also accepted in hyphen form (app-id,
+    -- file-name, ...) because proxies like Akamai or nginx drop request
+    -- headers whose names contain underscores.
+    c_version   constant varchar2(20) := '1.3.1';
+    c_api_level constant pls_integer  := 3;
 
     function get_version return varchar2;
     function get_api_level return number;

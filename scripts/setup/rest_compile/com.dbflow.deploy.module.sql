@@ -3,20 +3,24 @@
 -- Exported REST Definitions from ORDS Schema Version 25.3.1.r2891312
 -- Schema: ATI   Date: Mon Mar 16 10:22:04 CET 2026
 --
+-- Header parameters are defined twice: in hyphen form (app-id, file-name, ...)
+-- and in legacy underscore form (app_id, file_name, ...). Proxies like Akamai
+-- or nginx drop request headers whose names contain underscores, so clients
+-- should send the hyphen form; the handlers coalesce both bindings.
 BEGIN
 --   ORDS.ENABLE_SCHEMA(
 --       p_enabled             => TRUE,
 --       p_schema              => 'ATI',
 --       p_url_mapping_type    => 'BASE_PATH',
 --       p_url_mapping_pattern => 'ati',
---       p_auto_rest_auth      => FALSE);    
+--       p_auto_rest_auth      => FALSE);
 
   ORDS.DEFINE_MODULE(
       p_module_name    => 'com.dbflow.deploy',
       p_base_path      => '/dbflow/deploy/',
       p_items_per_page =>  25,
       p_status         => 'PUBLISHED',
-      p_comments       => NULL);      
+      p_comments       => NULL);
   ORDS.DEFINE_TEMPLATE(
       p_module_name    => 'com.dbflow.deploy',
       p_pattern        => 'compile',
@@ -34,10 +38,21 @@ BEGIN
       p_comments       => NULL,
       p_source         =>
 'begin
+  rest_compile.set_request_token(:dbflow_token);
   -- health check including version/api_level for client capability detection
   rest_compile.get_info_rest;
 end;'
       );
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'compile',
+      p_method             => 'GET',
+      p_name               => 'x-dbflow-token',
+      p_bind_variable_name => 'dbflow_token',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'dbFlow client security token');
   ORDS.DEFINE_HANDLER(
       p_module_name    => 'com.dbflow.deploy',
       p_pattern        => 'compile',
@@ -46,12 +61,13 @@ end;'
       p_items_per_page =>  0,
       p_mimes_allowed  => '',
       p_comments       => NULL,
-      p_source         => 
+      p_source         =>
 'declare
     l_body_blob blob := :body;
     l_content_type varchar2(255) := :content_type;
-    l_fname varchar2(4000) := :fname;
+    l_fname varchar2(4000) := coalesce(:fname_hy, :fname);
 begin
+  rest_compile.set_request_token(:dbflow_token);
   rest_compile.run_payload_rest(p_request_name => l_fname,
                                 p_payload      => l_body_blob,
                                 p_content_type => l_content_type);
@@ -61,12 +77,32 @@ end;  '
       p_module_name        => 'com.dbflow.deploy',
       p_pattern            => 'compile',
       p_method             => 'POST',
+      p_name               => 'file-name',
+      p_bind_variable_name => 'fname_hy',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'reletive filename');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'compile',
+      p_method             => 'POST',
       p_name               => 'file_name',
       p_bind_variable_name => 'fname',
       p_source_type        => 'HEADER',
       p_param_type         => 'STRING',
       p_access_method      => 'IN',
-      p_comments           => 'reletive filename');      
+      p_comments           => 'deprecated: use file-name');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'compile',
+      p_method             => 'POST',
+      p_name               => 'x-dbflow-token',
+      p_bind_variable_name => 'dbflow_token',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'dbFlow client security token');
   ORDS.DEFINE_TEMPLATE(
       p_module_name    => 'com.dbflow.deploy',
       p_pattern        => 'impapp',
@@ -82,14 +118,25 @@ end;  '
       p_items_per_page =>  0,
       p_mimes_allowed  => '',
       p_comments       => NULL,
-      p_source         => 
+      p_source         =>
 'begin
+  rest_compile.set_request_token(:dbflow_token);
   rest_compile.import_app_rest( p_app_file_content   => :body_text,
-                                p_to_workspace       => :target_workspace,
-                                p_to_schema          => :target_schema,
-                                p_application_id     => :target_app_id);
+                                p_to_workspace       => coalesce(:target_workspace_hy, :target_workspace),
+                                p_to_schema          => coalesce(:target_schema_hy, :target_schema),
+                                p_application_id     => coalesce(:target_app_id_hy, :target_app_id));
 end;'
       );
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'impapp',
+      p_method             => 'POST',
+      p_name               => 'target-app-id',
+      p_bind_variable_name => 'target_app_id_hy',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'ID of the new APP');
   ORDS.DEFINE_PARAMETER(
       p_module_name        => 'com.dbflow.deploy',
       p_pattern            => 'impapp',
@@ -99,7 +146,17 @@ end;'
       p_source_type        => 'HEADER',
       p_param_type         => 'STRING',
       p_access_method      => 'IN',
-      p_comments           => 'ID of the new APP');      
+      p_comments           => 'deprecated: use target-app-id');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'impapp',
+      p_method             => 'POST',
+      p_name               => 'target-schema',
+      p_bind_variable_name => 'target_schema_hy',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'Name of the assigne schema the app should use');
   ORDS.DEFINE_PARAMETER(
       p_module_name        => 'com.dbflow.deploy',
       p_pattern            => 'impapp',
@@ -109,7 +166,17 @@ end;'
       p_source_type        => 'HEADER',
       p_param_type         => 'STRING',
       p_access_method      => 'IN',
-      p_comments           => 'Name of the assigne schema the app should use');      
+      p_comments           => 'deprecated: use target-schema');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'impapp',
+      p_method             => 'POST',
+      p_name               => 'target-workspace',
+      p_bind_variable_name => 'target_workspace_hy',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'Name of the workspace to import the app to');
   ORDS.DEFINE_PARAMETER(
       p_module_name        => 'com.dbflow.deploy',
       p_pattern            => 'impapp',
@@ -119,7 +186,17 @@ end;'
       p_source_type        => 'HEADER',
       p_param_type         => 'STRING',
       p_access_method      => 'IN',
-      p_comments           => 'Name of the workspace to import the app to');
+      p_comments           => 'deprecated: use target-workspace');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'impapp',
+      p_method             => 'POST',
+      p_name               => 'x-dbflow-token',
+      p_bind_variable_name => 'dbflow_token',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'dbFlow client security token');
 
   -- ===================================================================
   -- compileschema: recompile all/invalid objects of the schema
@@ -141,13 +218,24 @@ end;'
       p_comments       => NULL,
       p_source         =>
 'begin
-  rest_compile.compile_schema_rest(p_compile_all      => :compile_all,
-                                   p_db_folder        => :db_folder,
-                                   p_enable_warnings  => :enable_warnings,
-                                   p_warning_string   => :warning_string,
-                                   p_warning_excludes => :warning_excludes);
+  rest_compile.set_request_token(:dbflow_token);
+  rest_compile.compile_schema_rest(p_compile_all      => coalesce(:compile_all_hy, :compile_all),
+                                   p_db_folder        => coalesce(:db_folder_hy, :db_folder),
+                                   p_enable_warnings  => coalesce(:enable_warnings_hy, :enable_warnings),
+                                   p_warning_string   => coalesce(:warning_string_hy, :warning_string),
+                                   p_warning_excludes => coalesce(:warning_excludes_hy, :warning_excludes));
 end;'
       );
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'compileschema',
+      p_method             => 'POST',
+      p_name               => 'compile-all',
+      p_bind_variable_name => 'compile_all_hy',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'TRUE compiles all objects, FALSE only invalid ones');
   ORDS.DEFINE_PARAMETER(
       p_module_name        => 'com.dbflow.deploy',
       p_pattern            => 'compileschema',
@@ -157,7 +245,17 @@ end;'
       p_source_type        => 'HEADER',
       p_param_type         => 'STRING',
       p_access_method      => 'IN',
-      p_comments           => 'TRUE compiles all objects, FALSE only invalid ones');
+      p_comments           => 'deprecated: use compile-all');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'compileschema',
+      p_method             => 'POST',
+      p_name               => 'db-folder',
+      p_bind_variable_name => 'db_folder_hy',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'name of the db folder inside the workspace (default db)');
   ORDS.DEFINE_PARAMETER(
       p_module_name        => 'com.dbflow.deploy',
       p_pattern            => 'compileschema',
@@ -167,7 +265,17 @@ end;'
       p_source_type        => 'HEADER',
       p_param_type         => 'STRING',
       p_access_method      => 'IN',
-      p_comments           => 'name of the db folder inside the workspace (default db)');
+      p_comments           => 'deprecated: use db-folder');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'compileschema',
+      p_method             => 'POST',
+      p_name               => 'enable-warnings',
+      p_bind_variable_name => 'enable_warnings_hy',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'optional ALTER SESSION SET PLSQL_WARNINGS statement');
   ORDS.DEFINE_PARAMETER(
       p_module_name        => 'com.dbflow.deploy',
       p_pattern            => 'compileschema',
@@ -177,7 +285,17 @@ end;'
       p_source_type        => 'HEADER',
       p_param_type         => 'STRING',
       p_access_method      => 'IN',
-      p_comments           => 'optional ALTER SESSION SET PLSQL_WARNINGS statement');
+      p_comments           => 'deprecated: use enable-warnings');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'compileschema',
+      p_method             => 'POST',
+      p_name               => 'warning-string',
+      p_bind_variable_name => 'warning_string_hy',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'WARNING to report warnings, NIX to report errors only');
   ORDS.DEFINE_PARAMETER(
       p_module_name        => 'com.dbflow.deploy',
       p_pattern            => 'compileschema',
@@ -187,7 +305,17 @@ end;'
       p_source_type        => 'HEADER',
       p_param_type         => 'STRING',
       p_access_method      => 'IN',
-      p_comments           => 'WARNING to report warnings, NIX to report errors only');
+      p_comments           => 'deprecated: use warning-string');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'compileschema',
+      p_method             => 'POST',
+      p_name               => 'warning-excludes',
+      p_bind_variable_name => 'warning_excludes_hy',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'comma separated list of warning message numbers to exclude');
   ORDS.DEFINE_PARAMETER(
       p_module_name        => 'com.dbflow.deploy',
       p_pattern            => 'compileschema',
@@ -197,7 +325,17 @@ end;'
       p_source_type        => 'HEADER',
       p_param_type         => 'STRING',
       p_access_method      => 'IN',
-      p_comments           => 'comma separated list of warning message numbers to exclude');
+      p_comments           => 'deprecated: use warning-excludes');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'compileschema',
+      p_method             => 'POST',
+      p_name               => 'x-dbflow-token',
+      p_bind_variable_name => 'dbflow_token',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'dbFlow client security token');
 
   -- ===================================================================
   -- expapp: APEX application export (split), responds with a ZIP
@@ -219,10 +357,21 @@ end;'
       p_comments       => NULL,
       p_source         =>
 'begin
-  rest_compile.export_app_rest(p_app_id         => :app_id,
-                               p_export_options => :export_options);
+  rest_compile.set_request_token(:dbflow_token);
+  rest_compile.export_app_rest(p_app_id         => coalesce(:app_id_hy, :app_id),
+                               p_export_options => coalesce(:export_options_hy, :export_options));
 end;'
       );
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'expapp',
+      p_method             => 'POST',
+      p_name               => 'app-id',
+      p_bind_variable_name => 'app_id_hy',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'ID or alias of the application to export');
   ORDS.DEFINE_PARAMETER(
       p_module_name        => 'com.dbflow.deploy',
       p_pattern            => 'expapp',
@@ -232,7 +381,17 @@ end;'
       p_source_type        => 'HEADER',
       p_param_type         => 'STRING',
       p_access_method      => 'IN',
-      p_comments           => 'ID or alias of the application to export');
+      p_comments           => 'deprecated: use app-id');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'expapp',
+      p_method             => 'POST',
+      p_name               => 'export-options',
+      p_bind_variable_name => 'export_options_hy',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'SQLcl style export flags, e.g. -skipExportDate -expOriginalIds');
   ORDS.DEFINE_PARAMETER(
       p_module_name        => 'com.dbflow.deploy',
       p_pattern            => 'expapp',
@@ -242,7 +401,17 @@ end;'
       p_source_type        => 'HEADER',
       p_param_type         => 'STRING',
       p_access_method      => 'IN',
-      p_comments           => 'SQLcl style export flags, e.g. -skipExportDate -expOriginalIds');
+      p_comments           => 'deprecated: use export-options');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'expapp',
+      p_method             => 'POST',
+      p_name               => 'x-dbflow-token',
+      p_bind_variable_name => 'dbflow_token',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'dbFlow client security token');
 
   -- ===================================================================
   -- expplugin: APEX plugin export (single component), responds with a ZIP
@@ -264,10 +433,21 @@ end;'
       p_comments       => NULL,
       p_source         =>
 'begin
-  rest_compile.export_plugin_rest(p_app_id      => :app_id,
-                                  p_plugin_name => :plugin_name);
+  rest_compile.set_request_token(:dbflow_token);
+  rest_compile.export_plugin_rest(p_app_id      => coalesce(:app_id_hy, :app_id),
+                                  p_plugin_name => coalesce(:plugin_name_hy, :plugin_name));
 end;'
       );
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'expplugin',
+      p_method             => 'POST',
+      p_name               => 'app-id',
+      p_bind_variable_name => 'app_id_hy',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'ID or alias of the application');
   ORDS.DEFINE_PARAMETER(
       p_module_name        => 'com.dbflow.deploy',
       p_pattern            => 'expplugin',
@@ -277,7 +457,17 @@ end;'
       p_source_type        => 'HEADER',
       p_param_type         => 'STRING',
       p_access_method      => 'IN',
-      p_comments           => 'ID or alias of the application');
+      p_comments           => 'deprecated: use app-id');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'expplugin',
+      p_method             => 'POST',
+      p_name               => 'plugin-name',
+      p_bind_variable_name => 'plugin_name_hy',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'name of the plugin, e.g. DE.COMPANY.MYPLUGIN');
   ORDS.DEFINE_PARAMETER(
       p_module_name        => 'com.dbflow.deploy',
       p_pattern            => 'expplugin',
@@ -287,7 +477,17 @@ end;'
       p_source_type        => 'HEADER',
       p_param_type         => 'STRING',
       p_access_method      => 'IN',
-      p_comments           => 'name of the plugin, e.g. DE.COMPANY.MYPLUGIN');
+      p_comments           => 'deprecated: use plugin-name');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'expplugin',
+      p_method             => 'POST',
+      p_name               => 'x-dbflow-token',
+      p_bind_variable_name => 'dbflow_token',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'dbFlow client security token');
 
   -- ===================================================================
   -- expstatics: APEX application static files, responds with a ZIP
@@ -309,10 +509,21 @@ end;'
       p_comments       => NULL,
       p_source         =>
 'begin
-  rest_compile.export_static_files_rest(p_app_id    => :app_id,
-                                        p_file_name => :file_name);
+  rest_compile.set_request_token(:dbflow_token);
+  rest_compile.export_static_files_rest(p_app_id    => coalesce(:app_id_hy, :app_id),
+                                        p_file_name => coalesce(:file_name_hy, :file_name));
 end;'
       );
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'expstatics',
+      p_method             => 'POST',
+      p_name               => 'app-id',
+      p_bind_variable_name => 'app_id_hy',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'ID or alias of the application');
   ORDS.DEFINE_PARAMETER(
       p_module_name        => 'com.dbflow.deploy',
       p_pattern            => 'expstatics',
@@ -322,7 +533,17 @@ end;'
       p_source_type        => 'HEADER',
       p_param_type         => 'STRING',
       p_access_method      => 'IN',
-      p_comments           => 'ID or alias of the application');
+      p_comments           => 'deprecated: use app-id');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'expstatics',
+      p_method             => 'POST',
+      p_name               => 'file-name',
+      p_bind_variable_name => 'file_name_hy',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'optional: export only this static file');
   ORDS.DEFINE_PARAMETER(
       p_module_name        => 'com.dbflow.deploy',
       p_pattern            => 'expstatics',
@@ -332,7 +553,17 @@ end;'
       p_source_type        => 'HEADER',
       p_param_type         => 'STRING',
       p_access_method      => 'IN',
-      p_comments           => 'optional: export only this static file');
+      p_comments           => 'deprecated: use file-name');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'expstatics',
+      p_method             => 'POST',
+      p_name               => 'x-dbflow-token',
+      p_bind_variable_name => 'dbflow_token',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'dbFlow client security token');
 
   -- ===================================================================
   -- exppluginfiles: APEX plugin files, responds with a ZIP
@@ -354,11 +585,22 @@ end;'
       p_comments       => NULL,
       p_source         =>
 'begin
-  rest_compile.export_plugin_files_rest(p_app_id      => :app_id,
-                                        p_plugin_name => :plugin_name,
-                                        p_file_name   => :file_name);
+  rest_compile.set_request_token(:dbflow_token);
+  rest_compile.export_plugin_files_rest(p_app_id      => coalesce(:app_id_hy, :app_id),
+                                        p_plugin_name => coalesce(:plugin_name_hy, :plugin_name),
+                                        p_file_name   => coalesce(:file_name_hy, :file_name));
 end;'
       );
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'exppluginfiles',
+      p_method             => 'POST',
+      p_name               => 'app-id',
+      p_bind_variable_name => 'app_id_hy',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'ID or alias of the application');
   ORDS.DEFINE_PARAMETER(
       p_module_name        => 'com.dbflow.deploy',
       p_pattern            => 'exppluginfiles',
@@ -368,7 +610,17 @@ end;'
       p_source_type        => 'HEADER',
       p_param_type         => 'STRING',
       p_access_method      => 'IN',
-      p_comments           => 'ID or alias of the application');
+      p_comments           => 'deprecated: use app-id');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'exppluginfiles',
+      p_method             => 'POST',
+      p_name               => 'plugin-name',
+      p_bind_variable_name => 'plugin_name_hy',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'name of the plugin');
   ORDS.DEFINE_PARAMETER(
       p_module_name        => 'com.dbflow.deploy',
       p_pattern            => 'exppluginfiles',
@@ -378,7 +630,17 @@ end;'
       p_source_type        => 'HEADER',
       p_param_type         => 'STRING',
       p_access_method      => 'IN',
-      p_comments           => 'name of the plugin');
+      p_comments           => 'deprecated: use plugin-name');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'exppluginfiles',
+      p_method             => 'POST',
+      p_name               => 'file-name',
+      p_bind_variable_name => 'file_name_hy',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'optional: export only this plugin file');
   ORDS.DEFINE_PARAMETER(
       p_module_name        => 'com.dbflow.deploy',
       p_pattern            => 'exppluginfiles',
@@ -388,7 +650,17 @@ end;'
       p_source_type        => 'HEADER',
       p_param_type         => 'STRING',
       p_access_method      => 'IN',
-      p_comments           => 'optional: export only this plugin file');
+      p_comments           => 'deprecated: use file-name');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'exppluginfiles',
+      p_method             => 'POST',
+      p_name               => 'x-dbflow-token',
+      p_bind_variable_name => 'dbflow_token',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'dbFlow client security token');
 
   -- ===================================================================
   -- rmstaticfile: remove an APEX static file, responds with JSON
@@ -410,11 +682,22 @@ end;'
       p_comments       => NULL,
       p_source         =>
 'begin
-  rest_compile.remove_static_file_rest(p_app_id    => :app_id,
-                                       p_file_name => :file_name,
-                                       p_file_ext  => :file_ext);
+  rest_compile.set_request_token(:dbflow_token);
+  rest_compile.remove_static_file_rest(p_app_id    => coalesce(:app_id_hy, :app_id),
+                                       p_file_name => coalesce(:file_name_hy, :file_name),
+                                       p_file_ext  => coalesce(:file_ext_hy, :file_ext));
 end;'
       );
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'rmstaticfile',
+      p_method             => 'POST',
+      p_name               => 'app-id',
+      p_bind_variable_name => 'app_id_hy',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'ID or alias of the application');
   ORDS.DEFINE_PARAMETER(
       p_module_name        => 'com.dbflow.deploy',
       p_pattern            => 'rmstaticfile',
@@ -424,7 +707,17 @@ end;'
       p_source_type        => 'HEADER',
       p_param_type         => 'STRING',
       p_access_method      => 'IN',
-      p_comments           => 'ID or alias of the application');
+      p_comments           => 'deprecated: use app-id');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'rmstaticfile',
+      p_method             => 'POST',
+      p_name               => 'file-name',
+      p_bind_variable_name => 'file_name_hy',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'name of the static file to remove');
   ORDS.DEFINE_PARAMETER(
       p_module_name        => 'com.dbflow.deploy',
       p_pattern            => 'rmstaticfile',
@@ -434,7 +727,17 @@ end;'
       p_source_type        => 'HEADER',
       p_param_type         => 'STRING',
       p_access_method      => 'IN',
-      p_comments           => 'name of the static file to remove');
+      p_comments           => 'deprecated: use file-name');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'rmstaticfile',
+      p_method             => 'POST',
+      p_name               => 'file-ext',
+      p_bind_variable_name => 'file_ext_hy',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'extension of the static file, e.g. js or css');
   ORDS.DEFINE_PARAMETER(
       p_module_name        => 'com.dbflow.deploy',
       p_pattern            => 'rmstaticfile',
@@ -444,7 +747,17 @@ end;'
       p_source_type        => 'HEADER',
       p_param_type         => 'STRING',
       p_access_method      => 'IN',
-      p_comments           => 'extension of the static file, e.g. js or css');
+      p_comments           => 'deprecated: use file-ext');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'rmstaticfile',
+      p_method             => 'POST',
+      p_name               => 'x-dbflow-token',
+      p_bind_variable_name => 'dbflow_token',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'dbFlow client security token');
 
   -- ===================================================================
   -- expschema: schema/object DDL export (dbms_metadata), responds with a ZIP
@@ -466,9 +779,10 @@ end;'
       p_comments       => NULL,
       p_source         =>
 'begin
+  rest_compile.set_request_token(:dbflow_token);
   rest_compile.export_schema_rest(p_folder             => :folder,
-                                  p_file_name          => :file_name,
-                                  p_grants_with_object => :grants_with_object);
+                                  p_file_name          => coalesce(:file_name_hy, :file_name),
+                                  p_grants_with_object => coalesce(:grants_with_object_hy, :grants_with_object));
 end;'
       );
   ORDS.DEFINE_PARAMETER(
@@ -485,12 +799,32 @@ end;'
       p_module_name        => 'com.dbflow.deploy',
       p_pattern            => 'expschema',
       p_method             => 'POST',
+      p_name               => 'file-name',
+      p_bind_variable_name => 'file_name_hy',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'optional: object file name, e.g. my_table.sql');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'expschema',
+      p_method             => 'POST',
       p_name               => 'file_name',
       p_bind_variable_name => 'file_name',
       p_source_type        => 'HEADER',
       p_param_type         => 'STRING',
       p_access_method      => 'IN',
-      p_comments           => 'optional: object file name, e.g. my_table.sql');
+      p_comments           => 'deprecated: use file-name');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'expschema',
+      p_method             => 'POST',
+      p_name               => 'grants-with-object',
+      p_bind_variable_name => 'grants_with_object_hy',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'true to export grants next to views and sources');
   ORDS.DEFINE_PARAMETER(
       p_module_name        => 'com.dbflow.deploy',
       p_pattern            => 'expschema',
@@ -500,7 +834,17 @@ end;'
       p_source_type        => 'HEADER',
       p_param_type         => 'STRING',
       p_access_method      => 'IN',
-      p_comments           => 'true to export grants next to views and sources');
+      p_comments           => 'deprecated: use grants-with-object');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'expschema',
+      p_method             => 'POST',
+      p_name               => 'x-dbflow-token',
+      p_bind_variable_name => 'dbflow_token',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'dbFlow client security token');
 
   -- ===================================================================
   -- exprest: ORDS REST module export, responds with a ZIP
@@ -522,9 +866,20 @@ end;'
       p_comments       => NULL,
       p_source         =>
 'begin
-  rest_compile.export_rest_module_rest(p_module_name => :module_name);
+  rest_compile.set_request_token(:dbflow_token);
+  rest_compile.export_rest_module_rest(p_module_name => coalesce(:module_name_hy, :module_name));
 end;'
       );
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'exprest',
+      p_method             => 'POST',
+      p_name               => 'module-name',
+      p_bind_variable_name => 'module_name_hy',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'name of the ORDS module to export');
   ORDS.DEFINE_PARAMETER(
       p_module_name        => 'com.dbflow.deploy',
       p_pattern            => 'exprest',
@@ -534,7 +889,17 @@ end;'
       p_source_type        => 'HEADER',
       p_param_type         => 'STRING',
       p_access_method      => 'IN',
-      p_comments           => 'name of the ORDS module to export');
+      p_comments           => 'deprecated: use module-name');
+  ORDS.DEFINE_PARAMETER(
+      p_module_name        => 'com.dbflow.deploy',
+      p_pattern            => 'exprest',
+      p_method             => 'POST',
+      p_name               => 'x-dbflow-token',
+      p_bind_variable_name => 'dbflow_token',
+      p_source_type        => 'HEADER',
+      p_param_type         => 'STRING',
+      p_access_method      => 'IN',
+      p_comments           => 'dbFlow client security token');
 
 
   COMMIT;
