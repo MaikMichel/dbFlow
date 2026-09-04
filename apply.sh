@@ -440,15 +440,19 @@ function run_app_import_rest() {
 
 
   timelog "Running APP Import file ${expanded_tmp_sql} on ${targetschema} via REST"
+  if [[ -z "${targetworkspace}" || -z "${targetschema}" || -z "${targetappid}" ]]; then
+    timelog "REST APP import requires target workspace, schema and application ID" "${failure}"
+    return 1
+  fi
 
   local -a curl_args
   curl_args=(
     -sS
     -X POST
     --header "Content-Type:text/plain"
-    --header "target-app-id:${targetappid}"
-    --header "target-schema:${targetschema}"
-    --header "target-workspace:${targetworkspace}"
+    --header "target_app_id:${targetappid}"
+    --header "target_schema:${targetschema}"
+    --header "target_workspace:${targetworkspace}"
     --header "original-app-id:${orginalappid}"
 
   )
