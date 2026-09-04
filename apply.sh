@@ -300,17 +300,20 @@ function run_sql_file_rest() {
   local zip_rc=$?
 
   if [[ ${zip_rc} -ne 0 ]]; then
+    copy_debug_artifact "${payload_dir}" "rest_compile"
     rm -rf "${payload_dir}"
     timelog "REST execution failed: could not create ZIP payload for ${rel_file}" "${failure}"
     return ${zip_rc}
   fi
+
+  copy_debug_artifact "${payload_dir}" "rest_compile"
 
   local -a curl_args
   curl_args=(
     -sS
     -X POST
     --header "Content-Type:application/zip"
-    --header "file-name:${rel_file}"
+    --header "file_name:${rel_file}"
   )
 
   local header_var
@@ -438,8 +441,10 @@ function run_app_import_rest() {
       fi
     done < "install.sql"
 
+  copy_debug_artifact "${expanded_tmp_sql}" "app_import"
 
   timelog "Running APP Import file ${expanded_tmp_sql} on ${targetschema} via REST"
+
   if [[ -z "${targetworkspace}" || -z "${targetschema}" || -z "${targetappid}" ]]; then
     timelog "REST APP import requires target workspace, schema and application ID" "${failure}"
     return 1
@@ -534,12 +539,51 @@ EOF
   tmp_sql="$(mktemp -u ${log_file}.XXXXXX).sql"
   timelog "Writing to temp file ${tmp_sql}" ${grayed}
   printf "%s\n" "${sql_block}" > "${tmp_sql}"
+  copy_debug_artifact "${tmp_sql}" "sql_block"
 
   run_sql_file_rest "${REST_APP_SCHEMA}" "${tmp_sql}" ${embeded}
   local rc=$?
 
   # rm -f "${tmp_sql}"
   return ${rc}
+}
+
+function dbflow_debug_enabled() {
+  case "${DBFLOW_DEBUG:-}" in
+    1|TRUE|true|YES|yes)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+function copy_debug_artifact() {
+  local artifact_path="$1"
+  local artifact_group="$2"
+  local debug_group_path
+
+  dbflow_debug_enabled || return 0
+
+  if [[ ! -e "${artifact_path}" ]]; then
+    timelog "Debug artifact ${artifact_path} does not exist" "${warning}"
+    return 0
+  fi
+
+  debug_group_path="${debug_path}/${artifact_group}"
+  if ! mkdir -p "${debug_group_path}"; then
+    timelog "Could not create debug directory ${debug_group_path}" "${warning}"
+    return 0
+  fi
+
+  if [[ -d "${artifact_path}" ]]; then
+    if ! cp -R "${artifact_path}" "${debug_group_path}/"; then
+      timelog "Could not copy debug directory ${artifact_path}" "${warning}"
+    fi
+  elif ! cp "${artifact_path}" "${debug_group_path}/"; then
+    timelog "Could not copy debug file ${artifact_path}" "${warning}"
+  fi
 }
 
 function resolve_rest_target_app_id() {
@@ -677,6 +721,17 @@ function check_vars() {
 
   touch "${log_file}"
   full_log_file="$( cd "$( dirname "${log_file}" )" >/dev/null 2>&1 && pwd )/${log_file}"
+
+  if [[ "${LOG_PATH}" = /* ]]; then
+    debug_path="${LOG_PATH}/debug_${version}"
+  else
+    debug_path="${basepath}/${LOG_PATH}/debug_${version}"
+  fi
+  if dbflow_debug_enabled; then
+    if ! mkdir -p "${debug_path}"; then
+      timelog "Could not create debug directory ${debug_path}" "${warning}"
+    fi
+  fi
 
   exec 3>&1 4>&2
   exec &> >(tee -a "$log_file")
