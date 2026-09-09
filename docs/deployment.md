@@ -176,7 +176,7 @@ The apply.sh command applies a release to the respective configured database. Th
 
 
 
-By specifying the ``-i/--init`` flag, an init release is retrieved from the depot and then applied. If no password is stored in the apply.env (this is recommended), it will be requested at the very beginning. Because on init then content of all included schemas will be deleted you are asked to proceed. When you provide an environment variable called ``DBFLOW_JENKINS`` with any value the question is skipped.
+By specifying the ``-i/--init`` flag, an init release is retrieved from the depot and then applied. Schema clearing is opt-in and requires ``CLEAR_SCHEMA_ON_INIT=YES`` in ``apply.env`` or the environment. If no password is stored in the apply.env (this is recommended), it will be requested at the very beginning. When you provide an environment variable called ``DBFLOW_JENKINS`` with any value the question is skipped.
 
 
 ```shell

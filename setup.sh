@@ -769,9 +769,9 @@ function wizard() {
   read -r -p "$(printf "Enter path to place logfiles and artifacts into after installation? [${BGRAY}${local_logpath}${NC}]: ")" wiz_logpath
   wiz_logpath=${wiz_logpath:-"${local_logpath}"}
 
-  local local_do_not_clear_schema_on_init=${DO_NOT_CLEAR_SCHEMA_ON_INIT-"NO"}
-  read -r -p "$(printf "Do not clear target schema on init deployment? [${BGRAY}${local_do_not_clear_schema_on_init}${NC}]: ")" wiz_do_not_clear_schema_on_init
-  wiz_do_not_clear_schema_on_init=$(normalize_yes_no "${wiz_do_not_clear_schema_on_init:-${local_do_not_clear_schema_on_init}}")
+  local local_clear_schema_on_init=${CLEAR_SCHEMA_ON_INIT-"NO"}
+  read -r -p "$(printf "Clear target schema on init deployment? [${BGRAY}${local_clear_schema_on_init}${NC}]: ")" wiz_clear_schema_on_init
+  wiz_clear_schema_on_init=$(normalize_yes_no "${wiz_clear_schema_on_init:-${local_clear_schema_on_init}}")
 
   if [[ ${apply_only} == "NO" ]]; then
 
@@ -808,7 +808,7 @@ function write_apply() {
      [[ -z ${wiz_stage+x} ]] || \
      [[ -z ${wiz_sqlcli+x} ]] || \
      [[ -z ${wiz_logpath+x} ]] || \
-     [[ -z ${wiz_do_not_clear_schema_on_init+x} ]]; then
+     [[ -z ${wiz_clear_schema_on_init+x} ]]; then
     echo_error "Not all vars set"
     exit 1
   fi
@@ -892,8 +892,8 @@ function write_apply() {
     echo "# Scripts are executed with"
     echo "SQLCLI=${wiz_sqlcli}"
     echo ""
-    echo "# On init deployments skip clearing target schema(s)"
-    echo "DO_NOT_CLEAR_SCHEMA_ON_INIT=${wiz_do_not_clear_schema_on_init}"
+    echo "# On init deployments clear target schema(s) only when explicitly enabled"
+    echo "CLEAR_SCHEMA_ON_INIT=${wiz_clear_schema_on_init}"
     echo ""
     echo "# TEAMS Channel to Post to on success"
     echo "TEAMS_WEBHOOK_URL="
@@ -933,7 +933,7 @@ function generate() {
   printf "  Location logs:                    ${BWHITE}${wiz_logpath}${NC}\n"
   printf "  Branch is mapped to Stage:        ${BWHITE}${wiz_stage}${NC}\n"
   printf "  SQl commandline:                  ${BWHITE}${wiz_sqlcli}${NC}\n"
-  printf "  Do not clear schema on init:      ${BWHITE}${wiz_do_not_clear_schema_on_init}${NC}\n"
+  printf "  Clear schema on init:              ${BWHITE}${wiz_clear_schema_on_init}${NC}\n"
   printf "  Install default tools:            ${BWHITE}${wiz_with_tools}${NC}\n"
   printf "  Configure with default apps:      ${BWHITE}${wiz_apex_ids}${NC}\n"
   printf "  Configure with default modules:   ${BWHITE}${wiz_rest_modules}${NC}\n"
@@ -949,7 +949,7 @@ function generate() {
      [[ -z ${wiz_depot_path+x} ]] ||\
      [[ -z ${wiz_stage+x} ]] ||\
      [[ -z ${wiz_sqlcli+x} ]] || \
-     [[ -z ${wiz_do_not_clear_schema_on_init+x} ]]; then
+     [[ -z ${wiz_clear_schema_on_init+x} ]]; then
     echo_error "Not all vars set"
     exit 1
   fi
