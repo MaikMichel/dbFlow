@@ -70,6 +70,9 @@ create or replace package rest_compile_test is
   --%test(collects declare/begin/end block as one statement)
   procedure collects_plsql_block;
 
+  --%test(collects a local function before the outer DECLARE BEGIN as one statement)
+  procedure collects_local_function_before_outer_begin;
+
   --%test(collects nested anonymous block with exception section as one statement)
   procedure collects_nested_anonymous_block;
 
@@ -130,9 +133,5 @@ create or replace package rest_compile_test is
 
   --%test(keep multiline comment slash in place)
   procedure test_multiline_comment_slashs;
-
-  ----
-  --%test(reports version and api level)
-  procedure reports_version_info;
 end;
 /

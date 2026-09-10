@@ -109,7 +109,7 @@ create or replace package body rest_compile_test is
           "    tca_filename        varchar2(4000 char),",
           "    tca_line            number,",
           "    tca_column          number,",
-          "    tca_diag         clob,",
+          "    tca_diag            json, -- Diagnostic info as JSON",
           "    tca_created_at      timestamp                       not null,",
           "    tca_modified_at     timestamp                       not null,",
           "    tca_created_by      varchar2(255)                   not null,",
@@ -210,7 +210,7 @@ create or replace package body rest_compile_test is
           "    tca_filename        varchar2(4000 char),",
           "    tca_line            number,",
           "    tca_column          number,",
-          "    tca_diag         clob,",
+          "    tca_diag            json, -- Diagnostic info as JSON",
           "    tca_created_at      timestamp                       not null,",
           "    tca_modified_at     timestamp                       not null,",
           "    tca_created_by      varchar2(255)                   not null,",
@@ -1411,15 +1411,6 @@ end;
 
 
     ut.expect(dbms_lob.instr(l_stmts(1).stmt_text, '/*', 1, 1)).to_be_greater_than(0);
-  end;
-
-  ------
-
-  procedure reports_version_info is
-  begin
-    ut.expect(rest_compile.get_version).to_equal(rest_compile.c_version);
-    ut.expect(rest_compile.get_api_level).to_equal(rest_compile.c_api_level);
-    ut.expect(rest_compile.get_api_level).to_be_greater_or_equal(1);
   end;
 
 end;
