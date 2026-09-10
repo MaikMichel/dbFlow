@@ -227,6 +227,148 @@ function ensure_rest_access_token() {
   return 0
 }
 
+REST_DEFINE_NAMES=()
+REST_DEFINE_VALUES=()
+
+function reset_rest_defines() {
+  REST_DEFINE_NAMES=()
+  REST_DEFINE_VALUES=()
+}
+
+function register_rest_define() {
+  local line="$1"
+  local name
+  local value
+  local index
+
+  if [[ ! "${line}" =~ ^[[:space:]]*[Dd][Ee][Ff][Ii][Nn][Ee][[:space:]]+([A-Za-z_][A-Za-z0-9_]*)[[:space:]]*=[[:space:]]*(.*)$ ]]; then
+    return 1
+  fi
+
+  name="${BASH_REMATCH[1]}"
+  value="${BASH_REMATCH[2]}"
+
+  if [[ "${value}" == \"* ]]; then
+    value="${value#\"}"
+    value="${value%%\"*}"
+  else
+    value="${value%%[[:space:]]*}"
+  fi
+
+  for index in "${!REST_DEFINE_NAMES[@]}"; do
+    if [[ "${REST_DEFINE_NAMES[index]}" == "${name}" ]]; then
+      REST_DEFINE_VALUES[index]="${value}"
+      return 0
+    fi
+  done
+
+  REST_DEFINE_NAMES+=("${name}")
+  REST_DEFINE_VALUES+=("${value}")
+  return 0
+}
+
+function substitute_rest_defines() {
+  local line="$1"
+  local result=""
+  local remainder="${line}"
+  local prefix
+  local name
+  local suffix
+  local value
+  local index
+  local found
+
+  while [[ "${remainder}" == *^* ]]; do
+    prefix="${remainder%%^*}"
+    result+="${prefix}"
+    remainder="${remainder#*^}"
+
+    if [[ "${remainder}" =~ ^([A-Za-z_][A-Za-z0-9_]*)(.*)$ ]]; then
+      name="${BASH_REMATCH[1]}"
+      suffix="${BASH_REMATCH[2]}"
+      found=0
+
+      for index in "${!REST_DEFINE_NAMES[@]}"; do
+        if [[ "${REST_DEFINE_NAMES[index]}" == "${name}" ]]; then
+          value="${REST_DEFINE_VALUES[index]}"
+          found=1
+          break
+        fi
+      done
+
+      if [[ ${found} -eq 1 ]]; then
+        result+="${value}"
+        # SQL*Plus SET CONCAT uses the period as a variable-name separator;
+        # it is not part of the substituted value.
+        if [[ "${suffix}" == .* ]]; then
+          suffix="${suffix:1}"
+        fi
+        remainder="${suffix}"
+      else
+        result+="^${name}"
+        remainder="${suffix}"
+      fi
+    else
+      result+="^${remainder:0:1}"
+      remainder="${remainder:1}"
+    fi
+  done
+
+  result+="${remainder}"
+  printf '%s\n' "${result}"
+}
+
+function expand_rest_sql_file() {
+  local source_file="$1"
+  local source_base="$2"
+  local target_file="$3"
+  local include_stack="${4:-}"
+  local canonical_file
+  local next_include_stack
+  local line
+  local include_file
+  local include_path
+
+  canonical_file="$(realpath "${source_file}")" || {
+    timelog "REST execution failed: could not resolve SQL file ${source_file}" "${failure}"
+    return 1
+  }
+
+  if [[ ":${include_stack}:" == *":${canonical_file}:"* ]]; then
+    timelog "REST execution failed: recursive SQL include detected at ${source_file}" "${failure}"
+    return 1
+  fi
+  next_include_stack="${include_stack}:${canonical_file}"
+
+  while IFS= read -r line; do
+    if [[ "${line}" =~ ^[[:space:]]*@{1,2}([^[:space:];]+)[[:space:]]*$ ]]; then
+      include_file="${BASH_REMATCH[1]}"
+
+      if [[ "${include_file}" == /* ]]; then
+        include_path="${include_file}"
+      else
+        include_path="${source_base}/${include_file}"
+      fi
+
+      if [[ ! -f "${include_path}" ]]; then
+        timelog "REST execution failed: included SQL file ${include_path} does not exist" "${failure}"
+        return 1
+      fi
+
+      expand_rest_sql_file \
+        "${include_path}" \
+        "$(dirname "${include_path}")" \
+        "${target_file}" \
+        "${next_include_stack}" || return 1
+    else
+      register_rest_define "${line}" || true
+      substitute_rest_defines "${line}" >> "${target_file}"
+    fi
+  done < "${source_file}"
+
+  return 0
+}
+
 function run_sql_file_rest() {
   local targetschema=$1
   local sql_file=$2
@@ -237,10 +379,21 @@ function run_sql_file_rest() {
     return 1
   fi
 
-  abs_file="$(realpath "$sql_file")"
-  rel_file="${abs_file#"$basepath"/}"    
+  local abs_file
+  local rel_file
+  local source_basename
+  local expanded_sql_tmp
+  local expanded_sql_file
+  local expanded_sql_basename
+  local upload_file
 
-  if [[ ${use_embeded} == "true" ]]; then
+  # Embedded driver files use the separate-child upload branch below;
+  # standalone wrappers are expanded into one REST payload.
+
+  abs_file="$(realpath "${sql_file}")"
+  rel_file="${abs_file#"$basepath"/}"
+
+  if [[ "${use_embeded}" == "true" ]]; then
     timelog "Running SQL file ${rel_file} via REST with embeded file calls"
 
     local line
@@ -264,11 +417,7 @@ function run_sql_file_rest() {
             include_has_embedded=false
           fi
 
-          run_sql_file_rest "${targetschema}" "${include_path}" "${include_has_embedded}"
-          if [[ $? -ne 0 ]]; then
-            return 1
-          fi
-          
+          run_sql_file_rest "${targetschema}" "${include_path}" "${include_has_embedded}" || return 1
         else
           timelog "REST execution failed: included SQL file ${include_path} does not exist" "${failure}"
           return 1
@@ -278,10 +427,35 @@ function run_sql_file_rest() {
 
     return 0
   fi
-  
-  timelog "Running SQL file ${rel_file} via REST"
+
+  # The REST endpoint has no access to the client's filesystem. Expand all
+  # SQL*Plus @/@@ includes before creating the one-file REST payload. This
+  # also preserves statements surrounding an include and supports hook
+  # wrappers such as @.hooks/pre/set_stage_ati.sql.
+  source_basename="${sql_file##*/}"
+  expanded_sql_tmp="$(mktemp "${TMPDIR:-/tmp}/dbflow-rest-expanded.XXXXXX")" || {
+    timelog "REST execution failed: could not create expanded SQL file" "${failure}"
+    return 1
+  }
+  expanded_sql_file="${expanded_sql_tmp}.${source_basename}"
+  if ! mv "${expanded_sql_tmp}" "${expanded_sql_file}"; then
+    rm -f "${expanded_sql_tmp}"
+    timelog "REST execution failed: could not name expanded SQL file" "${failure}"
+    return 1
+  fi
+  reset_rest_defines
+  if ! expand_rest_sql_file "${sql_file}" "$(dirname "${sql_file}")" "${expanded_sql_file}"; then
+    rm -f "${expanded_sql_file}"
+    return 1
+  fi
+  upload_file="${expanded_sql_file}"
+  expanded_sql_basename="${expanded_sql_file##*/}"
+
+  copy_debug_artifact "${expanded_sql_file}" "rest_compile_expanded"
+  timelog "Running SQL file ${expanded_sql_basename} via REST with expanded file calls"
 
   if ! command -v zip >/dev/null 2>&1; then
+    rm -f "${expanded_sql_file}"
     timelog "REST execution failed: zip command is required for REST compile payloads" "${failure}"
     return 1
   fi
@@ -291,8 +465,13 @@ function run_sql_file_rest() {
   payload_dir="$(mktemp -d "${TMPDIR:-/tmp}/dbflow-rest-compile.XXXXXX")"
   payload_file="${payload_dir}/payload.zip"
 
-  mkdir -p "${payload_dir}/$(dirname "${rel_file}")"
-  cp "${sql_file}" "${payload_dir}/${rel_file}"
+  if ! mkdir -p "${payload_dir}/$(dirname "${rel_file}")" || \
+     ! cp "${upload_file}" "${payload_dir}/${rel_file}"; then
+    rm -rf "${payload_dir}"
+    rm -f "${expanded_sql_file}"
+    timelog "REST execution failed: could not stage expanded SQL file ${rel_file}" "${failure}"
+    return 1
+  fi
 
   (
     cd "${payload_dir}" && zip -q "${payload_file}" "${rel_file}"
@@ -302,6 +481,7 @@ function run_sql_file_rest() {
   if [[ ${zip_rc} -ne 0 ]]; then
     copy_debug_artifact "${payload_dir}" "rest_compile"
     rm -rf "${payload_dir}"
+    rm -f "${expanded_sql_file}"
     timelog "REST execution failed: could not create ZIP payload for ${rel_file}" "${failure}"
     return ${zip_rc}
   fi
@@ -328,6 +508,7 @@ function run_sql_file_rest() {
     ensure_rest_access_token
     if [[ $? -ne 0 ]]; then
       rm -rf "${payload_dir}"
+      rm -f "${expanded_sql_file}"
       return 1
     fi
     curl_args+=( --header "Authorization: Bearer ${REST_ACCESS_TOKEN}" )
@@ -342,6 +523,7 @@ function run_sql_file_rest() {
   local curl_rc=$?
 
   rm -rf "${payload_dir}"
+  rm -f "${expanded_sql_file}"
 
   if [[ ${curl_rc} -ne 0 ]]; then
     [[ -z "${curl_response}" ]] || echo "${curl_response}"
@@ -527,6 +709,7 @@ function run_sql_block() {
   local targetschema=$1
   local sql_block=$2
   local embeded=${3:-false}
+  local source_file=${4:-}
 
   if [[ "${CONN_MODE}" == "SQLNET" ]]; then
     "$SQLCLI" -S -L "$(get_connect_string "${targetschema}")" <<EOF
@@ -535,8 +718,22 @@ EOF
     return $?
   fi
 
+  local source_basename
+  local source_stem
+  local source_extension
   local tmp_sql
-  tmp_sql="$(mktemp -u ${log_file}.XXXXXX).sql"
+  if [[ -n "${source_file}" ]]; then
+    source_basename="${source_file##*/}"
+    if [[ "${source_basename}" == *.* ]]; then
+      source_stem="${source_basename%.*}"
+      source_extension="${source_basename##*.}"
+      tmp_sql="$(mktemp -u "${source_stem}.XXXXXX").${source_extension}"
+    else
+      tmp_sql="$(mktemp -u "${source_basename}.XXXXXX").sql"
+    fi
+  else
+    tmp_sql="$(mktemp -u "${log_file}.XXXXXX").sql"
+  fi
   timelog "Writing to temp file ${tmp_sql}" ${grayed}
   printf "%s\n" "${sql_block}" > "${tmp_sql}"
   copy_debug_artifact "${tmp_sql}" "sql_block"
@@ -544,7 +741,7 @@ EOF
   run_sql_file_rest "${REST_APP_SCHEMA}" "${tmp_sql}" ${embeded}
   local rc=$?
 
-  # rm -f "${tmp_sql}"
+  rm -f "${tmp_sql}"
   return ${rc}
 }
 
@@ -1150,7 +1347,7 @@ Prompt calling file ${runfile}
 @${runfile}
 EOF
 )
-          run_sql_block "${targetschema}" "${sql_block}"
+          run_sql_block "${targetschema}" "${sql_block}" false "${runfile}"
 
         else
           timelog "no schema found to execute hook file ${runfile} target schema has to be a part of filename" "${warning}"
@@ -1316,9 +1513,9 @@ function set_rest_publish_state() {
           )
 
 EOF
-)   
-      
-        run_sql_block "${appschema}" "${sql_block}" 
+)
+
+        run_sql_block "${appschema}" "${sql_block}"
       fi
     done
   else
@@ -1569,7 +1766,7 @@ function install_apps() {
         else
           local original_app_id=$(grep -oP 'p_default_application_id=>\K\d+' "application/set_environment.sql")
         fi
-        
+
         # begin .hooks/pre
         if [[ -d ".hooks/pre" ]]; then
           for pre_hook in .hooks/pre/*.sh; do
