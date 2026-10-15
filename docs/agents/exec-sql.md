@@ -29,7 +29,7 @@ Use `.dbFlow/exec-sql.sh` whenever you need to test SQL scripts, compile a packa
 
 - Loads `build.env`, `.dbFlow/lib.sh`, and `apply.env`.
 - Runs `validate_passes`, so encoded passwords in `apply.env` are handled exactly like in `.dbFlow/apply.sh`.
-- Uses `get_connect_string()` from `.dbFlow/lib.sh`, including proxy connections and optional `DBFLOW_<SCHEMA>_PWD` overrides.
+- Uses `get_connect_string()` from `.dbFlow/lib.sh`: proxy connections are used in `MULTI` and `FLEX` when the database user differs from the schema; `SINGLE` connects directly as `DB_APP_USER`. Optional `DBFLOW_<SCHEMA>_PWD` overrides continue to connect directly as that schema.
 - Supports only `CONN_MODE=SQLNET`.
 - Treats `<command>` as a file when the path exists; otherwise it is executed as inline SQL/PLSQL.
 

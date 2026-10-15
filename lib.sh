@@ -206,8 +206,9 @@ function get_connect_string() {
   if eval '[ ! -z "${'"$dyn_schema_pwd"'}" ]'; then
     echo "${dbschema}/${!dyn_schema_pwd}@${DB_TNS}"
   else
-    # when connection user != target schema then use proxy
-    if [[ ${DB_APP_USER} != "${dbschema}" ]]; then
+    # In SINGLE mode connect as DB_APP_USER directly, even when it differs from
+    # the target schema. Other modes use proxy authentication for that case.
+    if [[ ${PROJECT_MODE:-} != "SINGLE" && ${DB_APP_USER} != "${dbschema}" ]]; then
       echo "${DB_APP_USER}[${dbschema}]/${DB_APP_PWD}@${DB_TNS}"
     else
       echo "${DB_APP_USER}/${DB_APP_PWD}@${DB_TNS}"
