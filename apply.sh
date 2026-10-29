@@ -783,12 +783,12 @@ function copy_debug_artifact() {
   fi
 }
 
-function resolve_rest_target_app_id() {
+function resolve_target_app_id() {
   local source_app_id=$1
-  local map_string="${REST_APP_ID_MAP:-}"
+  local map_string="${APP_ID_MAP:-}"
 
   if [[ -z "${source_app_id}" ]]; then
-    timelog "REST APP ID resolution failed: source_app_id is empty" "${failure}"
+    timelog "APP ID resolution failed: source_app_id is empty" "${failure}"
     return 1
   fi
 
@@ -802,13 +802,13 @@ function resolve_rest_target_app_id() {
   local source_id
   local target_id
 
-  IFS=',' read -ra __rest_map_pairs <<< "${map_string}"
-  for pair in "${__rest_map_pairs[@]}"; do
+  IFS=',' read -ra __app_id_map_pairs <<< "${map_string}"
+  for pair in "${__app_id_map_pairs[@]}"; do
     pair="$(echo "${pair}" | tr -d '[:space:]')"
     [[ -n "${pair}" ]] || continue
 
     if [[ ! "${pair}" =~ ^[0-9]+:[0-9]+$ ]]; then
-      timelog "Invalid REST_APP_ID_MAP entry '${pair}'. Expected format <source>:<target>, e.g. 1111:12120" "${failure}"
+      timelog "Invalid APP_ID_MAP entry '${pair}'. Expected format <source>:<target>, e.g. 1111:12120" "${failure}"
       return 1
     fi
 
@@ -821,8 +821,16 @@ function resolve_rest_target_app_id() {
     fi
   done
 
-  timelog "No REST APP ID mapping found for source app ${source_app_id} in REST_APP_ID_MAP" "${failure}"
+  timelog "No APP ID mapping found for source app ${source_app_id} in APP_ID_MAP" "${failure}"
   return 1
+}
+
+function get_app_id_offset() {
+  if [[ "${CONN_MODE}" == "SQLNET" ]] && [[ -z "${APP_ID_MAP:-}" ]]; then
+    echo "${APP_OFFSET:-0}"
+  else
+    echo 0
+  fi
 }
 
 
@@ -1540,6 +1548,7 @@ function set_apps_unavailable() {
     do
       local app_name=$(basename "${d}")
       local l_app_id=${app_name/f}
+      local l_app_id_offset
       local l_workspace=${WORKSPACE}
       local l_appschema=${APP_SCHEMA}
 
@@ -1548,11 +1557,12 @@ function set_apps_unavailable() {
         l_appschema=$(basename $(dirname $(dirname "${d}")))
       fi
 
+      l_app_id=$(resolve_target_app_id "${l_app_id}")
+      if [[ $? -ne 0 ]] || [[ -z "${l_app_id}" ]]; then
+        exit 3
+      fi
+      l_app_id_offset=$(get_app_id_offset)
       if [[ ${CONN_MODE} == "REST" ]]; then
-        l_app_id=$(resolve_rest_target_app_id "${l_app_id}")
-        if [[ $? -ne 0 ]] || [[ -z "${l_app_id}" ]]; then
-          exit 3
-        fi
         l_workspace=${REST_WORKSPACE}
         l_appschema=${REST_APP_SCHEMA}
       fi
@@ -1564,7 +1574,7 @@ function set_apps_unavailable() {
       set serveroutput on;
       set define off;
       Declare
-        v_application_id  apex_application_build_options.application_id%type := ${l_app_id} + ${APP_OFFSET};
+        v_application_id  apex_application_build_options.application_id%type := ${l_app_id} + nvl(${l_app_id_offset}, 0);
         v_workspace_id    apex_workspaces.workspace_id%type;
       Begin
         select workspace_id
@@ -1638,6 +1648,7 @@ function set_apps_available() {
     do
       local l_app_name=$(basename "${d}")
       local l_app_id=${l_app_name/f}
+      local l_app_id_offset
       local l_workspace=${WORKSPACE}
       local l_appschema=${APP_SCHEMA}
 
@@ -1646,11 +1657,12 @@ function set_apps_available() {
         l_appschema=$(basename $(dirname $(dirname ${d})))
       fi
 
+      l_app_id=$(resolve_target_app_id "${l_app_id}")
+      if [[ $? -ne 0 ]] || [[ -z "${l_app_id}" ]]; then
+        exit 3
+      fi
+      l_app_id_offset=$(get_app_id_offset)
       if [[ ${CONN_MODE} == "REST" ]]; then
-        l_app_id=$(resolve_rest_target_app_id "${l_app_id}")
-        if [[ $? -ne 0 ]] || [[ -z "${l_app_id}" ]]; then
-          exit 3
-        fi
         l_workspace=${REST_WORKSPACE}
         l_appschema=${REST_APP_SCHEMA}
       fi
@@ -1666,7 +1678,7 @@ set serveroutput on;
 set define off;
 
 Declare
-  v_application_id  apex_application_build_options.application_id%type := ${l_app_id} + ${APP_OFFSET};
+  v_application_id  apex_application_build_options.application_id%type := ${l_app_id} + nvl(${l_app_id_offset}, 0);
   v_workspace_id    apex_workspaces.workspace_id%type;
   l_text            varchar2(100);
 Begin
@@ -1777,8 +1789,17 @@ function install_apps() {
         fi
         # end .hooks/pre
 
+        local target_app_id
+        target_app_id=$(resolve_target_app_id "${app_id}")
+        if [[ $? -ne 0 ]] || [[ -z "${target_app_id}" ]]; then
+          timelog "ERROR when resolving target app id for source app ${app_id}" "${failure}"
+          exit 3
+        fi
+        local app_id_offset
+        app_id_offset=$(get_app_id_offset)
+
         if [[ "${CONN_MODE}" == "SQLNET" ]]; then
-          timelog "Installing $line Num: ${app_id} Workspace: ${workspace} Schema: ${appschema} Original Num: ${original_app_id}"
+          timelog "Installing $line Num: ${target_app_id} Workspace: ${workspace} Schema: ${appschema} Original Num: ${original_app_id}"
 
           local sql_block
           sql_block=$(cat <<EOF
@@ -1793,7 +1814,7 @@ set verify off
 set serveroutput on
 
 Prompt Workspace: ${workspace}
-Prompt Application: ${app_id}
+Prompt Application: ${target_app_id}
 declare
   v_workspace_id	apex_workspaces.workspace_id%type;
 begin
@@ -1804,15 +1825,15 @@ begin
 
   apex_application_install.set_workspace_id(v_workspace_id);
 
-  apex_application_install.set_application_id(${app_id} + nvl(${APP_OFFSET}, 0));
+  apex_application_install.set_application_id(${target_app_id} + nvl(${app_id_offset}, 0));
 
-  if nvl(${APP_OFFSET}, 0) > 0 or ${app_id} != nvl(${original_app_id}, 0) then
+  if nvl(${app_id_offset}, 0) > 0 or ${target_app_id} != nvl(${original_app_id}, 0) then
     dbms_output.put_line((chr(27) || '[33m') || 'Original APP ID differs from Target APP ID. Generating Offset.' || (chr(27) || '[0m'));
     apex_application_install.generate_offset;
     -- alias must be unique per instance, so when offset is definded
     -- it should be modified. In this case a post hook at root level
     -- has to be used to give it a correct alias
-    apex_application_install.set_application_alias('${app_id}_${APP_OFFSET}');
+    apex_application_install.set_application_alias('${target_app_id}_${app_id_offset}');
   end if;
 
   apex_application_install.set_schema(upper('${appschema}'));
@@ -1828,13 +1849,6 @@ EOF
 )
           run_sql_block "${appschema}" "${sql_block}" true
         else
-          local target_app_id
-          target_app_id=$(resolve_rest_target_app_id "${app_id}")
-          if [[ $? -ne 0 ]] || [[ -z "${target_app_id}" ]]; then
-            timelog "ERROR when resolving REST target app id for source app ${app_id}" "${failure}"
-            exit 3
-          fi
-
           timelog "Installing $line using REST API Num: ${target_app_id} Workspace: ${REST_WORKSPACE} Schema: ${REST_APP_SCHEMA} Original Num: ${original_app_id}"
           run_app_import_rest "${REST_APP_SCHEMA}" "${REST_WORKSPACE}" "${target_app_id}" "${original_app_id}"
         fi

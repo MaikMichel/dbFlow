@@ -309,7 +309,7 @@ function join_by() {
   done
 }
 
-function get_rest_app_id_map_from_apex_dirs() {
+function get_app_id_map_from_apex_dirs() {
   local apex_dir=""
   local folder_name=""
   local app_id=""
@@ -329,19 +329,25 @@ function get_rest_app_id_map_from_apex_dirs() {
   fi
 }
 
-function get_rest_app_id_map_example() {
-  echo "1111:1111,2222:2222"
+function get_app_id_map_example() {
+  echo "1111:12120,2222:22220"
 }
 
-function resolve_rest_app_id_map_default() {
+function resolve_app_id_map_default() {
   local discovered_map=""
 
-  discovered_map=$(get_rest_app_id_map_from_apex_dirs)
+  if [[ -n ${APP_ID_MAP:-} ]]; then
+    echo "${APP_ID_MAP}"
+    return 0
+  fi
+
+  discovered_map=$(get_app_id_map_from_apex_dirs)
   if [[ -n ${discovered_map} ]]; then
     echo "${discovered_map}"
-  else
-    echo "${REST_APP_ID_MAP:-}"
+    return 0
   fi
+
+  echo ""
 }
 
 function resolve_rest_url_prefix_default() {
@@ -733,15 +739,6 @@ function wizard() {
       wiz_rest_oauth_token_url=""
     fi
 
-    wiz_rest_app_id_map_default=$(resolve_rest_app_id_map_default)
-    if [[ -n ${wiz_rest_app_id_map_default} ]]; then
-      read -r -p "$(printf "Enter REST app id mapping source:target [,source:target] [${BGRAY}${wiz_rest_app_id_map_default}${NC}]: ")" wiz_rest_app_id_map
-      wiz_rest_app_id_map=${wiz_rest_app_id_map:-"${wiz_rest_app_id_map_default}"}
-    else
-      read -r -p "$(printf "Enter REST app id mapping source:target [,source:target] [${BGRAY}leave blank to write example comment${NC}]: ")" wiz_rest_app_id_map
-      wiz_rest_app_id_map=${wiz_rest_app_id_map:-""}
-    fi
-
     local local_rest_oauth_basic_b64=${REST_OAUTH_BASIC_B64-""}
     read -r -p "$(printf "Enter REST OAuth Basic B64 value [${BGRAY}${local_rest_oauth_basic_b64}${NC}]: ")" wiz_rest_oauth_basic_b64
     wiz_rest_oauth_basic_b64=${wiz_rest_oauth_basic_b64:-"${local_rest_oauth_basic_b64}"}
@@ -751,6 +748,19 @@ function wizard() {
     wiz_rest_uses_oauth=${wiz_rest_uses_oauth:-"${local_rest_uses_oauth}"}
     wiz_rest_uses_oauth=$(echo "${wiz_rest_uses_oauth}" | tr '[:lower:]' '[:upper:]')
     [[ "${wiz_rest_uses_oauth}" == "FALSE" ]] || wiz_rest_uses_oauth="TRUE"
+  fi
+
+  local wiz_app_id_map_default
+  if [[ ${wiz_conn_mode} == "SQLNET" ]]; then
+    echo_warning "When APP_ID_MAP is set, APP_OFFSET is ignored; mapped target IDs are used directly."
+  fi
+  wiz_app_id_map_default=$(resolve_app_id_map_default)
+  if [[ -n ${wiz_app_id_map_default} ]]; then
+    read -r -p "$(printf "Enter app id mapping source:target [,source:target] [${BGRAY}${wiz_app_id_map_default}${NC}]: ")" wiz_app_id_map
+    wiz_app_id_map=${wiz_app_id_map:-"${wiz_app_id_map_default}"}
+  else
+    read -r -p "$(printf "Enter app id mapping source:target [,source:target] [${BGRAY}leave blank to write example comment${NC}]: ")" wiz_app_id_map
+    wiz_app_id_map=${wiz_app_id_map:-""}
   fi
 
   local local_depot_path=${DEPOT_PATH-"_depot"}
@@ -798,11 +808,11 @@ function wizard() {
 function write_apply() {
   local effective_conn_mode
   local effective_project_mode
-  local effective_rest_app_id_map
+  local effective_app_id_map
 
   effective_conn_mode=$(normalize_conn_mode "${wiz_conn_mode:-${CONN_MODE:-SQLNET}}")
   effective_project_mode=$(normalize_project_mode "${wiz_project_mode:-${PROJECT_MODE:-SINGLE}}")
-  effective_rest_app_id_map=${wiz_rest_app_id_map:-$(resolve_rest_app_id_map_default)}
+  effective_app_id_map=${wiz_app_id_map:-$(resolve_app_id_map_default)}
 
   if [[ -z ${wiz_depot_path+x} ]] || \
      [[ -z ${wiz_stage+x} ]] || \
@@ -837,17 +847,21 @@ function write_apply() {
     echo "# Connection Mode"
     echo "CONN_MODE=${effective_conn_mode}"
     echo ""
+    if [[ ${effective_conn_mode} == "SQLNET" ]] && [[ -n ${effective_app_id_map} ]]; then
+      echo "# APP_ID_MAP uses exact target IDs and overrides APP_OFFSET."
+    fi
+    if [[ -n ${effective_app_id_map} ]]; then
+      echo "APP_ID_MAP=\"${effective_app_id_map}\""
+    else
+      echo "# APP_ID_MAP=\"$(get_app_id_map_example)\""
+    fi
+    echo ""
 
     if [[ ${effective_conn_mode} == "REST" ]]; then
       echo "# REST Connection"
       echo "REST_SQL_URL=${wiz_rest_sql_url}"
       echo "REST_APP_SCHEMA=${wiz_rest_app_schema}"
       echo "REST_WORKSPACE=${wiz_rest_workspace}"
-      if [[ -n ${effective_rest_app_id_map} ]]; then
-        echo "REST_APP_ID_MAP=\"${effective_rest_app_id_map}\""
-      else
-        echo "# REST_APP_ID_MAP=\"$(get_rest_app_id_map_example)\""
-      fi
       echo "REST_OAUTH_TOKEN_URL=${wiz_rest_oauth_token_url}"
       echo "REST_OAUTH_BASIC_B64=${wiz_rest_oauth_basic_b64}"
       echo "REST_USES_OAUTH=${wiz_rest_uses_oauth:-TRUE}"
@@ -922,13 +936,13 @@ function generate() {
     printf "  REST SQL URL:                     ${BWHITE}${wiz_rest_sql_url}${NC}\n"
     printf "  REST App Schema:                  ${BWHITE}${wiz_rest_app_schema}${NC}\n"
     printf "  REST Workspace:                   ${BWHITE}${wiz_rest_workspace}${NC}\n"
-    printf "  REST App ID Map:                  ${BWHITE}${wiz_rest_app_id_map:-# $(get_rest_app_id_map_example)}${NC}\n"
     printf "  REST OAuth URL:                   ${BWHITE}${wiz_rest_oauth_token_url}${NC}\n"
   else
     printf "  Connection:                       ${BWHITE}${wiz_db_tns}${NC}\n"
     printf "  Admin User:                       ${BWHITE}${wiz_db_admin_user}${NC}\n"
     printf "  Deployment User:                  ${BWHITE}${wiz_db_app_user}${NC}\n"
   fi
+  printf "  App ID Map:                       ${BWHITE}${wiz_app_id_map:-# $(get_app_id_map_example)}${NC}\n"
   printf "  Location depot:                   ${BWHITE}${wiz_depot_path}${NC}\n"
   printf "  Location logs:                    ${BWHITE}${wiz_logpath}${NC}\n"
   printf "  Branch is mapped to Stage:        ${BWHITE}${wiz_stage}${NC}\n"
