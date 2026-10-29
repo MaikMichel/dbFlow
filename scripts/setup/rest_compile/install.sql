@@ -1,6 +1,6 @@
 -- Auto-generated install script
--- Source definition: install.def
--- Generated at: 2026-07-02 21:45:11 +0200
+-- Source definition: .dbFlow/scripts/setup/rest_compile/install.def
+-- Generated at: 2026-09-28 16:39:30 +0200
 
 set define off
 
@@ -588,7 +588,12 @@ create or replace package body rest_compile is
         l_expect_slash_end   boolean := false;  -- CREATE OR REPLACE requires '/' line to finish
         l_end_keyword_seen   boolean := false;  -- saw END keyword; close a PL/SQL scope on ';'
         l_plsql_block_depth  pls_integer := 0;  -- active PL/SQL scopes closed by END;
-        l_pending_header_debt pls_integer := 0; -- headers that still need their matching BEGIN
+        -- Each PL/SQL scope records whether its own header still needs a BEGIN.
+        -- A counter is insufficient because a local subprogram can be declared
+        -- inside an outer DECLARE section before the outer BEGIN is reached.
+        type t_plsql_scope_stack is table of boolean index by pls_integer;
+        l_plsql_scopes      t_plsql_scope_stack;
+        l_plsql_scope_top   pls_integer := 0;
 
         procedure push(p_token varchar2) is
         begin
@@ -673,20 +678,30 @@ create or replace package body rest_compile is
         procedure open_plsql_scope(p_requires_begin in boolean default false) is
         begin
             l_plsql_block_depth := l_plsql_block_depth + 1;
-
-            if p_requires_begin then
-                l_pending_header_debt := l_pending_header_debt + 1;
-            end if;
+            l_plsql_scope_top := l_plsql_scope_top + 1;
+            l_plsql_scopes(l_plsql_scope_top) := p_requires_begin;
         end open_plsql_scope;
 
         procedure handle_begin_keyword is
         begin
-            if l_pending_header_debt > 0 then
-                l_pending_header_debt := l_pending_header_debt - 1;
+            if l_plsql_scope_top > 0 and l_plsql_scopes(l_plsql_scope_top) then
+                l_plsql_scopes(l_plsql_scope_top) := false;
             else
                 open_plsql_scope;
             end if;
         end handle_begin_keyword;
+
+        procedure close_plsql_scope is
+        begin
+            if l_plsql_block_depth > 0 then
+                l_plsql_block_depth := l_plsql_block_depth - 1;
+            end if;
+
+            if l_plsql_scope_top > 0 then
+                l_plsql_scopes.delete(l_plsql_scope_top);
+                l_plsql_scope_top := l_plsql_scope_top - 1;
+            end if;
+        end close_plsql_scope;
 
         function next_word(p_line varchar2, p_pos pls_integer) return varchar2 is
             l_j pls_integer := p_pos;
@@ -791,7 +806,8 @@ create or replace package body rest_compile is
             l_expect_slash_end    := false;
             l_end_keyword_seen    := false;
             l_plsql_block_depth   := 0;
-            l_pending_header_debt := 0;
+            l_plsql_scopes.delete;
+            l_plsql_scope_top    := 0;
         end;
 
     begin -- split_into_statements
@@ -999,7 +1015,7 @@ create or replace package body rest_compile is
                     -- Statement terminator ;
                     if l_ch = ';' then
                         if l_end_keyword_seen and l_plsql_block_depth > 0 then
-                            l_plsql_block_depth := l_plsql_block_depth - 1;
+                            close_plsql_scope;
                             l_end_keyword_seen := false;
                         end if;
 
@@ -3592,7 +3608,7 @@ begin
       p_name            => C_CLIENT_NAME,
       p_grant_type      => 'client_credentials',      
       p_description     => 'Internal API client to use with dbFlow',
-      p_support_email   => v('APP_USER'),        
+      p_support_email   => 'maik.michel@oracle.com',       
       p_privilege_names => 'DBFLOW_REST_COMPILE_API_PRIV'
     );
 
