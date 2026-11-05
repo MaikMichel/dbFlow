@@ -1097,6 +1097,11 @@ function print_info() {
   timelog "Depot:               ${BWHITE}${DEPOT_PATH}${NC}"
   timelog "Logs :               ${BWHITE}${LOG_PATH}${NC}"
   timelog "Application Offset:  ${BWHITE}${APP_OFFSET}${NC}"
+  if [[ -n ${APP_ID_MAP:-} ]]; then
+    timelog "Application ID Map:  ${BWHITE}${APP_ID_MAP}${NC}"
+  else
+    timelog "Application ID Map:  ${BWHITE}none${NC}"
+  fi
   if [[ "${CONN_MODE}" == "SQLNET" ]]; then
     timelog "Deployment User:     ${BWHITE}${DB_APP_USER}${NC}"
     timelog "DB Connection:       ${BWHITE}${DB_TNS}${NC}"
