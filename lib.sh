@@ -31,15 +31,15 @@ BCYAN="\033[1;36m"         # Cyan
 BWHITE="\033[1;97m"       # White
 WHITE="\033[0;97m"        # White
 LWHITE="\033[1;30m"       # White
-BYELLOW="\e[30;48;5;82m"  # Yellow
-BORANGE="\e[38;5;208m"    # Orange
-BUNLINE="\e[1;4m"
-BGRAY="\e[0;90m"
-BLBACK="\e[30;48;5;81m"
+BYELLOW="\033[30;48;5;82m"  # Yellow
+BORANGE="\033[38;5;208m"    # Orange
+BUNLINE="\033[1;4m"
+BGRAY="\033[0;90m"
+BLBACK="\033[30;48;5;81m"
 
 # Central ANSI building blocks used by dbFlow scripts
 # (kept code-identical to historical values from apply.sh)
-ESC="\e"
+ESC="\033"
 BSE_RESET="[0m"
 BSE_DGRAY="[90m"
 BSE_LBLUE="[38;5;74m"
