@@ -3,6 +3,7 @@ set concat on
 set concat .
 set verify off
 define VERSION = '^1'
+define MODE = '^2'
 set timing on;
 set serveroutput on;
 
@@ -62,3 +63,6 @@ prompt objects left in schema
 select lower(object_type) as object_type, lower(object_name) as object_name
   from user_objects
  order by object_type, object_name;
+
+ prompt done
+ prompt

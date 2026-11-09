@@ -697,8 +697,8 @@ function run_sql_file() {
   shift 3
   local -a sql_args=( "$@" )
 
-  if [[ "${CONN_MODE}" == "SQLNET" ]]; then
-    "$SQLCLI" -S -L "$(get_connect_string "${targetschema}")" @"${sql_file}" "${sql_args[@]}"
+  if [[ "${CONN_MODE}" == "SQLNET" ]]; then    
+    "$SQLCLI" -S -L "$(get_connect_string "${targetschema}")" @"${sql_file}" "${sql_args[@]}" < /dev/null
     return $?
   fi
 
@@ -1372,8 +1372,9 @@ function clear_db_schemas_on_init() {
       for (( idx=${#SCHEMAS[@]}-1 ; idx>=0 ; idx-- )) ; do
         local schema=${SCHEMAS[idx]}
         # On init mode schema content will be dropped
-        timelog "DROPING ALL OBJECTS on schema ${schema}"
+        timelog "DROPPING ALL OBJECTS on schema ${schema}"
         run_sql_file "${schema}" ".dbFlow/lib/drop_all.sql" false "${full_log_file}" "${version}" "${mode}"
+        timelog "DROPPED ALL OBJECTS from schema ${schema}"
       done
     else
       timelog "INIT - Mode, Schemas will not be cleared because CLEAR_SCHEMA_ON_INIT is not set to YES" "info"
