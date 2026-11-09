@@ -332,3 +332,50 @@ $ .dbFlow/release.sh --source develop --target master --build --apply ../instanc
 - ***keep***
 
 The ``-k/--keep`` option prevents the working folders in the depot directory from being deleted.
+
+## APEX targets over SQLNET
+
+`APEX_WORKSPACE` in `apply.env` optionally overrides the workspace from
+`build.env` (`WORKSPACE`) or the FLEX application directory. An empty override
+uses the derived workspace. For example:
+
+```bash
+APEX_WORKSPACE=APEX_DX
+DB_APP_USER=WKSP_APEXDX
+APP_ID_MAP="1111:12120"
+```
+
+The logical database folder remains unchanged (for example `db/ati`). In SINGLE,
+the APEX parsing schema is always `DB_APP_USER`. An explicit `DBFLOW_<SCHEMA>_PWD`
+changes the connection user but does not change the SINGLE parsing schema. That
+connection must be permitted to import into the configured parsing schema.
+In MULTI and FLEX, the parsing schema is the target schema of the proxy or
+explicit schema connection. Numeric directory-order prefixes are removed from
+schema names using the same rule as connection resolution. No `APEX_APP_SCHEMA`
+setting is needed. Import and application availability control share these rules.
+
+After artifact extraction reloads `build.env`, dbFlow resolves and logs each
+import target. Before redo processing, file deletion, availability changes or
+hooks, a read-only preflight checks the import targets' workspace and parsing
+schema assignment and resolves their application IDs. The application itself
+need not exist yet. A rejected preflight exits with status 2, keeps the deployment
+log and import artifacts for retry, and does not write `version.md` or run normal
+failure archival. Extraction and connection validation have already happened.
+Correct `apply.env` and retry the same release, using `--noextract` when reusing
+the extracted artifact.
+
+The import checks workspace/schema assignment again. SQL and OS error handling
+is enabled before its configuration block, so a configuration failure exits the
+SQL client before `@@install.sql`; the shell aborts without application post-hooks.
+This prevents an import from falling back to the application's exported ID.
+
+Only applications selected for import are preflighted. Availability control
+retains its existing handling of missing workspaces, including for applications
+outside the import list. REST keeps its existing parameters and behavior.
+
+Run the isolated SQL-client regressions without a database:
+
+```bash
+python3 .dbFlow/tests/test_apex_targets.py
+bash -n .dbFlow/apply.sh
+```

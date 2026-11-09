@@ -834,6 +834,95 @@ function get_app_id_offset() {
 }
 
 
+# Keep the logical connection key separate from the APEX parsing schema.
+function resolve_apex_target() {
+  local app_path=$1
+  APEX_TARGET_CONNECTION=${APP_SCHEMA}
+  APEX_TARGET_WORKSPACE=${WORKSPACE}
+  if [[ ${PROJECT_MODE} == "FLEX" ]]; then
+    APEX_TARGET_WORKSPACE=$(basename "$(dirname "${app_path}")")
+    local workspace_path
+    workspace_path=$(dirname "${app_path}")
+    APEX_TARGET_CONNECTION=$(basename "$(dirname "${workspace_path}")")
+  fi
+  APEX_TARGET_SCHEMA=${APEX_TARGET_CONNECTION}
+  local prefix=${APEX_TARGET_SCHEMA%%_*}
+  if [[ ${prefix} =~ ^[0-9]+$ ]]; then
+    APEX_TARGET_SCHEMA=${APEX_TARGET_SCHEMA#*_}
+  fi
+  if [[ ${CONN_MODE} == "REST" ]]; then
+    APEX_TARGET_WORKSPACE=${REST_WORKSPACE}
+    APEX_TARGET_SCHEMA=${REST_APP_SCHEMA}
+    APEX_TARGET_CONNECTION=${REST_APP_SCHEMA}
+  else
+    APEX_TARGET_WORKSPACE=${APEX_WORKSPACE:-${APEX_TARGET_WORKSPACE}}
+    if [[ ${PROJECT_MODE} == "SINGLE" ]]; then
+      APEX_TARGET_SCHEMA=${DB_APP_USER}
+    fi
+  fi
+}
+
+# Statements shared by the read-only preflight and the import configuration.
+# Call inside a block declaring v_workspace_id and v_schema_count.
+function apex_target_validation_sql() {
+  local workspace_sql=${APEX_TARGET_WORKSPACE//\'/\'\'}
+  local schema_sql=${APEX_TARGET_SCHEMA//\'/\'\'}
+  cat <<EOF
+  begin
+    select workspace_id into v_workspace_id
+      from apex_workspaces where workspace = upper('${workspace_sql}');
+  exception when no_data_found then
+    raise_application_error(-20001, 'APEX workspace ${workspace_sql} not found');
+  end;
+  select count(*) into v_schema_count from apex_workspace_schemas
+    where workspace_name = upper('${workspace_sql}') and schema = upper('${schema_sql}');
+  if v_schema_count = 0 then
+    raise_application_error(-20002, 'Parsing schema ${schema_sql} is not assigned to workspace ${workspace_sql}');
+  end if;
+EOF
+}
+
+function validate_apex_import_targets() {
+  [[ ${CONN_MODE} == "SQLNET" ]] || return 0
+  [[ -f ${app_install_file} ]] || return 0
+  local line target_id offset sql_block
+  while IFS= read -r line || [[ -n ${line} ]]; do
+    [[ -f ${line}/install.sql ]] || continue
+    resolve_apex_target "${line}"
+    local source_id
+    source_id=$(basename "${line}")
+    if ! target_id=$(resolve_target_app_id "${source_id#f}"); then
+      return 1
+    fi
+    offset=$(get_app_id_offset)
+    if [[ ! ${target_id} =~ ^[0-9]+$ || ! ${offset} =~ ^[0-9]+$ ]]; then
+      timelog "Invalid APEX application ID or offset for ${line}" "${failure}"
+      return 1
+    fi
+    timelog "APEX target ${line}: Workspace: ${APEX_TARGET_WORKSPACE} Schema: ${APEX_TARGET_SCHEMA} Application: ${target_id} Offset: ${offset} Connection key: ${APEX_TARGET_CONNECTION}"
+    sql_block=$(cat <<EOF
+whenever sqlerror exit failure rollback
+whenever oserror exit failure rollback
+set define off
+set serveroutput on
+declare
+  v_workspace_id apex_workspaces.workspace_id%type;
+  v_schema_count number;
+begin
+$(apex_target_validation_sql)
+end;
+/
+exit success
+EOF
+)
+    if ! run_sql_block "${APEX_TARGET_CONNECTION}" "${sql_block}"; then
+      timelog "Invalid APEX import target: ${line}" "${failure}"
+      return 1
+    fi
+  done < "${app_install_file}"
+}
+
+
 function check_vars() {
   # validate parameters
   do_exit="NO"
@@ -1555,13 +1644,10 @@ function set_apps_unavailable() {
       local app_name=$(basename "${d}")
       local l_app_id=${app_name/f}
       local l_app_id_offset
-      local l_workspace=${WORKSPACE}
-      local l_appschema=${APP_SCHEMA}
-
-      if [[ ${PROJECT_MODE} == "FLEX" ]]; then
-        l_workspace=$(basename $(dirname "${d}"))
-        l_appschema=$(basename $(dirname $(dirname "${d}")))
-      fi
+      resolve_apex_target "${d}"
+      local l_workspace=${APEX_TARGET_WORKSPACE}
+      local l_appschema=${APEX_TARGET_SCHEMA}
+      local l_connection=${APEX_TARGET_CONNECTION}
 
       l_app_id=$(resolve_target_app_id "${l_app_id}")
       if [[ $? -ne 0 ]] || [[ -z "${l_app_id}" ]]; then
@@ -1631,7 +1717,7 @@ End;
 
 EOF
 )
-      run_sql_block "${l_appschema}" "${sql_block}"
+      run_sql_block "${l_connection}" "${sql_block}"
 
     done
   else
@@ -1655,13 +1741,10 @@ function set_apps_available() {
       local l_app_name=$(basename "${d}")
       local l_app_id=${l_app_name/f}
       local l_app_id_offset
-      local l_workspace=${WORKSPACE}
-      local l_appschema=${APP_SCHEMA}
-
-      if [[ ${PROJECT_MODE} == "FLEX" ]]; then
-        l_workspace=$(basename $(dirname ${d}))
-        l_appschema=$(basename $(dirname $(dirname ${d})))
-      fi
+      resolve_apex_target "${d}"
+      local l_workspace=${APEX_TARGET_WORKSPACE}
+      local l_appschema=${APEX_TARGET_SCHEMA}
+      local l_connection=${APEX_TARGET_CONNECTION}
 
       l_app_id=$(resolve_target_app_id "${l_app_id}")
       if [[ $? -ne 0 ]] || [[ -z "${l_app_id}" ]]; then
@@ -1745,7 +1828,7 @@ End;
 /
 EOF
 )
-        run_sql_block "${l_appschema}" "${sql_block}"
+        run_sql_block "${l_connection}" "${sql_block}"
       fi # grep
     done
 
@@ -1765,17 +1848,15 @@ function install_apps() {
   if [[ -e $app_install_file ]]; then
     timelog "Installing APEX-Apps ..."
     # loop throug content
-    while IFS= read -r line; do
+    while IFS= read -r line || [[ -n ${line} ]]; do
       if [[ -e ${line}/install.sql ]]; then
         local app_name=$(basename "${line}")
         local app_id=${app_name/f}
 
-        local workspace=${WORKSPACE}
-        local appschema=${APP_SCHEMA}
-        if [[ ${PROJECT_MODE} == "FLEX" ]]; then
-          workspace=$(basename $(dirname "${line}"))
-          appschema=$(basename $(dirname $(dirname "${line}")))
-        fi
+        resolve_apex_target "${line}"
+        local workspace=${APEX_TARGET_WORKSPACE}
+        local appschema=${APEX_TARGET_SCHEMA}
+        local app_connection=${APEX_TARGET_CONNECTION}
 
         cd "${line}" || exit
         if [[ $(uname) == "Darwin" ]]; then
@@ -1783,6 +1864,19 @@ function install_apps() {
           local original_app_id=$(grep -oE "p_default_application_id=>([^[:space:]]+)" "application/set_environment.sql" | sed 's/.*>\(.*\)/\1/')
         else
           local original_app_id=$(grep -oP 'p_default_application_id=>\K\d+' "application/set_environment.sql")
+        fi
+
+        # Preserve the SQL-literal escaping from the export (including doubled quotes).
+        local original_app_alias_sql
+        if [[ ${CONN_MODE} == "SQLNET" ]]; then
+          original_app_alias_sql=$(sed -nE \
+          -e "s/^[[:space:]]*,?p_alias[[:space:]]*=>[[:space:]]*nvl\\([[:space:]]*wwv_flow_application_install\\.get_application_alias[[:space:]]*,[[:space:]]*'(([^']|'')*)'[[:space:]]*\\).*/\\1/p" \
+          -e "s/^[[:space:]]*,?p_alias[[:space:]]*=>[[:space:]]*'(([^']|'')*)'.*/\\1/p" \
+          application/create_application.sql)
+        fi
+        if [[ ${CONN_MODE} == "SQLNET" && -z ${original_app_alias_sql} ]]; then
+          timelog "Cannot read exported application alias for ${line}" "${failure}"
+          exit 3
         fi
 
         # begin .hooks/pre
@@ -1796,8 +1890,7 @@ function install_apps() {
         # end .hooks/pre
 
         local target_app_id
-        target_app_id=$(resolve_target_app_id "${app_id}")
-        if [[ $? -ne 0 ]] || [[ -z "${target_app_id}" ]]; then
+        if ! target_app_id=$(resolve_target_app_id "${app_id}") || [[ -z "${target_app_id}" ]]; then
           timelog "ERROR when resolving target app id for source app ${app_id}" "${failure}"
           exit 3
         fi
@@ -1808,7 +1901,10 @@ function install_apps() {
           timelog "Installing $line Num: ${target_app_id} Workspace: ${workspace} Schema: ${appschema} Original Num: ${original_app_id}"
 
           local sql_block
+          local schema_sql=${appschema//\'/\'\'}
           sql_block=$(cat <<EOF
+whenever sqlerror exit failure rollback
+whenever oserror exit failure rollback
 define VERSION="${version}"
 define MODE="${mode}"
 
@@ -1823,11 +1919,10 @@ Prompt Workspace: ${workspace}
 Prompt Application: ${target_app_id}
 declare
   v_workspace_id	apex_workspaces.workspace_id%type;
+  v_schema_count number;
+  v_alias_conflicts number;
 begin
-  select workspace_id
-    into v_workspace_id
-    from apex_workspaces
-  where workspace = upper('${workspace}');
+$(apex_target_validation_sql)
 
   apex_application_install.set_workspace_id(v_workspace_id);
 
@@ -1836,16 +1931,17 @@ begin
   if nvl(${app_id_offset}, 0) > 0 or ${target_app_id} != nvl(${original_app_id}, 0) then
     dbms_output.put_line((chr(27) || '[33m') || 'Original APP ID differs from Target APP ID. Generating Offset.' || (chr(27) || '[0m'));
     apex_application_install.generate_offset;
-    -- alias must be unique per instance, so when offset is definded
-    -- it should be modified. In this case a post hook at root level
-    -- has to be used to give it a correct alias
-    apex_application_install.set_application_alias('${target_app_id}_${app_id_offset}');
+    -- Keep the export alias if it is free or already belongs to the target app.
+    select count(*) into v_alias_conflicts
+      from apex_applications
+      where upper(alias) = upper('${original_app_alias_sql}')
+        and application_id <> ${target_app_id} + nvl(${app_id_offset}, 0);
+    if v_alias_conflicts > 0 then
+      apex_application_install.set_application_alias('${target_app_id}_${app_id_offset}');
+    end if;
   end if;
 
-  apex_application_install.set_schema(upper('${appschema}'));
-Exception
-  when no_data_found then
-    dbms_output.put_line((chr(27) || '[31m') || 'Workspace: '||upper('${workspace}')||' not found!' || (chr(27) || '[0m'));
+  apex_application_install.set_schema(upper('${schema_sql}'));
 end;
 /
 
@@ -1853,12 +1949,17 @@ end;
 
 EOF
 )
-          run_sql_block "${appschema}" "${sql_block}" true
+          local import_rc=0
+          run_sql_block "${app_connection}" "${sql_block}" true || import_rc=$?
         else
           timelog "Installing $line using REST API Num: ${target_app_id} Workspace: ${REST_WORKSPACE} Schema: ${REST_APP_SCHEMA} Original Num: ${original_app_id}"
           run_app_import_rest "${REST_APP_SCHEMA}" "${REST_WORKSPACE}" "${target_app_id}" "${original_app_id}"
+          if [[ $? -ne 0 ]]; then
+            timelog "ERROR when executing ${line}" "${failure}"
+            exit 3
+          fi
         fi
-        if [[ $? -ne 0 ]]; then
+        if [[ ${CONN_MODE} == "SQLNET" && ${import_rc} -ne 0 ]]; then
           timelog "ERROR when executing ${line}" "${failure}"
           exit 3
         fi
@@ -2272,6 +2373,10 @@ extract_patchfile
 validate_dbflow_version
 read_db_pass
 validate_connections
+if ! validate_apex_import_targets; then
+  timelog "APEX preflight failed; deployment artifacts retained. See ${full_log_file}" "${failure}"
+  exit 2
+fi
 prepare_redo
 prepare_excludes
 
