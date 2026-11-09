@@ -11,5 +11,5 @@ If something like this happens, then you have to merge the error correction from
 
 ## ProxyUser - connection problems
 
-Sometimes it can happen that **dbFlow** or *SQLplus* or *SQLcl* cannot connect to the database. The error: ``ORA-01017: invalid username/password; logon denied`` is displayed. This may be due to the fact that in a SingleSchema the database directory does not match the value of the variable `DB_APP_USER` from the file `apply.env`. Please also check the notation here. **dbFlow** will _ALWAYS_, if the directory != DB_APP_USER, perform the login as proxy user to the database (`proxy_user[schema_name]@database:port`).
+Sometimes it can happen that **dbFlow** or *SQLplus* or *SQLcl* cannot connect to the database. The error: ``ORA-01017: invalid username/password; logon denied`` is displayed. Please check the credentials and the notation in `apply.env`. In `MULTI` and `FLEX` mode, **dbFlow** uses proxy authentication when the database folder schema differs from `DB_APP_USER` (`DB_APP_USER[schema_name]@database:port`). In `SINGLE` mode, **dbFlow** connects directly as `DB_APP_USER` without a proxy user, even when the folder schema has a different name.
 
